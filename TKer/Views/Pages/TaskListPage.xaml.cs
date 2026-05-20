@@ -118,15 +118,29 @@ public partial class TaskListPage : Page, IRefreshable
         Loaded += (_, _) =>
         {
             if (Window.GetWindow(this) is { } win)
+            {
+                win.KeyDown -= Window_KeyDown;
                 win.KeyDown += Window_KeyDown;
+                _keyDownWindow = win;
+            }
+        };
+        Unloaded += (_, _) =>
+        {
+            if (_keyDownWindow is { } win)
+                win.KeyDown -= Window_KeyDown;
+            _keyDownWindow = null;
         };
 
         PreviewMouseMove        += Page_PreviewMouseMove;
         PreviewMouseLeftButtonUp += Page_PreviewMouseLeftButtonUp;
     }
 
+    private Window? _keyDownWindow;
+
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        if (!IsVisible) return;
+
         bool ctrl  = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
         bool shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         bool alt   = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
@@ -770,7 +784,7 @@ public partial class TaskListPage : Page, IRefreshable
                 headerSp.Children.Add(b);
             }
 
-            MiniBtn("📂 開く", () => Process.Start("explorer.exe", task.FolderPath));
+            MiniBtn("📂 開く", () => ShellHelper.OpenInExplorer(task.FolderPath));
             MiniBtn("📄 新規", () => TaskFolder_NewFile(task));
             MiniBtn("📁 フォルダ", () => TaskFolder_NewFolder(task));
             TaskDetailPanel.Children.Add(headerSp);
@@ -905,7 +919,7 @@ public partial class TaskListPage : Page, IRefreshable
                     };
                     row.MouseLeftButtonUp += (_, _) =>
                     {
-                        if (isDir) Process.Start("explorer.exe", entryPath);
+                        if (isDir) ShellHelper.OpenInExplorer(entryPath);
                         else Process.Start(new ProcessStartInfo(entryPath) { UseShellExecute = true });
                     };
                     TaskDetailPanel.Children.Add(row);
@@ -2008,7 +2022,7 @@ public partial class TaskListPage : Page, IRefreshable
         var cat = _vm.ProjectService.CurrentProject?.Categories.FirstOrDefault(c => c.Id == _selectedCategoryId);
         if (cat == null) return;
         if (System.IO.Directory.Exists(cat.FolderPath))
-            System.Diagnostics.Process.Start("explorer.exe", cat.FolderPath);
+            ShellHelper.OpenInExplorer(cat.FolderPath);
         else
             AppDialog.ShowWarning("フォルダが見つかりません", "エラー", Window.GetWindow(this));
     }
@@ -2076,7 +2090,7 @@ public partial class TaskListPage : Page, IRefreshable
     private static void OpenFolder(TaskItem task)
     {
         if (Directory.Exists(task.FolderPath))
-            Process.Start("explorer.exe", task.FolderPath);
+            ShellHelper.OpenInExplorer(task.FolderPath);
     }
 
     private void DeleteTask(TaskItem task)

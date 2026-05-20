@@ -30,6 +30,9 @@ public partial class HomePage : Page, IRefreshable
                 ClockText.Text = DateTime.Now.ToString("HH:mm:ss");
         };
         _clockTimer.Start();
+
+        Unloaded += (_, _) => _clockTimer.Stop();
+        Loaded   += (_, _) => _clockTimer.Start();
     }
 
     public void Refresh()

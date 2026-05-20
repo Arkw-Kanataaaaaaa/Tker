@@ -73,8 +73,8 @@ public partial class CollectionPage : Page, IRefreshable
         var list = string.IsNullOrWhiteSpace(filter)
             ? _svc.Collections.ToList()
             : _svc.Collections
-                .Where(c => c.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                            c.Description.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .Where(c => (c.Name ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                            (c.Description ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
         if (list.Count == 0)

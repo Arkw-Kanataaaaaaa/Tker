@@ -137,7 +137,7 @@ public partial class LogViewerPage : Page, IRefreshable
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "TKer", "logs");
         if (Directory.Exists(dir))
-            Process.Start("explorer.exe", dir);
+            ShellHelper.OpenInExplorer(dir);
         else
             MessageBox.Show("ログフォルダがまだ存在しません。");
     }

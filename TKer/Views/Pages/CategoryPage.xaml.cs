@@ -28,9 +28,21 @@ public partial class CategoryPage : Page, IRefreshable
         Loaded += (_, _) =>
         {
             if (Window.GetWindow(this) is { } win)
+            {
+                win.KeyDown -= Window_KeyDown;
                 win.KeyDown += Window_KeyDown;
+                _keyDownWindow = win;
+            }
+        };
+        Unloaded += (_, _) =>
+        {
+            if (_keyDownWindow is { } win)
+                win.KeyDown -= Window_KeyDown;
+            _keyDownWindow = null;
         };
     }
+
+    private Window? _keyDownWindow;
 
     public void Refresh()
     {
@@ -305,7 +317,7 @@ public partial class CategoryPage : Page, IRefreshable
         if (cat == null) return;
 
         if (Directory.Exists(cat.FolderPath))
-            Process.Start("explorer.exe", cat.FolderPath);
+            ShellHelper.OpenInExplorer(cat.FolderPath);
         else
             AppDialog.ShowWarning("フォルダが見つかりません", "エラー", Window.GetWindow(this));
     }

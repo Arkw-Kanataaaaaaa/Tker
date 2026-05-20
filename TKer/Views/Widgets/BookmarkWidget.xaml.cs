@@ -63,6 +63,7 @@ public partial class BookmarkWidget : Window
     {
         e.Handled = true; // TabBorder.Tab_MouseLeftButtonDown への伝播を止める
 
+        if (e.ButtonState != MouseButtonState.Pressed) return;
         DragMove(); // ← ユーザーがマウスを放すまでブロック
 
         // DragMove 完了 → 新しい位置を保存

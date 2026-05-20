@@ -1,32 +1,24 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
+using TKer.Helpers;
 using TKer.Models;
 
 namespace TKer.Services;
 
 /// <summary>
-/// TODOアイテムの CRUD を管理するサービス。
+/// ToDo アイテムの CRUD を管理するサービス。
 /// %AppData%\TKer\todos.json に保存される。
 /// </summary>
 public class TodoService
 {
-    private static readonly string DataDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TKer");
-    private static readonly string DataFile =
-        Path.Combine(DataDir, "todos.json");
+    private const string FileName = "todos.json";
 
     private List<TodoItem> _items;
 
-    /// <summary>データ変更時に発火</summary>
     public event EventHandler? DataChanged;
 
-    public TodoService()
-    {
-        _items = Load();
-    }
+    public TodoService() => _items = JsonFileStore.Load<List<TodoItem>>(FileName);
 
     // ── 読み取り ─────────────────────────────────────────
     public IReadOnlyList<TodoItem> GetAll()
@@ -68,8 +60,7 @@ public class TodoService
             MapInfo      = mapInfo,
         };
         _items.Add(item);
-        Save();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotify();
         return item;
     }
 
@@ -79,17 +70,13 @@ public class TodoService
         if (idx < 0) return;
         updated.UpdatedAt = DateTime.Now;
         _items[idx] = updated;
-        Save();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotify();
     }
 
     public void Delete(string id)
     {
         if (_items.RemoveAll(t => t.Id == id) > 0)
-        {
-            Save();
-            DataChanged?.Invoke(this, EventArgs.Empty);
-        }
+            SaveAndNotify();
     }
 
     public void Toggle(string id)
@@ -101,31 +88,26 @@ public class TodoService
         item.CompletedAt = item.IsCompleted ? DateTime.Now : null;
         item.UpdatedAt   = DateTime.Now;
 
-        // 繰り返し処理: 完了時に次の期日を設定して未完了に戻す
         if (item.IsCompleted && item.Repeat != TodoRepeat.None && item.DueDate.HasValue)
         {
-            item.DueDate = NextDueDate(item.DueDate.Value, item.Repeat);
+            item.DueDate     = NextDueDate(item.DueDate.Value, item.Repeat);
             item.IsCompleted = false;
             item.CompletedAt = null;
         }
 
-        Save();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotify();
     }
 
     // ── 繰り返し次期日計算 ───────────────────────────────
-    private static DateTime NextDueDate(DateTime current, TodoRepeat repeat)
+    private static DateTime NextDueDate(DateTime current, TodoRepeat repeat) => repeat switch
     {
-        return repeat switch
-        {
-            TodoRepeat.Daily   => current.AddDays(1),
-            TodoRepeat.Weekday => NextWeekday(current),
-            TodoRepeat.Weekly  => current.AddDays(7),
-            TodoRepeat.Monthly => current.AddMonths(1),
-            TodoRepeat.Yearly  => current.AddYears(1),
-            _                  => current
-        };
-    }
+        TodoRepeat.Daily   => current.AddDays(1),
+        TodoRepeat.Weekday => NextWeekday(current),
+        TodoRepeat.Weekly  => current.AddDays(7),
+        TodoRepeat.Monthly => current.AddMonths(1),
+        TodoRepeat.Yearly  => current.AddYears(1),
+        _                  => current
+    };
 
     private static DateTime NextWeekday(DateTime from)
     {
@@ -142,28 +124,9 @@ public class TodoService
     public int OverdueCount   => _items.Count(t => t.IsOverdue);
 
     // ── 永続化 ───────────────────────────────────────────
-    private List<TodoItem> Load()
+    private void SaveAndNotify()
     {
-        try
-        {
-            if (File.Exists(DataFile))
-            {
-                var json = File.ReadAllText(DataFile);
-                return JsonConvert.DeserializeObject<List<TodoItem>>(json) ?? new();
-            }
-        }
-        catch { /* 初回 or 破損時は新規 */ }
-        return new();
-    }
-
-    private void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(DataDir);
-            File.WriteAllText(DataFile,
-                JsonConvert.SerializeObject(_items, Formatting.Indented));
-        }
-        catch { /* 保存失敗は無視 */ }
+        JsonFileStore.Save(FileName, _items);
+        DataChanged?.Invoke(this, EventArgs.Empty);
     }
 }

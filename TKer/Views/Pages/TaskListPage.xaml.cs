@@ -1601,42 +1601,7 @@ public partial class TaskListPage : Page, IRefreshable
     private void Filter_Changed(object sender, RoutedEventArgs e) => BuildUI();
 
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
-    {
-        if (SearchSection.Visibility == Visibility.Collapsed)
-        {
-            SearchSection.Visibility = Visibility.Visible;
-            SearchSection.BeginAnimation(HeightProperty, null);
-            SearchSection.Height = double.NaN;
-            SearchSection.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            double targetH = SearchSection.DesiredSize.Height > 0 ? SearchSection.DesiredSize.Height : 50;
-            SearchSection.Height = 0;
-            var anim = new DoubleAnimation(0, targetH, TimeSpan.FromMilliseconds(220))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            anim.Completed += (_, _) =>
-            {
-                SearchSection.BeginAnimation(HeightProperty, null);
-                SearchSection.Height = double.NaN;
-            };
-            SearchSection.BeginAnimation(HeightProperty, anim);
-            SearchBox.Focus();
-        }
-        else
-        {
-            double currentH = SearchSection.ActualHeight > 0 ? SearchSection.ActualHeight : 50;
-            var anim = new DoubleAnimation(currentH, 0, TimeSpan.FromMilliseconds(160))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-            anim.Completed += (_, _) =>
-            {
-                SearchSection.BeginAnimation(HeightProperty, null);
-                SearchSection.Visibility = Visibility.Collapsed;
-            };
-            SearchSection.BeginAnimation(HeightProperty, anim);
-        }
-    }
+        => SearchBarHelper.Toggle(SearchSection, SearchBox);
 
     private double GetMaxComboBoxWidth(ComboBox cb)
     {

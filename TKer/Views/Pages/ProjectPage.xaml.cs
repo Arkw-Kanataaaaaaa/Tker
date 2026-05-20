@@ -100,7 +100,7 @@ public partial class ProjectPage : Page, IRefreshable
 
         // タグバッジ
         var tagSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        tagSp.Children.Add(MakeBadge("📂 カテゴリー", "#3D7EFF"));
+        tagSp.Children.Add(UiBadgeHelper.MakeBadge("📂 カテゴリー", "#3D7EFF"));
         DetailPanel.Children.Add(tagSp);
 
         // カテゴリー名（色ドット付き）
@@ -108,7 +108,7 @@ public partial class ProjectPage : Page, IRefreshable
         headerSp.Children.Add(new Border
         {
             Width = 14, Height = 14, CornerRadius = new CornerRadius(7),
-            Background = ParseBrush(cat.Color),
+            Background = UiBadgeHelper.ParseBrush(cat.Color),
             Margin = new Thickness(0, 3, 10, 0), VerticalAlignment = VerticalAlignment.Top
         });
         headerSp.Children.Add(new TextBlock
@@ -159,13 +159,13 @@ public partial class ProjectPage : Page, IRefreshable
     {
         // タグバッジ群
         var badgeSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        badgeSp.Children.Add(MakeBadge("✅ タスク", "#2E7D32"));
-        badgeSp.Children.Add(MakeBadge(task.Status, StatusColor(task.Status), margin: 6));
-        badgeSp.Children.Add(MakeBadge($"優先度: {task.Priority}", PriorityColor(task.Priority), margin: 6));
+        badgeSp.Children.Add(UiBadgeHelper.MakeBadge("✅ タスク", "#2E7D32"));
+        badgeSp.Children.Add(UiBadgeHelper.MakeBadge(task.Status, UiBadgeHelper.StatusColor(task.Status), margin: 6));
+        badgeSp.Children.Add(UiBadgeHelper.MakeBadge($"優先度: {task.Priority}", UiBadgeHelper.PriorityColor(task.Priority), margin: 6));
         if (task.IsOverdue)
-            badgeSp.Children.Add(MakeBadge("⚠ 期限超過", "#C62828", margin: 6));
+            badgeSp.Children.Add(UiBadgeHelper.MakeBadge("⚠ 期限超過", "#C62828", margin: 6));
         else if (task.IsDueSoon)
-            badgeSp.Children.Add(MakeBadge("⏰ 期限間近", "#E65100", margin: 6));
+            badgeSp.Children.Add(UiBadgeHelper.MakeBadge("⏰ 期限間近", "#E65100", margin: 6));
         DetailPanel.Children.Add(badgeSp);
 
         // タスク名

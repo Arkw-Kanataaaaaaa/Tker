@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,7 +8,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using Newtonsoft.Json;
 using TKer.Helpers;
 using TKer.Models;
@@ -352,44 +351,7 @@ public partial class ProjectListPage : Page, IRefreshable
 
     // ── 検索 ──────────────────────────────────────────────
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
-    {
-        if (SearchSection.Visibility == Visibility.Collapsed)
-        {
-            SearchSection.Visibility = Visibility.Visible;
-            SearchSection.BeginAnimation(HeightProperty, null);
-            SearchSection.Height = double.NaN;
-            SearchSection.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            double targetH = SearchSection.DesiredSize.Height > 0 ? SearchSection.DesiredSize.Height : 50;
-            SearchSection.Height = 0;
-            var anim = new DoubleAnimation(0, targetH, TimeSpan.FromMilliseconds(220))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            anim.Completed += (_, _) =>
-            {
-                SearchSection.BeginAnimation(HeightProperty, null);
-                SearchSection.Height = double.NaN;
-            };
-            SearchSection.BeginAnimation(HeightProperty, anim);
-            SearchBox.Focus();
-        }
-        else
-        {
-            double currentH = SearchSection.ActualHeight > 0 ? SearchSection.ActualHeight : 50;
-            var anim = new DoubleAnimation(currentH, 0, TimeSpan.FromMilliseconds(160))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-            anim.Completed += (_, _) =>
-            {
-                SearchSection.BeginAnimation(HeightProperty, null);
-                SearchSection.Visibility = Visibility.Collapsed;
-                SearchBox.Text = "";
-                ApplyFilter();
-            };
-            SearchSection.BeginAnimation(HeightProperty, anim);
-        }
-    }
+        => SearchBarHelper.Toggle(SearchSection, SearchBox);
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
@@ -738,14 +700,14 @@ public partial class ProjectListPage : Page, IRefreshable
         var project = _vm.ProjectService.CurrentProject!;
 
         var tagSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        tagSp.Children.Add(MakeBadge("📂 カテゴリー", "#3D7EFF"));
+        tagSp.Children.Add(UiBadgeHelper.MakeBadge("📂 カテゴリー", "#3D7EFF"));
         DetailPanel.Children.Add(tagSp);
 
         var headerSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 14) };
         headerSp.Children.Add(new Border
         {
             Width = 14, Height = 14, CornerRadius = new CornerRadius(7),
-            Background = ParseBrush(cat.Color),
+            Background = UiBadgeHelper.ParseBrush(cat.Color),
             Margin = new Thickness(0, 3, 10, 0), VerticalAlignment = VerticalAlignment.Top
         });
         headerSp.Children.Add(new TextBlock
@@ -792,13 +754,13 @@ public partial class ProjectListPage : Page, IRefreshable
     private void ShowTaskDetail(TaskItem task, Category? cat, FileNode node)
     {
         var badgeSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        badgeSp.Children.Add(MakeBadge("✅ タスク", "#2E7D32"));
-        badgeSp.Children.Add(MakeBadge(task.Status, StatusColor(task.Status), margin: 6));
-        badgeSp.Children.Add(MakeBadge($"優先度: {task.Priority}", PriorityColor(task.Priority), margin: 6));
+        badgeSp.Children.Add(UiBadgeHelper.MakeBadge("✅ タスク", "#2E7D32"));
+        badgeSp.Children.Add(UiBadgeHelper.MakeBadge(task.Status, UiBadgeHelper.StatusColor(task.Status), margin: 6));
+        badgeSp.Children.Add(UiBadgeHelper.MakeBadge($"優先度: {task.Priority}", UiBadgeHelper.PriorityColor(task.Priority), margin: 6));
         if (task.IsOverdue)
-            badgeSp.Children.Add(MakeBadge("⚠ 期限超過", "#C62828", margin: 6));
+            badgeSp.Children.Add(UiBadgeHelper.MakeBadge("⚠ 期限超過", "#C62828", margin: 6));
         else if (task.IsDueSoon)
-            badgeSp.Children.Add(MakeBadge("⏰ 期限間近", "#E65100", margin: 6));
+            badgeSp.Children.Add(UiBadgeHelper.MakeBadge("⏰ 期限間近", "#E65100", margin: 6));
         DetailPanel.Children.Add(badgeSp);
 
         DetailPanel.Children.Add(new TextBlock
@@ -847,7 +809,7 @@ public partial class ProjectListPage : Page, IRefreshable
             AddSectionDivider("タグ");
             var tagWrap = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
             foreach (var tag in task.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                tagWrap.Children.Add(MakeBadge(tag, "#37474F", margin: 4));
+                tagWrap.Children.Add(UiBadgeHelper.MakeBadge(tag, "#37474F", margin: 4));
             DetailPanel.Children.Add(tagWrap);
         }
         if (!string.IsNullOrWhiteSpace(task.Notes))
@@ -901,8 +863,8 @@ public partial class ProjectListPage : Page, IRefreshable
         if (File.Exists(node.FullPath))
         {
             var fi = new FileInfo(node.FullPath);
-            AddInfoRow("種類",     GetFileType(node.FullPath));
-            AddInfoRow("サイズ",   FormatSize(fi.Length));
+            AddInfoRow("種類",     FileHelper.GetFileType(node.FullPath));
+            AddInfoRow("サイズ",   FileHelper.FormatSize(fi.Length));
             AddInfoRow("更新日時", fi.LastWriteTime.ToString("yyyy/MM/dd HH:mm:ss"));
             AddInfoRow("作成日時", fi.CreationTime.ToString("yyyy/MM/dd HH:mm:ss"));
 
@@ -964,7 +926,7 @@ public partial class ProjectListPage : Page, IRefreshable
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 4, 0)
         };
-        var statusBadge = MakeBadge(task.Status, StatusColor(task.Status));
+        var statusBadge = UiBadgeHelper.MakeBadge(task.Status, UiBadgeHelper.StatusColor(task.Status));
         var dateTb = new TextBlock
         {
             Text = task.PlannedEndDate?.ToString("MM/dd") ?? "─",
@@ -1103,54 +1065,6 @@ public partial class ProjectListPage : Page, IRefreshable
         panel.Children.Add(g);
     }
 
-    private Border MakeBadge(string text, string hexColor, double margin = 0)
-    {
-        return new Border
-        {
-            Background = ParseBrush(hexColor, 0.25),
-            BorderBrush = ParseBrush(hexColor, 0.7),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(7, 2, 7, 2),
-            Margin = new Thickness(0, 0, margin, 0),
-            Child = new TextBlock
-            {
-                Text = text, FontSize = 11,
-                Foreground = ParseBrush(hexColor),
-                VerticalAlignment = VerticalAlignment.Center
-            }
-        };
-    }
-
-    private static SolidColorBrush ParseBrush(string hex, double opacity = 1.0)
-    {
-        try
-        {
-            var c = (Color)ColorConverter.ConvertFromString(hex);
-            return new SolidColorBrush(Color.FromArgb(
-                (byte)(c.A * opacity), c.R, c.G, c.B));
-        }
-        catch { return new SolidColorBrush(Colors.Gray); }
-    }
-
-    private static string StatusColor(string status) => status switch
-    {
-        "完了"       => "#4CAF50",
-        "進行中"     => "#2196F3",
-        "未着手"     => "#9E9E9E",
-        "保留"       => "#FF9800",
-        "レビュー中" => "#9C27B0",
-        _            => "#607D8B"
-    };
-
-    private static string PriorityColor(string priority) => priority switch
-    {
-        "高" => "#EF5350",
-        "中" => "#FFA726",
-        "低" => "#78909C",
-        _    => "#607D8B"
-    };
-
     // ── 列カスタマイズ ────────────────────────────────────
     private List<string> VisibleColumns =>
         _columnOrder.Where(c => !_hiddenColumns.Contains(c)).ToList();
@@ -1189,8 +1103,8 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             var fi = new FileInfo(child.FullPath);
             modified = fi.LastWriteTime.ToString("yyyy/MM/dd HH:mm");
-            type     = GetFileType(child.FullPath);
-            size     = FormatSize(fi.Length);
+            type     = FileHelper.GetFileType(child.FullPath);
+            size     = FileHelper.FormatSize(fi.Length);
         }
         else { modified = type = size = "--"; }
 
@@ -1526,50 +1440,6 @@ public partial class ProjectListPage : Page, IRefreshable
         };
         Grid.SetColumn(tb, col);
         g.Children.Add(tb);
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        if (bytes < 1024)               return $"{bytes} バイト";
-        if (bytes < 1024 * 1024)        return $"{bytes / 1024.0:F1} KB";
-        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
-        return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
-    }
-
-    private static string GetFileType(string path)
-    {
-        var ext = Path.GetExtension(path).ToUpperInvariant();
-        return ext switch
-        {
-            ".TXT"            => "テキスト ドキュメント",
-            ".PDF"            => "PDF ドキュメント",
-            ".XLSX"           => "Microsoft Excel ワークシート",
-            ".XLS"            => "Microsoft Excel 97-2003 ワークシート",
-            ".DOCX"           => "Microsoft Word ドキュメント",
-            ".DOC"            => "Microsoft Word 97-2003 ドキュメント",
-            ".PPTX"           => "Microsoft PowerPoint プレゼンテーション",
-            ".PPT"            => "Microsoft PowerPoint 97-2003 プレゼンテーション",
-            ".PNG"            => "PNG イメージ",
-            ".JPG" or ".JPEG" => "JPEG イメージ",
-            ".GIF"            => "GIF イメージ",
-            ".BMP"            => "ビットマップ イメージ",
-            ".ZIP"            => "圧縮 (zip 形式) フォルダー",
-            ".RAR"            => "RAR アーカイブ",
-            ".7Z"             => "7-Zip アーカイブ",
-            ".CS"             => "Visual C# ソース ファイル",
-            ".PY"             => "Python スクリプト",
-            ".JS"             => "JavaScript ファイル",
-            ".TS"             => "TypeScript ファイル",
-            ".JSON"           => "JSON ファイル",
-            ".XML"            => "XML ドキュメント",
-            ".CSV"            => "CSV ファイル",
-            ".MP4"            => "MP4 ビデオ ファイル",
-            ".MP3"            => "MP3 オーディオ ファイル",
-            ".HTML" or ".HTM" => "HTML ドキュメント",
-            ".MD"             => "Markdown ファイル",
-            ""                => "ファイル",
-            _                 => $"{ext.TrimStart('.')} ファイル"
-        };
     }
 
     // ── コンテキストメニュー表示前フック ─────────────────

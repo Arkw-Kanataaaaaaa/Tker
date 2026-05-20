@@ -6,6 +6,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using Newtonsoft.Json;
+using TKer.Helpers;
 using TKer.Models;
 
 namespace TKer.Services;
@@ -137,8 +138,7 @@ public class ProjectService
             cat.FolderPath = RebasePath(cat.FolderPath, oldBase, newBase);
         foreach (var task in CurrentProject.Tasks)
             task.FolderPath = RebasePath(task.FolderPath, oldBase, newBase);
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     /// <summary>パスの先頭が oldBase の場合のみ newBase に置き換える（部分文字列誤置換を防ぐ）</summary>
@@ -194,8 +194,7 @@ public class ProjectService
         CurrentProject.Settings.Description = description;
         CurrentProject.ProjectVersion        = version;
         CurrentProject.Manager               = manager;
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     // =====================================================
@@ -218,7 +217,7 @@ public class ProjectService
         };
 
         // 優先度番号をプレフィックスとしたフォルダ名
-        var folderName = $"{order:D3}_{SanitizeName(name)}";
+        var folderName = $"{order:D3}_{StringHelper.SanitizeFileName(name)}";
         var folderPath = Path.Combine(CurrentProject.Settings.ProjectPath, folderName);
         folderPath = EnsureUniqueFolder(folderPath);
         Directory.CreateDirectory(folderPath);
@@ -226,8 +225,7 @@ public class ProjectService
         category.FolderCreated = true;
 
         CurrentProject.Categories.Add(category);
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
         return category;
     }
 
@@ -258,7 +256,7 @@ public class ProjectService
         {
             if (!cat.FolderCreated || !Directory.Exists(cat.FolderPath)) continue;
             var parentDir  = Path.GetDirectoryName(cat.FolderPath)!;
-            var expectName = $"{cat.Order:D3}_{SanitizeName(cat.Name)}";
+            var expectName = $"{cat.Order:D3}_{StringHelper.SanitizeFileName(cat.Name)}";
             var expectPath = Path.Combine(parentDir, expectName);
             if (!string.Equals(cat.FolderPath, expectPath, StringComparison.OrdinalIgnoreCase))
                 renameTargets.Add((cat, cat.FolderPath, expectName));
@@ -307,8 +305,7 @@ public class ProjectService
             }
         }
 
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     public void UpdateCategory(Category category, bool renameFolder = false)
@@ -322,7 +319,7 @@ public class ProjectService
         {
             var parentDir  = Path.GetDirectoryName(existing.FolderPath)!;
             var oldPath    = existing.FolderPath;
-            var newFolderName = $"{existing.Order:D3}_{SanitizeName(category.Name)}";
+            var newFolderName = $"{existing.Order:D3}_{StringHelper.SanitizeFileName(category.Name)}";
             var newFolderPath = EnsureUniqueFolder(Path.Combine(parentDir, newFolderName));
             if (!string.Equals(newFolderPath, oldPath, StringComparison.OrdinalIgnoreCase))
             {
@@ -341,8 +338,7 @@ public class ProjectService
         existing.Name        = category.Name;
         existing.Description = category.Description;
         existing.Color       = category.Color;
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     public void DeleteCategory(string categoryId, bool deleteFolder = false)
@@ -361,8 +357,7 @@ public class ProjectService
         var tasks = CurrentProject.Tasks.Where(t => t.CategoryId == categoryId).ToList();
         foreach (var task in tasks) CurrentProject.Tasks.Remove(task);
         CurrentProject.Categories.Remove(category);
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     // =====================================================
@@ -377,7 +372,7 @@ public class ProjectService
         if (CurrentProject == null) throw new InvalidOperationException("プロジェクト未ロード");
 
         var id        = GenerateTaskId();
-        var shortName = string.IsNullOrWhiteSpace(nameShort) ? TruncateName(name, 20) : nameShort;
+        var shortName = string.IsNullOrWhiteSpace(nameShort) ? StringHelper.Truncate(name, 20) : nameShort;
 
         var task = new TaskItem
         {
@@ -401,7 +396,7 @@ public class ProjectService
 
         var category   = CurrentProject.Categories.FirstOrDefault(c => c.Id == categoryId);
         var basePath   = category?.FolderPath ?? CurrentProject.Settings.ProjectPath;
-        var folderName = $"{id}_{SanitizeName(shortName)}";
+        var folderName = $"{id}_{StringHelper.SanitizeFileName(shortName)}";
         var folderPath = EnsureUniqueFolder(Path.Combine(basePath, folderName));
         Directory.CreateDirectory(folderPath);
         task.FolderPath    = folderPath;
@@ -435,7 +430,7 @@ public class ProjectService
             Directory.Exists(existing.FolderPath))
         {
             var parentDir     = Path.GetDirectoryName(existing.FolderPath)!;
-            var newFolderName  = $"{existing.Id}_{SanitizeName(task.NameShort)}";
+            var newFolderName  = $"{existing.Id}_{StringHelper.SanitizeFileName(task.NameShort)}";
             var newFolderPath  = EnsureUniqueFolder(Path.Combine(parentDir, newFolderName));
             Directory.Move(existing.FolderPath, newFolderPath);
             existing.FolderPath = newFolderPath;
@@ -462,8 +457,7 @@ public class ProjectService
         if (existing.Status == "完了" && existing.FolderCreated && !existing.MovedToComplete)
             MoveTaskFolderToComplete(existing);
 
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     public void DeleteTask(string taskId, bool deleteFolder = false)
@@ -774,7 +768,7 @@ public class ProjectService
                 var mappedStatus   = status   is "対応中" or "完了" or "レビュー中" ? status : "未着手";
                 var mappedPriority = priority is "高" or "低" ? priority : "中";
 
-                var task = AddTask(currentCategoryId, taskName, TruncateName(taskName, 20),
+                var task = AddTask(currentCategoryId, taskName, StringHelper.Truncate(taskName, 20),
                     currentSubCategory ?? "", env, assignee,
                     mappedPriority, mappedStatus, planStart, planEnd, notes: notes ?? "");
 
@@ -783,8 +777,7 @@ public class ProjectService
             }
         }
 
-        MarkDirtyAndSave();
-        ProjectChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotifyProject();
     }
 
     // =====================================================
@@ -819,16 +812,6 @@ public class ProjectService
         return $"TSK{max + 1:D4}";
     }
 
-    private static string SanitizeName(string name)
-    {
-        var invalid   = Path.GetInvalidFileNameChars();
-        var sanitized = new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
-        return sanitized.Length > 30 ? sanitized[..30] : sanitized;
-    }
-
-    private static string TruncateName(string name, int max)
-        => name.Length <= max ? name : name[..max];
-
     // ⑤ フォルダ衝突回避
     private static string EnsureUniqueFolder(string path)
     {
@@ -842,6 +825,12 @@ public class ProjectService
     {
         _hasUnsavedChanges = true;
         SaveProject(); // 即時保存（自動保存は補完用）
+    }
+
+    private void SaveAndNotifyProject()
+    {
+        MarkDirtyAndSave();
+        ProjectChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // =====================================================

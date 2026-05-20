@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
+using TKer.Helpers;
 using TKer.Models;
 
 namespace TKer.Services;
@@ -12,19 +11,13 @@ namespace TKer.Services;
 /// </summary>
 public class ScheduleService
 {
-    private static readonly string DataDir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TKer");
-    private static readonly string DataFile =
-        Path.Combine(DataDir, "schedule.json");
+    private const string FileName = "schedule.json";
 
     private List<ScheduleEvent> _events;
 
     public event EventHandler? DataChanged;
 
-    public ScheduleService()
-    {
-        _events = Load();
-    }
+    public ScheduleService() => _events = JsonFileStore.Load<List<ScheduleEvent>>(FileName);
 
     // ── 読み取り ─────────────────────────────────────────
     public IReadOnlyList<ScheduleEvent> GetAll() => _events.AsReadOnly();
@@ -42,9 +35,7 @@ public class ScheduleService
     {
         var d = date.Date;
         return _events
-            .Where(e => e.IsAllDay
-                ? e.StartTime.Date <= d && e.EndTime.Date >= d
-                : e.StartTime.Date <= d && e.EndTime.Date >= d)
+            .Where(e => e.StartTime.Date <= d && e.EndTime.Date >= d)
             .OrderBy(e => e.StartTime)
             .ToList();
     }
@@ -55,19 +46,18 @@ public class ScheduleService
     {
         var ev = new ScheduleEvent
         {
-            Title       = title,
-            Description = description,
-            Location    = location,
-            StartTime   = isAllDay ? start.Date : start,
-            EndTime     = isAllDay ? end.Date.AddDays(1).AddSeconds(-1) : end,
-            IsAllDay    = isAllDay,
-            Color       = color,
-            LinkedTaskId= linkedTaskId,
-            CreatedAt   = DateTime.Now
+            Title        = title,
+            Description  = description,
+            Location     = location,
+            StartTime    = isAllDay ? start.Date : start,
+            EndTime      = isAllDay ? end.Date.AddDays(1).AddSeconds(-1) : end,
+            IsAllDay     = isAllDay,
+            Color        = color,
+            LinkedTaskId = linkedTaskId,
+            CreatedAt    = DateTime.Now
         };
         _events.Add(ev);
-        Save();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotify();
         return ev;
     }
 
@@ -76,39 +66,19 @@ public class ScheduleService
         var idx = _events.FindIndex(e => e.Id == updated.Id);
         if (idx < 0) return;
         _events[idx] = updated;
-        Save();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotify();
     }
 
     public void Delete(string id)
     {
         _events.RemoveAll(e => e.Id == id);
-        Save();
-        DataChanged?.Invoke(this, EventArgs.Empty);
+        SaveAndNotify();
     }
 
     // ── 永続化 ───────────────────────────────────────────
-    private List<ScheduleEvent> Load()
+    private void SaveAndNotify()
     {
-        try
-        {
-            if (File.Exists(DataFile))
-            {
-                var json = File.ReadAllText(DataFile);
-                return JsonConvert.DeserializeObject<List<ScheduleEvent>>(json) ?? new();
-            }
-        }
-        catch { /* 初回 or 破損 */ }
-        return new();
-    }
-
-    private void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(DataDir);
-            File.WriteAllText(DataFile, JsonConvert.SerializeObject(_events, Formatting.Indented));
-        }
-        catch { /* 保存失敗は無視 */ }
+        JsonFileStore.Save(FileName, _events);
+        DataChanged?.Invoke(this, EventArgs.Empty);
     }
 }

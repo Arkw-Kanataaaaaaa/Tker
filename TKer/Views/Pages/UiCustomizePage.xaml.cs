@@ -1173,6 +1173,7 @@ public partial class UiCustomizePage : Page, IRefreshable
 
     // ── タスク管理画面固有設定（タスク行 + ガント行） ────────────────
 
+    /// <summary>タスク行・ガント行の透明度・色設定パネルを構築して返す。</summary>
     private StackPanel BuildTaskGanttExtraPanel(Brush borderBr, Brush fg, Brush fgDim, Brush accentCyan)
     {
         var panel = new StackPanel { Margin = new Thickness(14, 12, 14, 12) };
@@ -1263,6 +1264,7 @@ public partial class UiCustomizePage : Page, IRefreshable
 
     // ── 背景色＋透過度の汎用パネル ───────────────────────────────────
 
+    /// <summary>背景色と透過度を設定する汎用パネルを構築して返す。</summary>
     private StackPanel BuildBgExtraPanel(
         string title, Brush borderBr, Brush fg, Brush fgDim, Brush accentCyan,
         Func<string> getColor, Func<double> getOpacity, Action<string, double> save)
@@ -1339,6 +1341,7 @@ public partial class UiCustomizePage : Page, IRefreshable
 
     // ── スライダー行ヘルパー ─────────────────────────────────────────
 
+    /// <summary>値・範囲指定のスライダー行UIを生成して返す。</summary>
     private static (Grid grid, Slider slider) MakeSliderRow(
         double value, double min, double max, Brush accent, Brush fgDim)
     {
@@ -1366,6 +1369,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     }
 
     // ラベル付きカラー入力（テキストボックス + プレビュードット）
+    /// <summary>ラベル付きカラー入力欄とプレビュードットを生成して返す。</summary>
     private (StackPanel panel, TextBox textBox) MakeInlineColorInput(string label, string initialValue, Brush borderBrush)
     {
         var panel = new StackPanel { Margin = new Thickness(0, 0, 4, 0) };
@@ -1408,6 +1412,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         return (panel, textBox);
     }
 
+    /// <summary>すべてのUIカスタマイズをデフォルトにリセットする。</summary>
     private void ResetAll_Click(object sender, RoutedEventArgs e)
     {
         if (!AppDialog.Confirm("すべてのUIカスタマイズをリセットしますか？\nこの操作は元に戻せません。",
@@ -1439,6 +1444,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  Tab 4 — プリセット
     // ══════════════════════════════════════════════
 
+    /// <summary>プリセット一覧パネルを再構築する。</summary>
     private void BuildPresetPanel()
     {
         if (PresetPanel == null) return;
@@ -1453,6 +1459,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         PresetPanel.Children.Add(wrapPanel);
     }
 
+    /// <summary>テーマプリセット1件分のカードUIを生成して返す。</summary>
     private Border BuildPresetCard(ThemePreset preset)
     {
         var fg       = TryBrush("TextPrimaryBrush") ?? Brushes.White;
@@ -1559,6 +1566,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         return card;
     }
 
+    /// <summary>指定プリセットを適用してテーマを更新する。</summary>
     private void ApplyPreset(ThemePreset preset)
     {
         _svc.ApplyPreset(preset);
@@ -1568,6 +1576,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>現在のテーマを名前付きプリセットとして保存する。</summary>
     private void SavePreset_Click(object sender, RoutedEventArgs e)
     {
         var bg  = TryBrush("BgCardBrush")      ?? Brushes.Black;
@@ -1643,6 +1652,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         BulkBorderPreview.Background = c.HasValue ? new SolidColorBrush(c.Value) : Brushes.Transparent;
     }
 
+    /// <summary>一括適用ボタンで全コンポーネントに指定スタイルを反映する。</summary>
     private void BulkApply_Click(object sender, RoutedEventArgs e)
     {
         var bulkBg      = NullIfEmpty(TxtBulkBgColor.Text);
@@ -1671,6 +1681,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  Tab 3 — ツールバー順序
     // ══════════════════════════════════════════════
 
+    /// <summary>メニュー順序リストボックスを最新の並び順で更新する。</summary>
     private void RefreshMenuOrderList()
     {
         TbListBox.Items.Clear();
@@ -1683,6 +1694,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     private void TbMoveUp_Click(object sender, RoutedEventArgs e)   => TbMove(-1);
     private void TbMoveDown_Click(object sender, RoutedEventArgs e) => TbMove(+1);
 
+    /// <summary>選択中のメニュー項目を指定方向に移動する。</summary>
     private void TbMove(int delta)
     {
         int idx = TbListBox.SelectedIndex;
@@ -1698,6 +1710,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  保存
     // ══════════════════════════════════════════════
 
+    /// <summary>テーマ・レイアウト・メニュー順序を保存してアプリに適用する。</summary>
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         var font = (CbFontFamily.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
@@ -1737,6 +1750,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         BuildContent();
     }
 
+    /// <summary>新旧テーマを比較して変更があればtrueを返す。</summary>
     private bool IsThemeChanged(ThemeColors n) =>
         n.TextPrimary  != _originalTheme.TextPrimary  ||
         n.TextSecond   != _originalTheme.TextSecond   ||
@@ -1749,6 +1763,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         n.ButtonBorder != _originalTheme.ButtonBorder ||
         n.DropdownBg   != _originalTheme.DropdownBg;
 
+    /// <summary>テーマ変更後に再起動を促す確認ダイアログを表示する。</summary>
     private void ShowRestartConfirmDialog()
     {
         var bg  = TryBrush("BgCardBrush")      ?? Brushes.Black;
@@ -1797,12 +1812,14 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  ユーティリティ
     // ══════════════════════════════════════════════
 
+    /// <summary>アプリリソースからブラシを取得し失敗時はnullを返す。</summary>
     private static Brush? TryBrush(string key)
     {
         try { return Application.Current.Resources[key] as Brush; }
         catch { return null; }
     }
 
+    /// <summary>空白のみの文字列をnullに変換し、それ以外はトリムして返す。</summary>
     private static string? NullIfEmpty(string s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }

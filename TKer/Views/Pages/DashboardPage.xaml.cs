@@ -10,10 +10,12 @@ using TKer.Views;
 
 namespace TKer.Views.Pages;
 
+/// <summary>ダッシュボードを表示するページ。</summary>
 public partial class DashboardPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
 
+    /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
     public DashboardPage(MainViewModel vm)
     {
         _vm = vm;
@@ -31,6 +33,7 @@ public partial class DashboardPage : Page, IRefreshable
     private void GoToDeliverable_Click(object sender, RoutedEventArgs e)
         => _vm.NavigateToCommand.Execute("Deliverable");
 
+    /// <summary>ページ全体のUIを最新データで再描画する。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Dash_Header"));
@@ -51,6 +54,7 @@ public partial class DashboardPage : Page, IRefreshable
         UpdateActualsSummary();
     }
 
+    /// <summary>実績工数サマリーを集計して表示する。</summary>
     private void UpdateActualsSummary()
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -86,6 +90,7 @@ public partial class DashboardPage : Page, IRefreshable
             .ToList();
     }
 
+    /// <summary>統計カードBorderを生成する。</summary>
     private static Border MakeStatCard(string label, string value, Color accent)
     {
         var sp = new StackPanel { Margin = new Thickness(4) };
@@ -109,6 +114,7 @@ public partial class DashboardPage : Page, IRefreshable
         };
     }
 
+    /// <summary>タスク進捗バーとパーセンテージ表示を更新する。</summary>
     private void UpdateProgressBar()
     {
         int total = _vm.TotalTasks;

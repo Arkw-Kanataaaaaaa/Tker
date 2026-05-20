@@ -13,6 +13,7 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
+/// <summary>プロジェクトフォルダツリーを表示・操作するページ。</summary>
 public partial class ProjectPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
@@ -21,16 +22,18 @@ public partial class ProjectPage : Page, IRefreshable
     private FileNode? _selectedNode;
 
     // ── 列カスタマイズ状態（ファイル一覧） ────────────────
-    private static readonly string[] AllColumns = { "名前", "更新日時", "種類", "サイズ" };
+    private static readonly string[] ALL_COLUMNS = { "名前", "更新日時", "種類", "サイズ" };
     private List<string> _columnOrder = new() { "名前", "更新日時", "種類", "サイズ" };
     private readonly HashSet<string> _hiddenColumns = new();
 
+    /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
     public ProjectPage(MainViewModel vm)
     {
         _vm = vm;
         InitializeComponent();
     }
 
+    /// <summary>フォルダツリーを最新データで再読み込みする。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Proj_Header"));
@@ -41,6 +44,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ツールバー有効/無効更新 ───────────────────────────
+    /// <summary>ツールバーボタンの有効/無効を更新する。</summary>
     private void UpdateToolbarState()
     {
         bool hasNode = _selectedNode != null;
@@ -55,6 +59,7 @@ public partial class ProjectPage : Page, IRefreshable
         BtnDelete.IsEnabled    = hasNode && !IsProtectedPath(_selectedNode!.FullPath, allowRenameRoot: false);
     }
 
+    /// <summary>フォルダツリーの選択変更時に詳細パネルを更新する。</summary>
     private void FolderTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (e.NewValue is not FileNode node) { _selectedNode = null; UpdateToolbarState(); return; }
@@ -94,6 +99,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── CAT フォルダ: カテゴリー情報 ─────────────────
+    /// <summary>カテゴリーフォルダ選択時に詳細パネルにカテゴリー情報を表示する。</summary>
     private void ShowCategoryDetail(Category cat, FileNode node)
     {
         var project = _vm.ProjectService.CurrentProject!;
@@ -155,6 +161,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── TSK フォルダ: タスク情報 ──────────────────────
+    /// <summary>タスクフォルダ選択時に詳細パネルにタスク情報を表示する。</summary>
     private void ShowTaskDetail(TaskItem task, Category? cat, FileNode node)
     {
         // タグバッジ群
@@ -240,6 +247,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 汎用フォルダ ──────────────────────────────────
+    /// <summary>汎用フォルダ選択時に詳細パネルにフォルダ情報を表示する。</summary>
     private void ShowGenericFolderDetail(FileNode node)
     {
         DetailPanel.Children.Add(new TextBlock
@@ -262,6 +270,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル詳細 ──────────────────────────────────
+    /// <summary>ファイル選択時に詳細パネルにファイル情報を表示する。</summary>
     private void ShowFileDetail(FileNode node)
     {
         DetailPanel.Children.Add(new TextBlock
@@ -294,6 +303,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 子ファイル一覧セクション（共通） ─────────────
+    /// <summary>詳細パネルにノードの子ファイル一覧セクションを追加する。</summary>
     private void AddChildFileSection(FileNode node, TaskItem? ownerTask = null)
     {
         if (node.Children.Count == 0) return;
@@ -325,6 +335,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── タスク行（カテゴリー詳細内） ──────────────────
+    /// <summary>カテゴリー詳細内のタスク行UIを生成する。</summary>
     private Border BuildTaskRow(TaskItem task)
     {
         var g = new Grid();
@@ -365,6 +376,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── マッチング ────────────────────────────────────
+    /// <summary>フルパスに一致するカテゴリーを返す。</summary>
     private Category? FindCategoryByPath(string fullPath)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -376,6 +388,7 @@ public partial class ProjectPage : Page, IRefreshable
                           StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>フルパスに一致するタスクとそのカテゴリーを返す。</summary>
     private (TaskItem? task, Category? cat) FindTaskByPath(string fullPath)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -391,6 +404,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── UI ヘルパー ───────────────────────────────────
+    /// <summary>詳細パネルにセクション区切り線とタイトルを追加する。</summary>
     private void AddSectionDivider(string title)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 6) };
@@ -411,10 +425,12 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 列カスタマイズ: 表示中の列 ─────────────────────
+    /// <summary>非表示列を除いた表示中の列リストを返す。</summary>
     private List<string> VisibleColumns =>
         _columnOrder.Where(c => !_hiddenColumns.Contains(c)).ToList();
 
     // ── テーブルヘッダー ─────────────────────────────
+    /// <summary>子ファイル一覧のヘッダー行を生成する。</summary>
     private Border BuildChildHeader()
     {
         var vis = VisibleColumns;
@@ -436,6 +452,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 子アイテム1行 ────────────────────────────────
+    /// <summary>子ファイル一覧の1行UIを生成する。</summary>
     private Border BuildChildRow(FileNode child, TaskItem? ownerTask = null)
     {
         // ファイルメタデータ
@@ -542,6 +559,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 進捗タグのトグル ─────────────────────────────
+    /// <summary>ファイルの進捗タグを切り替えて詳細パネルを再描画する。</summary>
     private void ToggleProgressTag(TaskItem task, string filePath)
     {
         var existing = task.ProgressTagFiles
@@ -558,6 +576,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 進捗反映タグセクション ───────────────────────
+    /// <summary>詳細パネルに進捗反映タグセクションを追加する。</summary>
     private void AddProgressTagSection(TaskItem task)
     {
         if (!Directory.Exists(task.FolderPath)) return;
@@ -626,6 +645,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 列カスタマイズボタン ─────────────────────────
+    /// <summary>列カスタマイズダイアログを表示して表示列と順序を設定する。</summary>
     private void BtnColumnConfig_Click(object sender, RoutedEventArgs e)
     {
         var bg  = (Brush)FindResource("BgCardBrush");
@@ -772,6 +792,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── Grid生成（可変列）────────────────────────────
+    /// <summary>可視列リストに基づいてGridを生成する。</summary>
     private Grid MakeRowGrid(List<string> visibleCols)
     {
         var g = new Grid();
@@ -790,6 +811,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── セル追加 ─────────────────────────────────────
+    /// <summary>Gridの指定列にテキストセルを追加する。</summary>
     private void AddCell(Grid g, string text, int col, bool isHeader,
                          TextAlignment align = TextAlignment.Left)
     {
@@ -812,6 +834,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── 情報行（ラベル + 値）────────────────────────
+    /// <summary>詳細パネルにラベルと値の情報行を追加する。</summary>
     private void AddInfoRow(string label, string value)
     {
         var g = new Grid { Margin = new Thickness(0, 0, 0, 7) };
@@ -836,9 +859,11 @@ public partial class ProjectPage : Page, IRefreshable
         DetailPanel.Children.Add(g);
     }
 
+    /// <summary>更新ボタンのクリックでページをリフレッシュする。</summary>
     private void Refresh_Click(object sender, RoutedEventArgs e) => Refresh();
 
     // ── コンテキストメニュー表示前フック ─────────────────
+    /// <summary>コンテキストメニューの開く前に項目の有効/無効を設定する。</summary>
     private void TreeContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         // 選択中ノードに合わせて項目の有効/無効を調整
@@ -861,6 +886,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル操作：開く ────────────────────────────────
+    /// <summary>選択ノードをエクスプローラーまたは関連アプリで開く。</summary>
     private void FileOp_Open_Click(object sender, RoutedEventArgs e)
     {
         var node = GetTargetNode(sender);
@@ -873,6 +899,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル操作：新規フォルダ ────────────────────────
+    /// <summary>選択フォルダ内に新規フォルダを作成する。</summary>
     private void FileOp_NewFolder_Click(object sender, RoutedEventArgs e)
     {
         var node = GetTargetNode(sender);
@@ -897,6 +924,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル操作：新規ファイル ────────────────────────
+    /// <summary>選択フォルダ内に新規ファイルを作成する。</summary>
     private void FileOp_NewFile_Click(object sender, RoutedEventArgs e)
     {
         var node = GetTargetNode(sender);
@@ -923,6 +951,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル操作：名前変更 ────────────────────────────
+    /// <summary>選択ノードの名前変更ダイアログを表示して名前を変更する。</summary>
     private void FileOp_Rename_Click(object sender, RoutedEventArgs e)
     {
         var node = GetTargetNode(sender);
@@ -952,6 +981,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル操作：パスをコピー ────────────────────────
+    /// <summary>選択ノードのフルパスをクリップボードにコピーする。</summary>
     private void FileOp_CopyPath_Click(object sender, RoutedEventArgs e)
     {
         var node = GetTargetNode(sender);
@@ -961,6 +991,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ファイル操作：削除 ────────────────────────────────
+    /// <summary>選択ノードを削除する確認ダイアログを表示して削除する。</summary>
     private void FileOp_Delete_Click(object sender, RoutedEventArgs e)
     {
         var node = GetTargetNode(sender);
@@ -1018,6 +1049,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── データモデルのパス更新（リネーム後） ──────────────
+    /// <summary>リネーム後にモデル内のパスを新しいパスに更新する。</summary>
     private void UpdateModelPath(string oldPath, string newPath)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -1048,6 +1080,7 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── データモデルの参照解除（削除後） ──────────────────
+    /// <summary>削除後にモデル内の対象フォルダへの参照を解除する。</summary>
     private void ClearModelReference(string deletedPath)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -1076,13 +1109,14 @@ public partial class ProjectPage : Page, IRefreshable
     }
 
     // ── ヘルパー ──────────────────────────────────────────
-    /// <summary>ツールバーボタン or コンテキストメニューどちらから呼ばれても対象ノードを返す。</summary>
+    /// <summary>操作対象のノードを返す。</summary>
     private FileNode? GetTargetNode(object senderObj)
     {
         // コンテキストメニュー経由の場合は現在選択中のノードを使う
         return _selectedNode;
     }
 
+    /// <summary>名前入力ダイアログを表示して入力値を返す。</summary>
     private string? PromptName(string prompt, string defaultValue)
     {
         var bg  = (Brush)FindResource("BgCardBrush");
@@ -1111,6 +1145,7 @@ public partial class ProjectPage : Page, IRefreshable
         return win.ShowDialog() == true ? tb.Text.Trim() : null;
     }
 
+    /// <summary>フォルダ整理ダイアログを表示して未紐づけファイルを一括移動する。</summary>
     private void Organize_Click(object sender, RoutedEventArgs e)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -1178,6 +1213,7 @@ public partial class ProjectPage : Page, IRefreshable
         ShowOrganizeDialog(misplaced, project, rootPath);
     }
 
+    /// <summary>フォルダ整理ダイアログを生成して表示する。</summary>
     private void ShowOrganizeDialog(List<(string FilePath, string Reason)> files,
                                     TKer.Models.ProjectData project, string rootPath)
     {
@@ -1329,6 +1365,7 @@ public partial class ProjectPage : Page, IRefreshable
         win.ShowDialog();
     }
 
+    /// <summary>プロジェクトフォルダをエクスプローラーで開く。</summary>
     private void OpenExplorer_Click(object sender, RoutedEventArgs e)
     {
         var path = _vm.ProjectService.CurrentProject?.Settings.ProjectPath;

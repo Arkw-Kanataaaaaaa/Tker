@@ -12,12 +12,14 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
+/// <summary>アプリ全体の設定（背景・ログ・ショートカット）を管理するページ。</summary>
 public partial class AppSettingsPage : Page, IRefreshable
 {
     private readonly MainViewModel      _vm;
     private readonly AppSettingsService _svc;
     private List<AppShortcut> _shortcuts = new();
 
+    /// <summary>アプリ設定ページを初期化してナビゲーションを設定する。</summary>
     public AppSettingsPage(MainViewModel vm)
     {
         _vm  = vm;
@@ -26,6 +28,7 @@ public partial class AppSettingsPage : Page, IRefreshable
         SetActiveNav(NavBtnGeneral);
     }
 
+    /// <summary>各設定値をUIに読み込んで最新状態に更新する。</summary>
     public void Refresh()
     {
         TxtGraceDays.Text          = _svc.AlertNotStartedGraceDays.ToString();
@@ -57,24 +60,28 @@ public partial class AppSettingsPage : Page, IRefreshable
 
     // ══════ サイドバーナビゲーション ══════
 
+    /// <summary>一般設定セクションにスクロールしてナビゲーションを更新する。</summary>
     private void NavGeneral_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(NavBtnGeneral);
         SecGeneral.BringIntoView();
     }
 
+    /// <summary>ログ設定セクションにスクロールしてナビゲーションを更新する。</summary>
     private void NavLog_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(NavBtnLog);
         SecLog.BringIntoView();
     }
 
+    /// <summary>ショートカットセクションにスクロールしてナビゲーションを更新する。</summary>
     private void NavShortcuts_Click(object sender, RoutedEventArgs e)
     {
         SetActiveNav(NavBtnShortcuts);
         SecShortcuts.BringIntoView();
     }
 
+    /// <summary>アクティブなナビゲーションボタンのスタイルを更新する。</summary>
     private void SetActiveNav(Button active)
     {
         var fgPrim = TryBrush("TextPrimaryBrush")   ?? Brushes.White;
@@ -91,6 +98,7 @@ public partial class AppSettingsPage : Page, IRefreshable
         }
     }
 
+    /// <summary>アプリリソースからブラシを取得し失敗時はnullを返す。</summary>
     private static Brush? TryBrush(string key)
     {
         try { return Application.Current.Resources[key] as Brush; }
@@ -99,6 +107,7 @@ public partial class AppSettingsPage : Page, IRefreshable
 
     // ══════ 一般設定 ══════
 
+    /// <summary>背景ファイル選択ダイアログを開いてパスをテキストボックスに設定する。</summary>
     private void BrowseBg_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
@@ -111,6 +120,7 @@ public partial class AppSettingsPage : Page, IRefreshable
 
     private void ClearBg_Click(object sender, RoutedEventArgs e) => TxtBgPath.Text = "";
 
+    /// <summary>設定された背景色・透明度をコンテンツボーダーに適用する。</summary>
     private void ApplyBackground()
     {
         try
@@ -124,6 +134,7 @@ public partial class AppSettingsPage : Page, IRefreshable
 
     // ══════ ショートカット ══════
 
+    /// <summary>ショートカット一覧UIを再構築する。</summary>
     private void RefreshShortcutList()
     {
         ScListPanel.Children.Clear();
@@ -184,6 +195,7 @@ public partial class AppSettingsPage : Page, IRefreshable
         }
     }
 
+    /// <summary>ファイル選択ダイアログで新しいショートカットを追加する。</summary>
     private void AddShortcut_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
@@ -239,6 +251,7 @@ public partial class AppSettingsPage : Page, IRefreshable
 
     // ══════ 保存 ══════
 
+    /// <summary>入力値を検証してアプリ設定を保存しホームに戻る。</summary>
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         if (!int.TryParse(TxtGraceDays.Text, out var days) || days < 0)
@@ -280,6 +293,7 @@ public partial class AppSettingsPage : Page, IRefreshable
     private void Back_Click(object sender, RoutedEventArgs e)
         => _vm.NavigateToCommand.Execute("Home");
 
+    /// <summary>空白のみの文字列をnullに変換し、それ以外はトリムして返す。</summary>
     private static string? NullIfEmpty(string s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }

@@ -1963,6 +1963,7 @@ public partial class ProjectListPage : Page, IRefreshable
         win.ShowDialog();
     }
 
+    /// <summary>アクティブプロジェクトのフォルダをエクスプローラーで開く。</summary>
     private void OpenExplorer_Click(object sender, RoutedEventArgs e)
     {
         var path = _vm.ProjectService.CurrentProject?.Settings.ProjectPath;

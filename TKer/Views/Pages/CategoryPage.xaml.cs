@@ -14,11 +14,13 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
+/// <summary>カテゴリー一覧を表示・管理するページ。</summary>
 public partial class CategoryPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
     private string? _selectedId;
 
+    /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
     public CategoryPage(MainViewModel vm)
     {
         _vm = vm;
@@ -43,6 +45,7 @@ public partial class CategoryPage : Page, IRefreshable
 
     private Window? _keyDownWindow;
 
+    /// <summary>ページ全体のUIを最新データで再描画する。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Cat_Header"));
@@ -50,6 +53,7 @@ public partial class CategoryPage : Page, IRefreshable
         ApplyBackground();
     }
 
+    /// <summary>コンテンツボーダーの背景テーマを適用する。</summary>
     private void ApplyBackground()
     {
         UiThemeHelper.ApplyColorBackground(ContentBorder,
@@ -57,6 +61,7 @@ public partial class CategoryPage : Page, IRefreshable
             _vm.AppSettingsService.CategoryListBgOpacity);
     }
 
+    /// <summary>検索条件に基づいてカテゴリー一覧を絞り込んで表示する。</summary>
     private void ApplyFilter()
     {
         var cats = _vm.ProjectService.CurrentProject?.Categories;
@@ -100,6 +105,7 @@ public partial class CategoryPage : Page, IRefreshable
     }
 
     // ── キーボードショートカット ───────────────────────────
+    /// <summary>ウィンドウ全体のキーボードショートカットを処理する。</summary>
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (!IsVisible) return;
@@ -163,6 +169,7 @@ public partial class CategoryPage : Page, IRefreshable
     }
 
     // ── 検索 ──────────────────────────────────────────────
+    /// <summary>検索バーの表示・非表示をトグルする。</summary>
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
     {
         if (SearchSection.Visibility == Visibility.Collapsed)
@@ -177,9 +184,11 @@ public partial class CategoryPage : Page, IRefreshable
         }
     }
 
+    /// <summary>検索テキスト変更時にフィルターを再適用する。</summary>
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
     // ── カード選択 ────────────────────────────────────────
+    /// <summary>カテゴリーカードのクリックで選択・非選択を切り替える。</summary>
     private void CategoryCard_Click(object sender, MouseButtonEventArgs e)
     {
         if (((Border)sender).DataContext is not { } ctx) return;
@@ -190,8 +199,10 @@ public partial class CategoryPage : Page, IRefreshable
     }
 
     // ── ツールバー ────────────────────────────────────────
+    /// <summary>外部からカテゴリー追加ダイアログを起動する。</summary>
     public void TriggerAddDialog() => AddCategory_Click(this, new RoutedEventArgs());
 
+    /// <summary>カテゴリー追加ダイアログを表示して追加する。</summary>
     private void AddCategory_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new CategoryDialog(null) { Owner = Window.GetWindow(this) };
@@ -202,6 +213,7 @@ public partial class CategoryPage : Page, IRefreshable
         }
     }
 
+    /// <summary>カテゴリー編集ダイアログを表示して更新する。</summary>
     private void EditCategory_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_selectedId))
@@ -233,6 +245,7 @@ public partial class CategoryPage : Page, IRefreshable
         }
     }
 
+    /// <summary>カテゴリーを削除する確認ダイアログを表示して削除する。</summary>
     private void DeleteCategory_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_selectedId))
@@ -254,6 +267,7 @@ public partial class CategoryPage : Page, IRefreshable
     private void MoveUp_Click(object sender, RoutedEventArgs e)   => MoveCategoryBy(-1);
     private void MoveDown_Click(object sender, RoutedEventArgs e) => MoveCategoryBy(+1);
 
+    /// <summary>選択中カテゴリーを指定方向に移動して並び順を更新する。</summary>
     private void MoveCategoryBy(int delta)
     {
         if (string.IsNullOrEmpty(_selectedId)) return;
@@ -275,6 +289,7 @@ public partial class CategoryPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>選択中カテゴリーのフォルダをエクスプローラーで開く。</summary>
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_selectedId))

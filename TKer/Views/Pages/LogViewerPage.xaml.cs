@@ -16,6 +16,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>アプリケーションログの一覧表示・フィルタリング・クリアを行うページ。</summary>
 public partial class LogViewerPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
@@ -23,6 +24,7 @@ public partial class LogViewerPage : Page, IRefreshable
     private bool _autoScroll = true;
     private List<LogEntry> _allEntries = new();
 
+    /// <summary>ログビューアーページを初期化してリアルタイム更新を設定する。</summary>
     public LogViewerPage(MainViewModel vm)
     {
         _vm = vm;
@@ -41,6 +43,7 @@ public partial class LogViewerPage : Page, IRefreshable
     }
 
     // ── IRefreshable ─────────────────────────────────────
+    /// <summary>テーマを適用してログ一覧を再読み込みする。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Log_Header"));
@@ -51,6 +54,7 @@ public partial class LogViewerPage : Page, IRefreshable
     }
 
     // ── リアルタイム受信 ──────────────────────────────────
+    /// <summary>新しいログエントリーをUIスレッドで受け取りリストに追加する。</summary>
     private void OnEntryAdded(LogEntry entry)
     {
         Dispatcher.BeginInvoke(() =>
@@ -69,6 +73,7 @@ public partial class LogViewerPage : Page, IRefreshable
     }
 
     // ── フィルター適用 ────────────────────────────────────
+    /// <summary>レベルとキーワードでフィルタリングしたログ一覧をリストに表示する。</summary>
     private void ApplyFilter()
     {
         // InitializeComponent() 途中に呼ばれることがあるため null ガード
@@ -79,6 +84,7 @@ public partial class LogViewerPage : Page, IRefreshable
         UpdateStatus();
     }
 
+    /// <summary>エントリーが現在のレベルとキーワードフィルターに一致するか判定する。</summary>
     private bool MatchFilter(LogEntry e)
     {
         // コントロールが未初期化の場合は全件通過
@@ -103,6 +109,7 @@ public partial class LogViewerPage : Page, IRefreshable
         return true;
     }
 
+    /// <summary>表示件数と全件数をステータスバーに反映する。</summary>
     private void UpdateStatus()
     {
         if (TxtStatus == null || LogList == null) return;
@@ -110,6 +117,7 @@ public partial class LogViewerPage : Page, IRefreshable
         TxtStatus.Text = $"表示: {shown} / 全 {_allEntries.Count} 件";
     }
 
+    /// <summary>ログリストを最下部までスクロールする。</summary>
     private void ScrollToBottom()
     {
         LogScroller?.ScrollToEnd();
@@ -121,6 +129,7 @@ public partial class LogViewerPage : Page, IRefreshable
 
     private void BtnRefresh_Click(object s, RoutedEventArgs e)   => Refresh();
 
+    /// <summary>確認ダイアログを表示してメモリ上のログをクリアする。</summary>
     private void BtnClear_Click(object s, RoutedEventArgs e)
     {
         if (MessageBox.Show("メモリ上のログをクリアしますか？\n（ファイルは消えません）",
@@ -131,6 +140,7 @@ public partial class LogViewerPage : Page, IRefreshable
         UpdateStatus();
     }
 
+    /// <summary>ログファイルの保存フォルダーをエクスプローラーで開く。</summary>
     private void BtnOpenFolder_Click(object s, RoutedEventArgs e)
     {
         var dir = Path.Combine(
@@ -142,6 +152,7 @@ public partial class LogViewerPage : Page, IRefreshable
             MessageBox.Show("ログフォルダがまだ存在しません。");
     }
 
+    /// <summary>自動スクロールのON/OFFを切り替えてラベルを更新する。</summary>
     private void TxtAutoScroll_Click(object s, System.Windows.Input.MouseButtonEventArgs e)
     {
         _autoScroll = !_autoScroll;
@@ -150,6 +161,7 @@ public partial class LogViewerPage : Page, IRefreshable
     }
 
     // ── ヘルパー ──────────────────────────────────────────
+    /// <summary>列ヘッダー用のTextBlockスタイルを生成する。</summary>
     private static Style BuildColHeaderStyle()
     {
         var style = new Style(typeof(TextBlock));
@@ -161,6 +173,7 @@ public partial class LogViewerPage : Page, IRefreshable
 }
 
 // ── ログレベル色コンバーター ──────────────────────────────
+/// <summary>ログレベルに対応するブラシ色を返すバインディングコンバーター。</summary>
 public class LogLevelColorConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -183,6 +196,7 @@ public class LogLevelColorConverter : IValueConverter
 }
 
 // ── null → Visibility コンバーター ───────────────────────
+/// <summary>値がnullの場合にCollapsedを返すバインディングコンバーター。</summary>
 public class NullToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

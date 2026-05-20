@@ -12,22 +12,26 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>アプリ・フォルダー・URLへのショートカット一覧を管理するページ。</summary>
 public partial class ShortcutsPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
 
+    /// <summary>ショートカットページを初期化してViewModelを設定する。</summary>
     public ShortcutsPage(MainViewModel vm)
     {
         _vm = vm;
         InitializeComponent();
     }
 
+    /// <summary>テーマを適用してショートカット一覧を再構築する。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("SC_Header"));
         BuildList();
     }
 
+    /// <summary>保存されているショートカットを読み込んで行ウィジェット一覧を生成する。</summary>
     private void BuildList()
     {
         ShortcutList.Children.Clear();
@@ -42,6 +46,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         }
     }
 
+    /// <summary>ショートカット1件分の行UIを構築して返す。</summary>
     private Border BuildRow(AppShortcut sc, List<AppShortcut> all)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
@@ -107,6 +112,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         };
     }
 
+    /// <summary>操作ボタンを生成してクリック時にアクションを実行するよう設定する。</summary>
     private static Button MakeBtn(string content, bool danger, Action action)
     {
         var btn = new Button
@@ -124,6 +130,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         return btn;
     }
 
+    /// <summary>新規ショートカット追加ダイアログを開いて保存する。</summary>
     private void AddShortcut_Click(object sender, RoutedEventArgs e)
     {
         var dlg = ShowShortcutDialog(null);
@@ -134,6 +141,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         BuildList();
     }
 
+    /// <summary>既存ショートカットの編集ダイアログを開いて内容を更新する。</summary>
     private void EditShortcut(AppShortcut sc)
     {
         var updated = ShowShortcutDialog(sc);
@@ -144,6 +152,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         _vm.AppSettingsService.SaveShortcuts(list);
     }
 
+    /// <summary>確認ダイアログを表示してショートカットを削除する。</summary>
     private void DeleteShortcut(AppShortcut sc)
     {
         var res = MessageBox.Show($"「{sc.Name}」を削除しますか？",
@@ -154,6 +163,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         _vm.AppSettingsService.SaveShortcuts(list);
     }
 
+    /// <summary>ショートカットの追加・編集ダイアログを表示して入力結果を返す。</summary>
     private AppShortcut? ShowShortcutDialog(AppShortcut? existing)
     {
         var bg  = new SolidColorBrush(Color.FromRgb(47, 47, 47));
@@ -248,6 +258,7 @@ public partial class ShortcutsPage : Page, IRefreshable
         return result;
     }
 
+    /// <summary>指定パスのアプリ・ファイル・URLをシェルで開く。</summary>
     private static void OpenShortcut(string path)
     {
         try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }

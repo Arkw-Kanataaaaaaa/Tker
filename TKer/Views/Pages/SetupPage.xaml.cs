@@ -7,10 +7,12 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>プロジェクトの新規作成・既存読み込み・設定編集・Excelインポートを行うページ。</summary>
 public partial class SetupPage : Page
 {
     private readonly MainViewModel _vm;
 
+    /// <summary>セットアップページを初期化して現在プロジェクト情報を表示する。</summary>
     public SetupPage(MainViewModel vm)
     {
         _vm = vm;
@@ -18,12 +20,14 @@ public partial class SetupPage : Page
         Loaded += (_, _) => RefreshCurrentProject();
     }
 
+    /// <summary>ベースフォルダー選択ダイアログを開いてパスを設定する。</summary>
     private void BrowseBasePath_Click(object sender, RoutedEventArgs e)
     {
         var picked = FolderPicker.Pick();
 if (picked != null) TxtBasePath.Text = picked;
     }
 
+    /// <summary>入力内容を検証して新規プロジェクトを作成しダッシュボードに遷移する。</summary>
     private void CreateProject_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtBasePath.Text))
@@ -42,6 +46,7 @@ if (picked != null) TxtBasePath.Text = picked;
         }
     }
 
+    /// <summary>ファイルダイアログで既存プロジェクトファイルを選択して読み込む。</summary>
     private void OpenProject_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
@@ -59,6 +64,7 @@ if (picked != null) TxtBasePath.Text = picked;
     }
 
 
+    /// <summary>プロジェクト設定ダイアログを開いて名前・説明などを更新する。</summary>
     private void EditProjectSettings_Click(object sender, RoutedEventArgs e)
     {
         if (!_vm.IsProjectLoaded)
@@ -74,6 +80,7 @@ if (picked != null) TxtBasePath.Text = picked;
         }
     }
 
+    /// <summary>現在読み込まれているプロジェクトの情報をバナーに表示する。</summary>
     private void RefreshCurrentProject()
     {
         if (_vm.IsProjectLoaded && _vm.ProjectService.CurrentProject != null)
@@ -87,6 +94,7 @@ if (picked != null) TxtBasePath.Text = picked;
         }
     }
 
+    /// <summary>Excelファイルを選択してプロジェクトデータにインポートする。</summary>
     private void ImportExcel_Click(object sender, RoutedEventArgs e)
     {
         if (!_vm.IsProjectLoaded)

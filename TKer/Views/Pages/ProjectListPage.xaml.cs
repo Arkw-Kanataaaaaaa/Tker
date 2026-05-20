@@ -19,6 +19,22 @@ namespace TKer.Views.Pages;
 
 public partial class ProjectListPage : Page, IRefreshable
 {
+    // カードのDataContext用。dynamic/匿名型はRuntimeBinderExceptionになるため名前付きクラスを使う
+    private sealed class ProjectCardItem
+    {
+        public ProjectEntry Entry        { get; init; } = new();
+        public int TotalTasks            { get; init; }
+        public int DoneTasks             { get; init; }
+        public int WipTasks              { get; init; }
+        public int OverdueTasks          { get; init; }
+        public double ProgressRate       { get; init; }
+        public string ProgressLabel      { get; init; } = "";
+        public bool HasAlert             { get; init; }
+        public DateTime CreatedAt        { get; init; }
+        public bool IsActive             { get; init; }
+        public bool IsSelected           { get; init; }
+    }
+
     private readonly MainViewModel _vm;
     private string? _selectedPath;
 
@@ -98,7 +114,7 @@ public partial class ProjectListPage : Page, IRefreshable
         else
         {
             NoProjectBanner.Visibility      = Visibility.Collapsed;
-            ProjectItemsControl.ItemsSource = summaries.Select(s => new
+            ProjectItemsControl.ItemsSource = summaries.Select(s => new ProjectCardItem
             {
                 Entry         = s.Entry,
                 TotalTasks    = s.TotalTasks,
@@ -381,9 +397,8 @@ public partial class ProjectListPage : Page, IRefreshable
     private void ProjectCard_Click(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is Button) return;
-        if (((Border)sender).DataContext is not { } ctx) return;
-        dynamic data = ctx;
-        string path = (string)data.Entry.DataFilePath;
+        if (((Border)sender).DataContext is not ProjectCardItem data) return;
+        string path = data.Entry.DataFilePath ?? "";
         _selectedPath = _selectedPath == path ? null : path;
         ApplyFilter();
 

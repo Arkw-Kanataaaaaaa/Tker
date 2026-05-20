@@ -1,0 +1,74 @@
+﻿using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+
+namespace TKer.Views.Dialogs;
+
+public enum AppDialogType { Info, Warning, Error, Confirm }
+
+public partial class AppDialog : Window
+{
+    public bool Confirmed { get; private set; } = false;
+
+    private AppDialog(string title, string message, AppDialogType type, bool showCancel)
+    {
+        InitializeComponent();
+        Title = title;
+        TitleText.Text = title;
+        MessageText.Text = message;
+
+        (IconText.Text, IconText.Foreground) = type switch
+        {
+            AppDialogType.Error   => ("✕", new SolidColorBrush(Color.FromRgb(224, 62, 62))),
+            AppDialogType.Warning => ("⚠", new SolidColorBrush(Color.FromRgb(223, 171, 1))),
+            AppDialogType.Confirm => ("❓", new SolidColorBrush(Color.FromRgb(11, 110, 153))),
+            _                     => ("ℹ", new SolidColorBrush(Color.FromRgb(35, 131, 226))),
+        };
+
+        if (showCancel)
+        {
+            var cancel = MakeButton("キャンセル", false, isPrimary: false);
+            ButtonPanel.Children.Add(cancel);
+        }
+        var ok = MakeButton(showCancel ? "はい" : "OK", true, isPrimary: true);
+        ButtonPanel.Children.Add(ok);
+    }
+
+    private Button MakeButton(string label, bool result, bool isPrimary)
+    {
+        var btn = new Button
+        {
+            Content = label,
+            Style = (Style)FindResource(isPrimary ? "PrimaryButton" : "SecondaryButton"),
+            Padding = new Thickness(20, 6, 20, 6),
+            Margin = new Thickness(8, 0, 0, 0)
+        };
+        btn.Click += (_, _) => { Confirmed = result; DialogResult = result; };
+        return btn;
+    }
+
+    // ── 静的ヘルパー ────────────────────────────────
+    public static void ShowInfo(string message, string title = "情報", Window? owner = null)
+        => Show(title, message, AppDialogType.Info, false, owner);
+
+    public static void ShowError(string message, string title = "エラー", Window? owner = null)
+        => Show(title, message, AppDialogType.Error, false, owner);
+
+    public static void ShowWarning(string message, string title = "警告", Window? owner = null)
+        => Show(title, message, AppDialogType.Warning, false, owner);
+
+    public static bool Confirm(string message, string title = "確認", Window? owner = null)
+    {
+        var dlg = new AppDialog(title, message, AppDialogType.Confirm, showCancel: true);
+        if (owner != null) dlg.Owner = owner;
+        dlg.ShowDialog();
+        return dlg.Confirmed;
+    }
+
+    private static void Show(string title, string message, AppDialogType type, bool showCancel, Window? owner)
+    {
+        var dlg = new AppDialog(title, message, type, showCancel);
+        if (owner != null) dlg.Owner = owner;
+        dlg.ShowDialog();
+    }
+}

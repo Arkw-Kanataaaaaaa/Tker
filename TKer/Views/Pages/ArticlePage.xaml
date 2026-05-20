@@ -1,0 +1,225 @@
+﻿<Page x:Class="TKer.Views.Pages.ArticlePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="Transparent">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ページヘッダー -->
+        <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12"
+                Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="新規記事" Style="{StaticResource PrimaryButton}"
+                            Padding="14,6" Margin="0,0,8,0" Click="BtnNew_Click"/>
+                    <Button Content="保存" Style="{StaticResource SecondaryButton}"
+                            Padding="14,6" Click="BtnSave_Click"/>
+                </StackPanel>
+                <TextBlock Text="記事作成"
+                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- 3ペインレイアウト -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ── 左サイドバー：記事一覧 ── -->
+            <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Padding="8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <TextBox x:Name="SearchBox" Style="{StaticResource DarkTextBox}"
+                                 Tag="記事を検索" TextChanged="SearchBox_TextChanged"/>
+                    </Border>
+                    <ListBox x:Name="ArticleList" Grid.Row="1"
+                             Background="Transparent" BorderThickness="0"
+                             SelectionChanged="ArticleList_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="12,10"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="Bd" Padding="{TemplateBinding Padding}"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding UpdatedAt, StringFormat='更新: {0:MM/dd HH:mm}'}"
+                                               FontSize="10" Foreground="{StaticResource TextDimBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- ── 中央：エディター ── -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- タイトル -->
+                <TextBox x:Name="TxtTitle" Grid.Row="0" Margin="16,16,16,8"
+                         Style="{StaticResource DarkTextBox}" FontSize="18" FontWeight="Bold"
+                         Tag="タイトルを入力..." TextChanged="TxtTitle_TextChanged"/>
+
+                <!-- タブ：エディター / プレビュー -->
+                <TabControl x:Name="EditorTabs" Grid.Row="1" Grid.RowSpan="2"
+                            Margin="16,0,16,0" Background="Transparent"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            SelectionChanged="EditorTabs_SelectionChanged">
+                    <TabItem Header="📝 エディター">
+                        <TextBox x:Name="TxtContent"
+                                 Style="{StaticResource DarkTextBox}"
+                                 FontFamily="Consolas" FontSize="14"
+                                 AcceptsReturn="True" AcceptsTab="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 TextWrapping="Wrap" Padding="12"
+                                 TextChanged="TxtContent_TextChanged"
+                                 MinHeight="400"/>
+                    </TabItem>
+                    <TabItem Header="👁 プレビュー">
+                        <WebBrowser x:Name="PreviewBrowser" MinHeight="400"/>
+                    </TabItem>
+                </TabControl>
+
+                <!-- ステータスバー -->
+                <Border Grid.Row="3" Padding="16,6"
+                        Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <DockPanel>
+                        <TextBlock x:Name="TxtStatus" DockPanel.Dock="Right"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"/>
+                        <TextBlock x:Name="TxtWordCount"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"/>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- ── 右：メタ情報 / 出力 ── -->
+            <Border Grid.Column="2" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+                    <StackPanel>
+                        <!-- プラットフォーム -->
+                        <TextBlock Text="プラットフォーム" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbPlatform" Style="{StaticResource DarkComboBox}"
+                                  Margin="0,0,0,12" SelectionChanged="CmbPlatform_SelectionChanged">
+                            <ComboBoxItem Content="note" Tag="note"/>
+                            <ComboBoxItem Content="WordPress" Tag="wordpress"/>
+                            <ComboBoxItem Content="その他" Tag="other"/>
+                        </ComboBox>
+
+                        <!-- カテゴリ -->
+                        <TextBlock Text="カテゴリ" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtCategory" Style="{StaticResource DarkTextBox}"
+                                 Margin="0,0,0,12" TextChanged="Meta_TextChanged"/>
+
+                        <!-- タグ -->
+                        <TextBlock Text="タグ（カンマ区切り）" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtTags" Style="{StaticResource DarkTextBox}"
+                                 Margin="0,0,0,12" TextChanged="Meta_TextChanged"/>
+
+                        <!-- ステータス -->
+                        <TextBlock Text="ステータス" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbStatus" Style="{StaticResource DarkComboBox}" Margin="0,0,0,16">
+                            <ComboBoxItem Content="下書き" Tag="draft" IsSelected="True"/>
+                            <ComboBoxItem Content="公開済み" Tag="published"/>
+                            <ComboBoxItem Content="アーカイブ" Tag="archived"/>
+                        </ComboBox>
+
+                        <Separator Margin="0,0,0,16" Background="{StaticResource BorderBrush}"/>
+
+                        <!-- note 出力 -->
+                        <TextBlock Text="note 出力" FontSize="13" FontWeight="Bold"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                        <Button Content="クリップボードにコピー" Style="{StaticResource SecondaryButton}"
+                                Padding="10,8" HorizontalAlignment="Stretch"
+                                Margin="0,0,0,4" Click="BtnCopyNote_Click"/>
+                        <Button Content="テキストファイル保存" Style="{StaticResource SecondaryButton}"
+                                Padding="10,8" HorizontalAlignment="Stretch"
+                                Margin="0,0,0,16" Click="BtnSaveText_Click"/>
+
+                        <Separator Margin="0,0,0,16" Background="{StaticResource BorderBrush}"/>
+
+                        <!-- WordPress 設定 -->
+                        <Expander Header="WordPress 設定" Foreground="{StaticResource TextSecondaryBrush}"
+                                  Margin="0,0,0,8">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Text="サイトURL" FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,2"/>
+                                <TextBox x:Name="TxtWpUrl" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"
+                                         Tag="https://example.com"/>
+                                <TextBlock Text="ユーザー名" FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,2"/>
+                                <TextBox x:Name="TxtWpUser" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                                <TextBlock Text="アプリパスワード" FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,2"/>
+                                <PasswordBox x:Name="PwWpPass" Margin="0,0,0,8"
+                                             Background="{StaticResource BgCardBrush}"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                             Padding="8,6"/>
+                                <Button Content="設定保存" Style="{StaticResource SecondaryButton}"
+                                        Padding="10,6" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                                        Click="BtnSaveWp_Click"/>
+                                <Button x:Name="BtnPostWp" Content="WordPress に投稿" Style="{StaticResource PrimaryButton}"
+                                        Padding="10,8" HorizontalAlignment="Stretch"
+                                        Click="BtnPostWp_Click"/>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 削除 -->
+                        <Separator Margin="0,16,0,16" Background="{StaticResource BorderBrush}"/>
+                        <Button Content="この記事を削除" Foreground="#FFAA44" Background="Transparent"
+                                BorderBrush="#FFAA44" BorderThickness="1"
+                                Padding="10,8" HorizontalAlignment="Stretch"
+                                Click="BtnDelete_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

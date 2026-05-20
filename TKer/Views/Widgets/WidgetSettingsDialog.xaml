@@ -1,0 +1,340 @@
+﻿<Window x:Class="TKer.Views.Widgets.WidgetSettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="カレンダーウィジェット設定"
+        Width="440" Height="560"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#1A1F2E"
+        Foreground="#CFCFCF"
+        FontFamily="Yu Gothic UI">
+
+    <Window.Resources>
+        <!-- ラベルスタイル -->
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#9AA0B5"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+
+        <!-- セクションヘッダー -->
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#3D7EFF"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,10,0,6"/>
+        </Style>
+
+        <!-- テキストボックス -->
+        <Style x:Key="DlgTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#252C3F"/>
+            <Setter Property="Foreground" Value="#CFCFCF"/>
+            <Setter Property="BorderBrush" Value="#3A4560"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="CaretBrush" Value="#CFCFCF"/>
+        </Style>
+
+        <!-- スライダー -->
+        <Style x:Key="DlgSlider" TargetType="Slider">
+            <Setter Property="Foreground" Value="#3D7EFF"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- トグルボタン -->
+        <Style x:Key="ToggleBtn" TargetType="ToggleButton">
+            <Setter Property="Background" Value="#2A3145"/>
+            <Setter Property="Foreground" Value="#9AA0B5"/>
+            <Setter Property="BorderBrush" Value="#3A4560"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1D3A6E"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#3D7EFF"/>
+                                <Setter Property="Foreground" Value="#3D7EFF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#303A55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- プリセットボタン -->
+        <Style x:Key="PresetBtn" TargetType="Button">
+            <Setter Property="Background" Value="#252C3F"/>
+            <Setter Property="Foreground" Value="#9AA0B5"/>
+            <Setter Property="BorderBrush" Value="#3A4560"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#303A55"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#3D7EFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1D3A6E"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="#1A1F2E" BorderBrush="#3A4560" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- タイトル -->
+                <RowDefinition Height="*"/>    <!-- コンテンツ -->
+                <RowDefinition Height="Auto"/> <!-- ボタン -->
+            </Grid.RowDefinitions>
+
+            <!-- タイトルバー -->
+            <Border Grid.Row="0" Background="#141926" Padding="16,12">
+                <TextBlock Text="⚙ カレンダーウィジェット設定"
+                           FontSize="14" FontWeight="Bold" Foreground="#CFCFCF"/>
+            </Border>
+
+            <!-- スクロール可能なコンテンツ -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16,8,16,8">
+
+                    <!-- ── 色設定 ── -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="🎨 色設定"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="背景色"/>
+                        <TextBox   Grid.Column="1" x:Name="TxtBgColor" Style="{StaticResource DlgTextBox}" TextChanged="ColorText_Changed"/>
+                        <Border    Grid.Column="2" x:Name="PreviewBg" Width="22" Height="22" CornerRadius="3" Margin="4,0,0,0" BorderBrush="#3A4560" BorderThickness="1"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="アクセント色"/>
+                        <TextBox   Grid.Column="1" x:Name="TxtAccentColor" Style="{StaticResource DlgTextBox}" TextChanged="ColorText_Changed"/>
+                        <Border    Grid.Column="2" x:Name="PreviewAccent" Width="22" Height="22" CornerRadius="3" Margin="4,0,0,0" BorderBrush="#3A4560" BorderThickness="1"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="テキスト色"/>
+                        <TextBox   Grid.Column="1" x:Name="TxtTextColor" Style="{StaticResource DlgTextBox}" TextChanged="ColorText_Changed"/>
+                        <Border    Grid.Column="2" x:Name="PreviewText" Width="22" Height="22" CornerRadius="3" Margin="4,0,0,0" BorderBrush="#3A4560" BorderThickness="1"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="薄いテキスト色"/>
+                        <TextBox   Grid.Column="1" x:Name="TxtDimColor" Style="{StaticResource DlgTextBox}" TextChanged="ColorText_Changed"/>
+                        <Border    Grid.Column="2" x:Name="PreviewDim" Width="22" Height="22" CornerRadius="3" Margin="4,0,0,0" BorderBrush="#3A4560" BorderThickness="1"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="ボーダー色"/>
+                        <TextBox   Grid.Column="1" x:Name="TxtBorderColor" Style="{StaticResource DlgTextBox}" TextChanged="ColorText_Changed"/>
+                        <Border    Grid.Column="2" x:Name="PreviewBorder" Width="22" Height="22" CornerRadius="3" Margin="4,0,0,0" BorderBrush="#3A4560" BorderThickness="1"/>
+                    </Grid>
+
+                    <!-- ── スタイル ── -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="✨ スタイル"/>
+
+                    <!-- 不透明度 -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="36"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="不透明度"/>
+                        <Slider Grid.Column="1" x:Name="SldrOpacity" Style="{StaticResource DlgSlider}"
+                                Minimum="0.1" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                ValueChanged="Slider_ValueChanged"/>
+                        <TextBlock Grid.Column="2" x:Name="LblOpacity" Style="{StaticResource LabelStyle}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- ボーダー幅 -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="36"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="ボーダー幅"/>
+                        <Slider Grid.Column="1" x:Name="SldrBorderThickness" Style="{StaticResource DlgSlider}"
+                                Minimum="0" Maximum="4" TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                ValueChanged="Slider_ValueChanged"/>
+                        <TextBlock Grid.Column="2" x:Name="LblBorderThickness" Style="{StaticResource LabelStyle}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- 角丸 -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="36"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="角丸"/>
+                        <Slider Grid.Column="1" x:Name="SldrCornerRadius" Style="{StaticResource DlgSlider}"
+                                Minimum="0" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="Slider_ValueChanged"/>
+                        <TextBlock Grid.Column="2" x:Name="LblCornerRadius" Style="{StaticResource LabelStyle}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- フォントサイズ -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="36"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Style="{StaticResource LabelStyle}" Text="フォントサイズ"/>
+                        <Slider Grid.Column="1" x:Name="SldrFontSize" Style="{StaticResource DlgSlider}"
+                                Minimum="9" Maximum="18" TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="Slider_ValueChanged"/>
+                        <TextBlock Grid.Column="2" x:Name="LblFontSize" Style="{StaticResource LabelStyle}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- ── サイズプリセット ── -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="📐 サイズプリセット"/>
+                    <UniformGrid Columns="4" Margin="0,0,0,6">
+                        <Button Style="{StaticResource PresetBtn}" Content="小 (220×240)" Margin="0,0,3,0" Click="Preset_Small"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="中 (280×300)" Margin="0,0,3,0" Click="Preset_Medium"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="大 (340×370)" Margin="0,0,3,0" Click="Preset_Large"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="特大 (400×440)" Click="Preset_XLarge"/>
+                    </UniformGrid>
+
+                    <!-- ── 表示設定 ── -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="👁 表示設定"/>
+                    <WrapPanel Margin="0,0,0,6">
+                        <ToggleButton x:Name="TglShowEvents" Style="{StaticResource ToggleBtn}"
+                                      Content="📅 イベント表示" Margin="0,0,6,6"/>
+                        <ToggleButton x:Name="TglShowTasks" Style="{StaticResource ToggleBtn}"
+                                      Content="📋 タスク表示" Margin="0,0,6,6"/>
+                    </WrapPanel>
+
+                    <!-- ── テーマプリセット ── -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="🎭 テーマプリセット"/>
+                    <WrapPanel Margin="0,0,0,6">
+                        <Button Style="{StaticResource PresetBtn}" Content="🌑 ダーク" Margin="0,0,6,6" Click="Theme_Dark"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="🌙 ミッドナイト" Margin="0,0,6,6" Click="Theme_Midnight"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="🌊 オーシャン" Margin="0,0,6,6" Click="Theme_Ocean"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="🌿 フォレスト" Margin="0,0,6,6" Click="Theme_Forest"/>
+                        <Button Style="{StaticResource PresetBtn}" Content="☀ ライト" Margin="0,0,6,6" Click="Theme_Light"/>
+                    </WrapPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 操作ボタン -->
+            <Border Grid.Row="2" Background="#141926" Padding="16,10">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right"
+                            Content="OK" Width="80" Height="30"
+                            Click="BtnOk_Click"
+                            Background="#3D7EFF" Foreground="White"
+                            BorderThickness="0" Cursor="Hand"
+                            FontWeight="Bold" FontSize="12">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#5590FF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#2A5ECC"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    <Button DockPanel.Dock="Right"
+                            Content="キャンセル" Width="90" Height="30"
+                            Margin="0,0,8,0" Click="BtnCancel_Click"
+                            Background="#2A3145" Foreground="#9AA0B5"
+                            BorderBrush="#3A4560" BorderThickness="1" Cursor="Hand" FontSize="12">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#303A55"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                    <TextBlock VerticalAlignment="Center"
+                               Foreground="#5A6070" FontSize="10"
+                               Text="* 色は #RRGGBB または #AARRGGBB 形式"/>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,29 @@
+﻿<UserControl x:Class="TKer.Views.NavItem"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border x:Name="RootBorder" Padding="13,9" Cursor="Hand"
+            BorderThickness="3,0,0,0" BorderBrush="Transparent"
+            MouseLeftButtonUp="Root_Click">
+        <DockPanel>
+            <TextBlock x:Name="BadgeBlock" DockPanel.Dock="Right"
+                       Background="{StaticResource AccentBlueBrush}"
+                       Foreground="White" FontFamily="Consolas" FontSize="10"
+                       Padding="5,1" VerticalAlignment="Center"
+                       Visibility="Collapsed"/>
+            <TextBlock x:Name="IconBlock" Text="" FontSize="14"
+                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBlock x:Name="LabelBlock" Text="" FontSize="13"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       VerticalAlignment="Center"/>
+        </DockPanel>
+        <Border.Style>
+            <Style TargetType="Border">
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+    </Border>
+</UserControl>

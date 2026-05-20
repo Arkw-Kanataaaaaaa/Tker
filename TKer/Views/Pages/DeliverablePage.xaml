@@ -1,0 +1,222 @@
+﻿<Page x:Class="TKer.Views.Pages.DeliverablePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="Transparent">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ヘッダー -->
+        <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12" Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIcon}"
+                          Fill="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
+                    <TextBlock Text="成果物まとめ" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                               FontSize="18" Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Padding="24,16" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="720">
+
+                <!-- 完了状況サマリー -->
+                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                            <Path Data="{StaticResource Bi.BarChartFill}" Style="{StaticResource BiIconSm}"
+                                  Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0"/>
+                            <TextBlock Text="完了状況" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                       FontSize="15" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Margin="0,0,6,0" CornerRadius="8" Padding="14,10"
+                                    Background="{StaticResource BgSecondaryBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="完了タスク" FontSize="11"
+                                               Foreground="{StaticResource TextDimBrush}"/>
+                                    <TextBlock x:Name="TxtDoneCount" FontFamily="Consolas"
+                                               FontSize="28" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentGreenBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Margin="6,0" CornerRadius="8" Padding="14,10"
+                                    Background="{StaticResource BgSecondaryBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="未完了タスク" FontSize="11"
+                                               Foreground="{StaticResource TextDimBrush}"/>
+                                    <TextBlock x:Name="TxtIncompleteCount" FontFamily="Consolas"
+                                               FontSize="28" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentRedBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="2" Margin="6,0,0,0" CornerRadius="8" Padding="14,10"
+                                    Background="{StaticResource BgSecondaryBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="完了率" FontSize="11"
+                                               Foreground="{StaticResource TextDimBrush}"/>
+                                    <TextBlock x:Name="TxtProgressRate" FontFamily="Consolas"
+                                               FontSize="28" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentBlueBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- 未完了タスク一覧（あれば警告表示） -->
+                        <Border x:Name="IncompleteBanner" Margin="0,12,0,0"
+                                Background="#14FF4444"
+                                BorderBrush="#4CFF4444" BorderThickness="1"
+                                CornerRadius="8" Padding="12,10" Visibility="Collapsed">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <Path Data="{StaticResource Bi.ExclamationTriangleFill}" Style="{StaticResource BiIconSm}"
+                                          Fill="{StaticResource AccentRedBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="未完了のタスクがあります。まとめ前に完了にすることを推奨します。"
+                                               FontSize="12" Foreground="{StaticResource AccentRedBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <ItemsControl x:Name="IncompleteList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock FontSize="12" Margin="0,1"
+                                                       Foreground="{StaticResource TextSecondaryBrush}">
+                                                <Run Text="• "/>
+                                                <Run Text="{Binding Id}" FontFamily="Consolas"/>
+                                                <Run Text=" "/>
+                                                <Run Text="{Binding Name}"/>
+                                                <Run Text=" — "/>
+                                                <Run Text="{Binding Status}"
+                                                     Foreground="{StaticResource AccentOrangeBrush}"/>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- まとめ設定 -->
+                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                            <Path Data="{StaticResource Bi.GearFill}" Style="{StaticResource BiIconSm}"
+                                  Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0"/>
+                            <TextBlock Text="まとめ設定" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                       FontSize="15" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- 出力先 -->
+                        <TextBlock Text="出力先フォルダ" Style="{StaticResource FormLabel}"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TxtOutputPath" Style="{StaticResource DarkTextBox}"
+                                     Tag="省略するとプロジェクトフォルダ内に生成"/>
+                            <Button Grid.Column="1" Content="参照..." Margin="8,0,0,0"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Click="BrowseOutput_Click"/>
+                        </Grid>
+
+                        <!-- フォルダ名 -->
+                        <TextBlock Text="フォルダ名" Style="{StaticResource FormLabel}"/>
+                        <TextBox x:Name="TxtFolderName" Style="{StaticResource DarkTextBox}"
+                                 Margin="0,0,0,12" Text="成果物まとめ"/>
+
+                        <!-- カテゴリーフィルター -->
+                        <TextBlock Text="対象カテゴリー" Style="{StaticResource FormLabel}"/>
+                        <ComboBox x:Name="CbCategory" Style="{StaticResource DarkComboBox}"
+                                  Margin="0,0,0,12"/>
+
+                        <!-- 拡張子フィルター -->
+                        <TextBlock Text="拡張子フィルター（省略で全ファイル、例: .pdf,.docx）"
+                                   Style="{StaticResource FormLabel}"/>
+                        <TextBox x:Name="TxtExtFilter" Style="{StaticResource DarkTextBox}"
+                                 Margin="0,0,0,16" Tag=".pdf, .docx, .xlsx …"/>
+
+                        <!-- オプション -->
+                        <TextBlock Text="オプション" Style="{StaticResource FormLabel}"/>
+                        <StackPanel Margin="0,0,0,20">
+                            <CheckBox x:Name="ChkCompletedOnly"
+                                      Content="完了タスクのみ対象" IsChecked="True"
+                                      Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"/>
+                            <CheckBox x:Name="ChkGroupByCategory"
+                                      Content="カテゴリーごとにサブフォルダを作成" IsChecked="True"
+                                      Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"/>
+                            <CheckBox x:Name="ChkCreateZip"
+                                      Content="ZIPファイルも生成する" IsChecked="True"
+                                      Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"/>
+                            <CheckBox x:Name="ChkCreateIndex"
+                                      Content="INDEX.md（ファイル一覧マークダウン）を生成する" IsChecked="True"
+                                      Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"/>
+                        </StackPanel>
+
+                        <Button Style="{StaticResource PrimaryButton}"
+                                HorizontalAlignment="Left" Padding="20,8"
+                                Click="Collect_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconSm}"
+                                      Fill="White" Margin="0,0,6,0"/>
+                                <TextBlock Text="成果物をまとめる" VerticalAlignment="Center" FontSize="13"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- 実行ログ -->
+                <Border Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIconSm}"
+                                  Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0"/>
+                            <TextBlock Text="実行ログ" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                       FontSize="15" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Border Background="{StaticResource BgPrimaryBrush}"
+                                CornerRadius="6" Padding="12" MinHeight="100">
+                            <TextBox x:Name="LogBox" Background="Transparent" BorderThickness="0"
+                                     Foreground="{StaticResource AccentGreenBrush}"
+                                     FontFamily="Consolas" FontSize="12"
+                                     IsReadOnly="True" TextWrapping="Wrap"
+                                     Text="— 実行待ち —" VerticalScrollBarVisibility="Auto"
+                                     MaxHeight="200"/>
+                        </Border>
+                        <StackPanel x:Name="ResultButtons" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed">
+                            <Button x:Name="BtnOpenOutput" Margin="0,0,8,0"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Click="OpenOutput_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                    <TextBlock Text="出力フォルダを開く" VerticalAlignment="Center" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnOpenZip" Margin="0,0,8,0"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Click="OpenZip_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.FileEarmarkZip}" Style="{StaticResource BiIconSm}"
+                                          Margin="0,0,5,0"/>
+                                    <TextBlock Text="ZIPを開く" VerticalAlignment="Center" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

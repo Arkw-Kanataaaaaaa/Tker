@@ -1,0 +1,173 @@
+﻿<Page x:Class="TKer.Views.Pages.LogViewerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="ログビューア"
+      Background="Transparent">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- ツールバー -->
+            <RowDefinition Height="*"/>    <!-- ログリスト -->
+            <RowDefinition Height="Auto"/> <!-- ステータスバー -->
+        </Grid.RowDefinitions>
+
+        <!-- ══ ツールバー ══ -->
+        <Border x:Name="PageHeader" Grid.Row="0" Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <WrapPanel Margin="8,6">
+
+                <!-- 検索 -->
+                <Border Background="{DynamicResource BgCardBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="4" Margin="0,0,8,4" Padding="6,2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔍" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.6"/>
+                        <TextBox x:Name="TxtSearch" Width="200"
+                                 Background="Transparent" BorderThickness="0"
+                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                 VerticalAlignment="Center"
+                                 CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                 Text="" TextChanged="TxtSearch_TextChanged"
+                                 ToolTip="キーワード検索"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- レベルフィルター -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,4" VerticalAlignment="Center">
+                    <TextBlock Text="レベル:" Foreground="{DynamicResource TextDimBrush}"
+                               FontSize="12" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <CheckBox x:Name="ChkDebug"  Content="DEBUG" Foreground="#9AA0B5"
+                              IsChecked="False" Margin="0,0,6,0" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+                    <CheckBox x:Name="ChkInfo"   Content="INFO"  Foreground="#4CAF50"
+                              IsChecked="True"  Margin="0,0,6,0" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+                    <CheckBox x:Name="ChkWarn"   Content="WARN"  Foreground="#FFC107"
+                              IsChecked="True"  Margin="0,0,6,0" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+                    <CheckBox x:Name="ChkError"  Content="ERROR" Foreground="#F44336"
+                              IsChecked="True"  Margin="0,0,6,0" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+                    <CheckBox x:Name="ChkFatal"  Content="FATAL" Foreground="#B71C1C"
+                              IsChecked="True"  Margin="0,0,6,0" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+                </StackPanel>
+
+                <!-- 操作ボタン -->
+                <Button Content="🔃 更新" Style="{StaticResource SecondaryButton}"
+                        Padding="8,4" Margin="0,0,4,4" Click="BtnRefresh_Click"
+                        FontSize="12"/>
+                <Button Content="🗑 クリア" Style="{StaticResource SecondaryButton}"
+                        Padding="8,4" Margin="0,0,4,4" Click="BtnClear_Click"
+                        FontSize="12"/>
+<Button Content="📂 ログフォルダを開く" Style="{StaticResource SecondaryButton}"
+                        Padding="8,4" Margin="0,0,0,4" Click="BtnOpenFolder_Click"
+                        FontSize="12"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- ══ ログリスト ══ -->
+        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}"
+                Margin="8" CornerRadius="8" ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- ヘッダー -->
+                    <RowDefinition Height="*"/>    <!-- エントリ -->
+                </Grid.RowDefinitions>
+
+                <!-- ヘッダー行 -->
+                <Border Grid.Row="0" Background="{DynamicResource BgSecondaryBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <Grid Margin="8,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>  <!-- 日時 -->
+                            <ColumnDefinition Width="60"/>   <!-- レベル -->
+                            <ColumnDefinition Width="120"/>  <!-- 画面名 -->
+                            <ColumnDefinition Width="120"/>  <!-- 機能名 -->
+                            <ColumnDefinition Width="*"/>    <!-- メッセージ -->
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="日時" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="1" Text="レベル" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="画面名" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="機能名" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="4" Text="メッセージ" Style="{StaticResource ColHeader}"/>
+                    </Grid>
+                </Border>
+
+                <!-- エントリスクロール -->
+                <ScrollViewer Grid.Row="1" x:Name="LogScroller"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="LogList" VirtualizingPanel.IsVirtualizing="True">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="Row"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="0,1">
+                                    <Grid Margin="8,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="60"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp, StringFormat='yyyy/MM/dd HH:mm:ss'}"
+                                                   FontSize="11" Foreground="{DynamicResource TextDimBrush}"
+                                                   VerticalAlignment="Top" Margin="0,1"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding LevelLabel}"
+                                                   FontSize="11" FontWeight="Bold"
+                                                   Foreground="{Binding Level, Converter={StaticResource LogLevelColorConverter}}"
+                                                   VerticalAlignment="Top" Margin="0,1"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding ScreenName}"
+                                                   FontSize="11" Foreground="{DynamicResource TextDimBrush}"
+                                                   VerticalAlignment="Top" Margin="0,1"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding FunctionName}"
+                                                   FontSize="11" Foreground="{DynamicResource TextDimBrush}"
+                                                   VerticalAlignment="Top" Margin="0,1"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="{Binding Message}"
+                                                       FontSize="11"
+                                                       Foreground="{Binding Level, Converter={StaticResource LogLevelColorConverter}}"
+                                                       TextWrapping="Wrap" Margin="0,1"/>
+                                            <TextBlock Text="{Binding StackTrace}"
+                                                       FontSize="10" Foreground="#888"
+                                                       FontFamily="Consolas"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="{Binding StackTrace, Converter={StaticResource NullVis}}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- ══ ステータスバー ══ -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
+                Padding="12,4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right"
+                           x:Name="TxtAutoScroll"
+                           Text="自動スクロール: ON"
+                           Foreground="{DynamicResource TextDimBrush}"
+                           FontSize="11" VerticalAlignment="Center"
+                           Cursor="Hand" MouseLeftButtonDown="TxtAutoScroll_Click"/>
+                <TextBlock x:Name="TxtStatus"
+                           Foreground="{DynamicResource TextDimBrush}"
+                           FontSize="11" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Page>

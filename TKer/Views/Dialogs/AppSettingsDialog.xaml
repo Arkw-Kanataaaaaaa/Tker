@@ -1,0 +1,415 @@
+﻿<Window x:Class="TKer.Views.Dialogs.AppSettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="アプリ設定" Height="700" Width="560"
+        Background="{StaticResource BgCardBrush}"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="36" ResizeBorderThickness="0"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{x:Static SystemCommands.CloseWindowCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- タイトルバー -->
+        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Width="44" Height="36"
+                        Style="{StaticResource WinCloseBtn}"
+                        Command="{x:Static SystemCommands.CloseWindowCommand}"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIcon}"
+                          Fill="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Title}"
+                           FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="13"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </DockPanel>
+        </Border>
+
+        <!-- タブコンテンツ -->
+        <TabControl Grid.Row="1" Background="{StaticResource BgCardBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                    <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                    <Setter Property="Padding" Value="14,8"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="FontFamily" Value="Yu Gothic UI"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- ═══ 一般設定 ═══ -->
+            <TabItem Header="一般設定">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,16">
+                    <StackPanel>
+
+                        <!-- アラート -->
+                        <TextBlock Text="アラート設定" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="未着手超過アラートの猶予日数"
+                                       FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox x:Name="TxtGraceDays" Style="{StaticResource DarkTextBox}"
+                                         Width="50" Text="1"/>
+                                <TextBlock Text="日" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox x:Name="ChkHideCompleted"
+                                  Content="スケジュール画面で完了タスクをデフォルト非表示"
+                                  Foreground="{StaticResource TextPrimaryBrush}"
+                                  FontSize="13" Margin="0,0,0,24"/>
+
+                        <!-- モード -->
+                        <TextBlock Text="利用モード" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,10"/>
+                        <StackPanel Margin="0,0,0,6">
+                            <RadioButton x:Name="RbMultiMode" Content="複数人モード（レビュー・管理者あり）"
+                                         Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"
+                                         GroupName="AppMode" Margin="0,0,0,6"/>
+                            <RadioButton x:Name="RbPersonalMode" Content="個人モード（レビューなし・シンプル管理）"
+                                         Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"
+                                         GroupName="AppMode"/>
+                        </StackPanel>
+                        <TextBlock Text="※ 個人モードではステータス「レビュー中」が非表示になります"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   Margin="0,4,0,24"/>
+
+                        <!-- 背景画像 -->
+                        <TextBlock Text="背景画像" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TxtBgPath" Style="{StaticResource DarkTextBox}"
+                                     IsReadOnly="True" Tag="画像未設定" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,0,0">
+                                <Button Style="{StaticResource SecondaryButton}"
+                                        Padding="8,4" FontSize="12" Margin="0,0,4,0"
+                                        Click="BrowseBg_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
+                                              Margin="0,0,4,0"/>
+                                        <TextBlock Text="選択" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource SecondaryButton}"
+                                        Padding="8,4" FontSize="12"
+                                        Click="ClearBg_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"
+                                              Margin="0,0,4,0"/>
+                                        <TextBlock Text="解除" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═══ テーマ ═══ -->
+            <TabItem Header="テーマ">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,16">
+                    <StackPanel>
+
+                        <TextBlock Text="HEXカラーコードで入力（例: #CFCFCF）。空欄はデフォルト色を使用"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   Margin="0,0,0,14"/>
+
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="メインテキスト色" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TxtColorTextPrimary" Grid.Row="0" Grid.Column="1" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="1" Text="サブテキスト色" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TxtColorTextSecond" Grid.Row="1" Grid.Column="1" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="2" Text="アクセント色" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TxtColorAccent" Grid.Row="2" Grid.Column="1" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="3" Text="ヘッダー背景色" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TxtColorBgSecond" Grid.Row="3" Grid.Column="1" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="4" Text="カード背景色" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TxtColorBgCard" Grid.Row="4" Grid.Column="1" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="5" Text="ボーダー色" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TxtColorBorder" Grid.Row="5" Grid.Column="1" Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
+                        </Grid>
+
+                        <!-- カード背景の透明度 -->
+                        <TextBlock Text="カード背景の透明度" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,12,0,10"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider x:Name="SliderOpacity" Minimum="0" Maximum="100" Value="100"
+                                    TickFrequency="10" IsSnapToTickEnabled="False"
+                                    ValueChanged="SliderOpacity_Changed"
+                                    Foreground="{StaticResource AccentCyanBrush}"/>
+                            <TextBlock x:Name="LblOpacity" Grid.Column="1"
+                                       Text="100%" FontSize="12" FontFamily="Consolas"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <TextBlock Text="※ 0%=完全透明、100%=不透明"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   Margin="0,2,0,16"/>
+
+                        <!-- フォント -->
+                        <TextBlock Text="フォント" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,10"/>
+                        <ComboBox x:Name="CbFontFamily" Style="{StaticResource DarkComboBox}"
+                                  Margin="0,0,0,4">
+                            <ComboBoxItem Content="（デフォルト）" Tag=""/>
+                            <ComboBoxItem Content="Yu Gothic UI" Tag="Yu Gothic UI"/>
+                            <ComboBoxItem Content="Meiryo UI" Tag="Meiryo UI"/>
+                            <ComboBoxItem Content="メイリオ" Tag="メイリオ"/>
+                            <ComboBoxItem Content="MS Gothic" Tag="MS Gothic"/>
+                            <ComboBoxItem Content="BIZ UDGothic" Tag="BIZ UDGothic"/>
+                            <ComboBoxItem Content="Segoe UI" Tag="Segoe UI"/>
+                        </ComboBox>
+                        <TextBlock Text="※ フォント変更は再起動後に完全適用"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   Margin="0,2,0,0"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ═══ ショートカット ═══ -->
+            <TabItem Header="ショートカット">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="ホーム画面のショートカットボタンを管理します"
+                               FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                               Margin="0,0,0,10"/>
+
+                    <Border Grid.Row="1"
+                            Background="{StaticResource BgSecondaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="6">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="ScListPanel" Margin="8"/>
+                        </ScrollViewer>
+                    </Border>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Padding="10,5" FontSize="12" Margin="0,0,8,0"
+                                Click="AddShortcut_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconSm}"
+                                      Fill="{StaticResource AccentBlueBrush}" Margin="0,0,4,0"/>
+                                <TextBlock Text="追加" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock x:Name="ScHintText"
+                                   Text="追加するとホーム画面に表示されます"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ═══ ツールバー ═══ -->
+            <TabItem Header="ツールバー">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="メニュー項目を選択して↑↓ボタンで順序を変更します"
+                               FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                               Margin="0,0,0,10"/>
+
+                    <ListBox x:Name="TbListBox" Grid.Row="1"
+                             Background="{StaticResource BgSecondaryBrush}"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="10,7"/>
+                                <Setter Property="FontSize" Value="13"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="▲ 上へ" Style="{StaticResource SecondaryButton}"
+                                Padding="10,5" FontSize="12" Margin="0,0,8,0"
+                                Click="TbMoveUp_Click"/>
+                        <Button Content="▼ 下へ" Style="{StaticResource SecondaryButton}"
+                                Padding="10,5" FontSize="12"
+                                Click="TbMoveDown_Click"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ═══ ログ ═══ -->
+            <TabItem Header="ログ">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,16">
+                    <StackPanel>
+
+                        <TextBlock Text="ログローテーション" FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,10"/>
+
+                        <CheckBox x:Name="ChkLogEnabled"
+                                  Content="ローテーションを有効にする"
+                                  Foreground="{StaticResource TextPrimaryBrush}"
+                                  FontSize="13" Margin="0,0,0,16"/>
+
+                        <!-- ローテーション方式 -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="ローテーション方式" FontSize="13"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <ComboBox x:Name="CbLogPeriod" Grid.Column="1"
+                                      Style="{StaticResource DarkComboBox}">
+                                <ComboBoxItem Content="日次（1日1ファイル）" Tag="daily"/>
+                                <ComboBoxItem Content="週次" Tag="weekly"/>
+                                <ComboBoxItem Content="月次" Tag="monthly"/>
+                                <ComboBoxItem Content="サイズ超過時" Tag="size"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- サイズ上限 -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="サイズ上限（方式が「サイズ超過時」のとき有効）"
+                                       FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox x:Name="TxtLogMaxSizeMB" Style="{StaticResource DarkTextBox}"
+                                         Width="50" Text="10"/>
+                                <TextBlock Text="MB" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 保持ファイル数 -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="保持する最大ファイル数"
+                                       FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox x:Name="TxtLogMaxFiles" Style="{StaticResource DarkTextBox}"
+                                         Width="50" Text="7"/>
+                                <TextBlock Text="件" FontSize="13"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 古いファイルの処理 -->
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="180"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="古いログファイルの処理"
+                                       FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                            <ComboBox x:Name="CbLogOnRotate" Grid.Column="1"
+                                      Style="{StaticResource DarkComboBox}">
+                                <ComboBoxItem Content="バックアップ（.bak に変更）" Tag="backup"/>
+                                <ComboBoxItem Content="削除" Tag="delete"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- ログ保存先 -->
+                        <TextBlock FontSize="11" Foreground="{StaticResource TextDimBrush}">
+                            <Run Text="保存先：%AppData%\TKer\logs\"/>
+                        </TextBlock>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- OK / Cancel -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="16,10,16,12">
+            <Button Margin="0,0,8,0" Content="キャンセル" Style="{StaticResource SecondaryButton}"
+                    Padding="12,6" Click="Cancel_Click"/>
+            <Button Content="保存" Style="{StaticResource PrimaryButton}"
+                    Padding="16,6" Click="OK_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

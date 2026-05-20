@@ -1,0 +1,72 @@
+﻿<Window x:Class="TKer.Views.Dialogs.QuickStatusDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="進捗更新" Width="400" Height="320"
+        WindowStyle="None" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgCardBrush}">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="36" ResizeBorderThickness="0"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{x:Static SystemCommands.CloseWindowCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- タイトルバー（標準パターン） -->
+        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Width="44" Height="36"
+                        Style="{StaticResource WinCloseBtn}"
+                        Command="{x:Static SystemCommands.CloseWindowCommand}"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIcon}"
+                          Fill="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Title}"
+                           FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="13"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </DockPanel>
+        </Border>
+
+        <StackPanel Grid.Row="1" Margin="24,20">
+            <!-- タスク名バッジ -->
+            <Border CornerRadius="6" Padding="10,8" Margin="0,0,0,16"
+                    Background="#1A2383E2" BorderBrush="#442383E2" BorderThickness="1">
+                <TextBlock x:Name="TxtTaskName" FontSize="13" FontWeight="Bold"
+                           Foreground="{StaticResource AccentCyanBrush}" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBlock Text="ステータス" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+            <ComboBox x:Name="CmbStatus" Style="{StaticResource DarkComboBox}" Margin="0,0,0,14">
+                <ComboBoxItem Content="未着手"   Tag="未着手"/>
+                <ComboBoxItem Content="対応中"   Tag="対応中"/>
+                <ComboBoxItem Content="レビュー中" Tag="レビュー中"/>
+                <ComboBoxItem Content="完了"     Tag="完了"/>
+            </ComboBox>
+
+            <TextBlock Text="メモ（任意）" FontSize="12" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtNote" Style="{StaticResource DarkTextBox}"
+                     AcceptsReturn="True" Height="60" TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto" Margin="0,0,0,20"/>
+
+            <!-- ボタン（標準パターン：右揃え StackPanel） -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
+                        Padding="14,8" Margin="0,0,8,0" Click="Cancel_Click"/>
+                <Button Content="更新する"   Style="{StaticResource PrimaryButton}"
+                        Padding="20,8" Click="BtnOk_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

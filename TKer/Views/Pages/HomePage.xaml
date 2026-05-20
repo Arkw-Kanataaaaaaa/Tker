@@ -1,0 +1,592 @@
+﻿<Page x:Class="TKer.Views.Pages.HomePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="Transparent">
+
+    <ScrollViewer x:Name="HomeScroll"
+                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="HomeGrid" Margin="28,24,28,32">
+
+            <!-- ══ ヘッダー ══ -->
+            <Border x:Name="CardHeader" Style="{StaticResource CardBorder}">
+                <DockPanel>
+                    <!-- 右: 日時 + バージョン -->
+                    <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock x:Name="DateText" FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="Consolas"/>
+                            <TextBlock x:Name="ClockText" FontSize="13" Margin="12,0,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontFamily="Consolas"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                            <TextBlock x:Name="VersionText"
+                                       FontFamily="Consolas" FontSize="10"
+                                       Foreground="{StaticResource AccentCyanBrush}"/>
+                            <TextBlock x:Name="BuildText"
+                                       FontFamily="Consolas" FontSize="10"
+                                       Foreground="{StaticResource TextDimBrush}"
+                                       Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- 左: プロジェクト名 -->
+                    <TextBlock x:Name="ProjectTitleText"
+                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="28"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+
+            <!-- ══ アラートセクション ══ -->
+            <Border x:Name="CardAlert" Style="{StaticResource CardBorder}">
+            <StackPanel x:Name="AlertSection">
+                <DockPanel Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path Data="{StaticResource Bi.ExclamationTriangleFill}" Style="{StaticResource BiIcon}"
+                              Fill="{StaticResource AccentYellowBrush}" Margin="0,0,7,0"/>
+                        <TextBlock Text="アラート"
+                                   FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="17"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Border x:Name="AlertBadge" DockPanel.Dock="Left" Margin="8,0,0,0"
+                            Background="{StaticResource AccentRedBrush}"
+                            CornerRadius="10" Padding="7,2"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="AlertCountText"
+                                   FontFamily="Consolas" FontSize="11"
+                                   Foreground="White" FontWeight="Bold"/>
+                    </Border>
+                    <Button DockPanel.Dock="Right" Content="すべて表示 ▶"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="10,4" FontSize="11" HorizontalAlignment="Right"
+                            Click="ShowAllAlerts_Click"/>
+                </DockPanel>
+
+                <!-- アラートなし -->
+                <Border x:Name="NoAlertBanner"
+                        Background="#1400E676"
+                        BorderBrush="#4C00E676" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path Data="{StaticResource Bi.CheckCircleFill}" Style="{StaticResource BiIconSm}"
+                              Fill="{StaticResource AccentGreenBrush}" Margin="0,0,6,0"/>
+                        <TextBlock Text="期限超過・締切間近のタスクはありません"
+                                   FontSize="13" Foreground="{StaticResource AccentGreenBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- アラートリスト -->
+                <ItemsControl x:Name="AlertList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,6" CornerRadius="8" Padding="14,10"
+                                    Background="{StaticResource BgCardBrush}"
+                                    BorderThickness="1"
+                                    BorderBrush="{Binding Level,
+                                        Converter={StaticResource AlertLevelToBorderConverter}}"
+                                    Cursor="Hand"
+                                    MouseLeftButtonUp="AlertItem_Click">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="28"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="90"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="{Binding LevelIcon}"
+                                               FontSize="16" VerticalAlignment="Center"/>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding TaskName}" FontSize="13"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock FontSize="11" Margin="0,2,0,0"
+                                                   Foreground="{StaticResource TextDimBrush}">
+                                            <Run Text="{Binding ProjectName}"/>
+                                            <Run Text=" · "/>
+                                            <Run Text="{Binding Assignee}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <!-- ラベル -->
+                                    <Border Grid.Column="2" Margin="8,0" CornerRadius="10"
+                                            Padding="8,3" VerticalAlignment="Center"
+                                            Background="{Binding Level,
+                                                Converter={StaticResource AlertLevelToBgConverter}}">
+                                        <TextBlock Text="{Binding LevelLabel}" FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="{Binding Level,
+                                                       Converter={StaticResource AlertLevelToFgConverter}}"/>
+                                    </Border>
+
+                                    <!-- 期限日 -->
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding PlannedEndDate, StringFormat='期限: {0:MM/dd}'}"
+                                               FontFamily="Consolas" FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                                    <!-- 残り日数 -->
+                                    <TextBlock Grid.Column="4" Text="{Binding RemainingLabel}"
+                                               FontFamily="Consolas" FontSize="12" FontWeight="Bold"
+                                               Foreground="{Binding Level,
+                                                   Converter={StaticResource AlertLevelToFgConverter}}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            </Border>
+
+            <!-- 直近のタスク -->
+            <Border x:Name="RecentTaskSection" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIconSm}"
+                                          Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="直近のタスク"
+                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="15"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button DockPanel.Dock="Right" Content="タスク一覧 ▶"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="10,4" FontSize="11" HorizontalAlignment="Right"
+                                        Click="GoToTaskList_Click"/>
+                            </DockPanel>
+                            <Border x:Name="NoRecentTaskBanner" Visibility="Collapsed"
+                                    Background="{StaticResource BgCardBrush}"
+                                    CornerRadius="6" Padding="12,8">
+                                <TextBlock Text="プロジェクトを開くとタスクが表示されます"
+                                           FontSize="12" Foreground="{StaticResource TextDimBrush}"/>
+                            </Border>
+                            <ItemsControl x:Name="RecentTaskList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,6" CornerRadius="8" Padding="12,8"
+                                                Background="{StaticResource BgCardBrush}"
+                                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                Cursor="Hand" MouseLeftButtonUp="RecentTask_Click">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock FontSize="11" Margin="0,2,0,0"
+                                                               Foreground="{StaticResource TextDimBrush}">
+                                                        <Run Text="{Binding CategoryName, Mode=OneWay}"/>
+                                                        <Run Text=" · "/>
+                                                        <Run Text="{Binding PlannedEndDate, Mode=OneWay, StringFormat='期限: {0:MM/dd}'}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" Margin="8,0" CornerRadius="10"
+                                                        Padding="6,2" VerticalAlignment="Center"
+                                                        Background="{Binding Priority,
+                                                            Converter={StaticResource PriorityToBgConverter}}">
+                                                    <TextBlock Text="{Binding Priority}" FontSize="11"
+                                                               FontWeight="Bold"
+                                                               Foreground="{Binding Priority,
+                                                                   Converter={StaticResource PriorityToFgConverter}}"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="2" Text="{Binding Status}"
+                                                           FontSize="12" FontWeight="Bold"
+                                                           Foreground="{StaticResource AccentBlueBrush}"
+                                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="CardProject" Style="{StaticResource CardBorder}">
+                    <StackPanel>
+                    <DockPanel Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIcon}"
+                                  Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,7,0"/>
+                            <TextBlock Text="最近開いたプロジェクト"
+                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="17"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right" Content="プロジェクト一覧 ▶"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="10,4" FontSize="11" HorizontalAlignment="Right"
+                                Click="GoToProjectList_Click"/>
+                    </DockPanel>
+
+                    <!-- プロジェクトなし -->
+                    <Border x:Name="NoProjectBanner"
+                            Background="{StaticResource BgCardBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="10" Padding="24,20" Visibility="Collapsed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
+                                  HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                            <TextBlock Text="まだプロジェクトがありません"
+                                       FontSize="14" Foreground="{StaticResource TextSecondaryBrush}"
+                                       HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="「プロジェクト一覧 ▶」からプロジェクトを作成・選択してください"
+                                       FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl x:Name="ProjectList" Margin="0,0,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,10" CornerRadius="10" Padding="16,14"
+                                        Background="{StaticResource BgCardBrush}"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                        Cursor="Hand"
+                                        MouseLeftButtonUp="ProjectCard_Click">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="BorderBrush"
+                                                            Value="{StaticResource BorderBrightBrush}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 名前・パス -->
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <DockPanel>
+                                                <!-- ピン -->
+                                                <Path Data="{StaticResource Bi.PinAngleFill}" Style="{StaticResource BiIconSm}"
+                                                      Fill="{StaticResource AccentCyanBrush}"
+                                                      Margin="0,0,6,0" VerticalAlignment="Center"
+                                                      Visibility="{Binding Entry.IsPinned,
+                                                          Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Text="{Binding Entry.ProjectName}"
+                                                           FontFamily="Yu Gothic UI" FontWeight="Bold"
+                                                           FontSize="15"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <!-- アラートドット -->
+                                                <Border Width="8" Height="8" CornerRadius="4"
+                                                        Background="{StaticResource AccentRedBrush}"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding HasAlert,
+                                                            Converter={StaticResource BoolVis}}"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Entry.Description}"
+                                                       FontSize="12" Margin="0,3,0,0"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock FontSize="10" Margin="0,4,0,0"
+                                                       Foreground="{StaticResource TextDimBrush}"
+                                                       FontFamily="Consolas"
+                                                       Text="{Binding Entry.LastOpened,
+                                                           StringFormat='最終: {0:yyyy/MM/dd HH:mm}'}"/>
+                                        </StackPanel>
+
+                                        <!-- 進捗 -->
+                                        <StackPanel Grid.Column="1" Margin="12,0"
+                                                    VerticalAlignment="Center">
+                                            <DockPanel Margin="0,0,0,5">
+                                                <TextBlock Text="{Binding ProgressLabel}"
+                                                           FontFamily="Consolas" FontSize="13"
+                                                           FontWeight="Bold"
+                                                           Foreground="{StaticResource AccentGreenBrush}"
+                                                           DockPanel.Dock="Right"/>
+                                                <TextBlock Text="{Binding TotalTasks, StringFormat='タスク {0}件'}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource TextDimBrush}"/>
+                                            </DockPanel>
+                                            <!-- 進捗バー -->
+                                            <Grid Height="6">
+                                                <Border CornerRadius="3"
+                                                        Background="{StaticResource BorderBrush}"/>
+                                                <Border CornerRadius="3"
+                                                        Background="{StaticResource AccentGreenBrush}"
+                                                        HorizontalAlignment="Left"
+                                                        Width="{Binding ProgressRate,
+                                                            Converter={StaticResource PercentToWidthConverter},
+                                                            ConverterParameter=136}"/>
+                                            </Grid>
+                                            <TextBlock Margin="0,4,0,0" FontSize="11"
+                                                       Foreground="{StaticResource TextDimBrush}">
+                                                <Run Text="完了 "/>
+                                                <Run Text="{Binding DoneTasks}"
+                                                     Foreground="{StaticResource AccentGreenBrush}"/>
+                                                <Run Text="  対応中 "/>
+                                                <Run Text="{Binding WipTasks}"
+                                                     Foreground="{StaticResource AccentBlueBrush}"/>
+                                                <Run Text="  超過 "/>
+                                                <Run Text="{Binding OverdueTasks}"
+                                                     Foreground="{StaticResource AccentRedBrush}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <!-- アクション -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Margin="0,0,8,0" ToolTip="ピン留め"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Padding="7,5"
+                                                    Tag="{Binding Entry.DataFilePath}"
+                                                    Click="PinProject_Click">
+                                                <Path Data="{StaticResource Bi.PinAngleFill}" Style="{StaticResource BiIconSm}"
+                                                      Fill="{StaticResource AccentCyanBrush}"/>
+                                            </Button>
+                                            <Button Margin="0,0,8,0" ToolTip="一覧から削除"
+                                                    Style="{StaticResource DangerButton}"
+                                                    Padding="7,5"
+                                                    Tag="{Binding Entry.DataFilePath}"
+                                                    Click="RemoveProject_Click">
+                                                <Path Data="{StaticResource Bi.Trash3}" Style="{StaticResource BiIconSm}"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </StackPanel>
+                    </Border>
+
+                    <!-- ショートカット -->
+                    <Border x:Name="ShortcutCard" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource Bi.LightningFill}" Style="{StaticResource BiIconSm}"
+                                          Fill="{StaticResource AccentYellowBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="ショートカット"
+                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="14"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button DockPanel.Dock="Right" Content="管理 ▶"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="7,3" FontSize="11"
+                                        Click="ManageShortcuts_Click"/>
+                            </DockPanel>
+                            <WrapPanel x:Name="ShortcutPanel" Orientation="Horizontal"/>
+                            <TextBlock x:Name="NoShortcutText"
+                                       Text="ツール → ショートカット管理 から登録できます"
+                                       FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ミニカレンダー -->
+                    <Border x:Name="CardCalendar" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <Button Style="{StaticResource SecondaryButton}"
+                                        Padding="4,2" Click="CalPrev_Click" ToolTip="前の月">
+                                    <Path Data="{StaticResource Bi.ChevronLeft}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource SecondaryButton}"
+                                        Padding="4,2" Click="CalNext_Click" ToolTip="次の月">
+                                    <Path Data="{StaticResource Bi.ChevronRight}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="CalMonthLabel"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </DockPanel>
+                            <StackPanel x:Name="MiniCalPanel"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- クイックナビ -->
+                    <Border x:Name="CardQuickNav" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                                <Path Data="{StaticResource Bi.Compass}" Style="{StaticResource BiIconSm}"
+                                      Fill="{StaticResource AccentCyanBrush}" Margin="0,0,7,0"/>
+                                <TextBlock Text="クイックナビ"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="15"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Style="{StaticResource QuickNavButton}"
+                                    Click="QuickNav_Click" Tag="ProjectList">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIconLg}"
+                                          Margin="0,0,10,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="プロジェクト一覧" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="プロジェクト管理" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNavDashboard"
+                                    Style="{StaticResource QuickNavButton}"
+                                    Click="QuickNav_Click" Tag="Dashboard">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.BarChartFill}" Style="{StaticResource BiIconLg}"
+                                          Margin="0,0,10,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="ダッシュボード" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="進捗統計" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNavTask"
+                                    Style="{StaticResource QuickNavButton}"
+                                    Click="QuickNav_Click" Tag="TaskList">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.CheckCircleFill}" Style="{StaticResource BiIconLg}"
+                                          Fill="{StaticResource AccentGreenBrush}" Margin="0,0,10,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="タスク管理" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="タスク一覧・ガントチャート" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNavCalendar"
+                                    Style="{StaticResource QuickNavButton}"
+                                    Click="QuickNav_Click" Tag="Calendar">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.Calendar3}" Style="{StaticResource BiIconLg}"
+                                          Fill="{StaticResource AccentBlueBrush}" Margin="0,0,10,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="カレンダー" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="月別スケジュール" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource QuickNavButton}"
+                                    Click="QuickNav_Click" Tag="AppSettings">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.GearFill}" Style="{StaticResource BiIconLg}"
+                                          Margin="0,0,10,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="アプリ設定" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="テーマ・表示設定" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="BtnNavGantt" Visibility="Collapsed"
+                                    Style="{StaticResource QuickNavButton}"
+                                    Click="QuickNav_Click" Tag="Gantt">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.BarChartFill}" Style="{StaticResource BiIconLg}"
+                                          Margin="0,0,10,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="ガントチャート" FontSize="13" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="スケジュール確認" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- アプリ情報 & マニュアル -->
+                    <Border x:Name="CardVersion" Style="{StaticResource CardBorder}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                                <Path Data="{StaticResource Bi.InfoCircleFill}" Style="{StaticResource BiIconSm}"
+                                      Fill="{StaticResource AccentCyanBrush}" Margin="0,0,7,0"/>
+                                <TextBlock Text="アプリ情報"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="15"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="バージョン" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}"/>
+                                <TextBlock Grid.Column="1" x:Name="InfoVersion"
+                                           FontFamily="Consolas" FontSize="12"
+                                           Foreground="{StaticResource AccentCyanBrush}"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="ビルド日" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}"/>
+                                <TextBlock Grid.Column="1" x:Name="InfoBuild"
+                                           FontFamily="Consolas" FontSize="12"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="開発元" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}"/>
+                                <TextBlock Grid.Column="1" Text="TKer"
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Grid>
+
+                            <Separator Background="{StaticResource BorderBrush}" Margin="0,0,0,12"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                                <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconSm}"
+                                      Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="マニュアル"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Stretch" Padding="10,7"
+                                    FontSize="12" Click="OpenManual_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconSm}"
+                                          Margin="0,0,6,0"/>
+                                    <TextBlock Text="操作マニュアルを開く" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Stretch" Padding="10,7"
+                                    FontSize="12" Margin="0,6,0,0"
+                                    Click="OpenChangelog_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource Bi.ArrowClockwise}" Style="{StaticResource BiIconSm}"
+                                          Margin="0,0,6,0"/>
+                                    <TextBlock Text="更新履歴を見る" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+        </Grid>
+    </ScrollViewer>
+</Page>

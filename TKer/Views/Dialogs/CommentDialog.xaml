@@ -1,0 +1,115 @@
+﻿<Window x:Class="TKer.Views.Dialogs.CommentDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="コメント" Height="560" Width="520"
+        Background="{StaticResource BgCardBrush}"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="CanResize">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="36" ResizeBorderThickness="4"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{x:Static SystemCommands.CloseWindowCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- タイトルバー -->
+        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Width="44" Height="36"
+                        Style="{StaticResource WinCloseBtn}"
+                        Command="{x:Static SystemCommands.CloseWindowCommand}"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIcon}"
+                          Fill="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <TextBlock Text="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=Title}"
+                           FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="13"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </DockPanel>
+        </Border>
+
+        <!-- コンテンツ -->
+        <Grid Grid.Row="1" Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" x:Name="TitleBlock"
+                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
+                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+
+            <!-- コメント一覧 -->
+            <Border Grid.Row="1" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="8" Margin="0,0,0,12">
+                <ListView x:Name="CommentList" Background="Transparent" BorderThickness="0"
+                          Foreground="{StaticResource TextPrimaryBrush}">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Background"      Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding"         Value="12,8"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="0,0,0,1" Padding="0,0,0,8" Margin="0,0,0,4">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding Author}" FontWeight="Bold"
+                                                   FontSize="12" Foreground="{StaticResource AccentCyanBrush}"/>
+                                        <TextBlock DockPanel.Dock="Right"
+                                                   Text="{Binding PostedAt, StringFormat='yyyy/MM/dd HH:mm'}"
+                                                   FontFamily="Consolas" FontSize="10"
+                                                   Foreground="{StaticResource TextDimBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Text}" FontSize="13"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+
+            <!-- 入力エリア -->
+            <StackPanel Grid.Row="2" Margin="0,0,0,12">
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="投稿者名" Style="{StaticResource FormLabel}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" x:Name="TxtAuthor" Style="{StaticResource DarkTextBox}"
+                             Tag="名前を入力"/>
+                </Grid>
+                <TextBox x:Name="TxtComment" Style="{StaticResource DarkTextBox}"
+                         Height="80" TextWrapping="Wrap" AcceptsReturn="True"
+                         Tag="コメントを入力…"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Margin="0,0,8,0" Content="投稿" Style="{StaticResource PrimaryButton}" Click="Post_Click"/>
+                <Button Margin="0,0,8,0" Content="閉じる" Style="{StaticResource SecondaryButton}" Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,354 @@
+﻿<Page x:Class="TKer.Views.Pages.TaskListPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="Transparent">
+    <Grid>
+        <Grid x:Name="ContentRoot">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ヘッダー -->
+        <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12"
+                Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid Height="28">
+
+                <TextBlock Text="タスク一覧" HorizontalAlignment="Left"
+                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center"/>
+
+                <!-- ガントナビ（ガントモード時のみ表示） -->
+                <StackPanel x:Name="GanttNavPanel"
+                            Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- 月移動 << >> -->
+                    <Button Margin="0,0,2,0" Style="{StaticResource SecondaryButton}"
+                            Padding="6,4" Click="PrevMonth_Click" ToolTip="前の月">
+                        <Path Data="{StaticResource Bi.ChevronDoubleLeft}" Style="{StaticResource BiIconSm}"/>
+                    </Button>
+                    <!-- 週移動 < > -->
+                    <Button Margin="0,0,2,0" Style="{StaticResource SecondaryButton}"
+                            Padding="6,4" Click="PrevWeek_Click" ToolTip="前の週">
+                        <Path Data="{StaticResource Bi.ChevronLeft}" Style="{StaticResource BiIconSm}"/>
+                    </Button>
+                    <!-- 日移動 ‹ › -->
+                    <Button Margin="0,0,6,0" Style="{StaticResource SecondaryButton}"
+                            Padding="5,2" FontSize="14" Click="PrevDay_Click" ToolTip="前の日">‹</Button>
+                    <!-- 年月入力（透過テキストボックス） -->
+                    <TextBox x:Name="MonthLabel" FontFamily="Consolas" FontSize="13"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             Background="Transparent" BorderThickness="0" Padding="0"
+                             VerticalAlignment="Center" MinWidth="110" TextAlignment="Center"
+                             VerticalContentAlignment="Center" Cursor="IBeam"
+                             KeyDown="MonthLabel_KeyDown" LostFocus="MonthLabel_LostFocus"/>
+                    <!-- 日移動 -->
+                    <Button Margin="6,0,2,0" Style="{StaticResource SecondaryButton}"
+                            Padding="5,2" FontSize="14" Click="NextDay_Click" ToolTip="次の日">›</Button>
+                    <!-- 週移動 -->
+                    <Button Margin="0,0,2,0" Style="{StaticResource SecondaryButton}"
+                            Padding="6,4" Click="NextWeek_Click" ToolTip="次の週">
+                        <Path Data="{StaticResource Bi.ChevronRight}" Style="{StaticResource BiIconSm}"/>
+                    </Button>
+                    <!-- 月移動 -->
+                    <Button Margin="0,0,8,0" Style="{StaticResource SecondaryButton}"
+                            Padding="6,4" Click="NextMonth_Click" ToolTip="次の月">
+                        <Path Data="{StaticResource Bi.ChevronDoubleRight}" Style="{StaticResource BiIconSm}"/>
+                    </Button>
+                    <Button Content="今日" Style="{StaticResource SecondaryButton}"
+                            Padding="9,4" FontSize="12" Click="Today_Click"/>
+                </StackPanel>
+
+                <!-- 予定入力欄 + ガント/詳細 トグル -->
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- 予定設定入力欄（タスク選択時に表示） -->
+                    <StackPanel x:Name="ScheduleInputPanel" Orientation="Horizontal"
+                                Visibility="Collapsed" Margin="0,0,14,0">
+                        <TextBlock Text="予定開始" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,5,0"/>
+                        <TextBox x:Name="TxtPlannedStart" Width="94" Height="22"
+                                 Style="{StaticResource DarkTextBox}" FontSize="11" Padding="4,2"
+                                 LostFocus="PlannedDate_LostFocus"/>
+                        <TextBlock Text="〜" FontSize="11" VerticalAlignment="Center" Margin="5,0"/>
+                        <TextBox x:Name="TxtPlannedEnd" Width="94" Height="22"
+                                 Style="{StaticResource DarkTextBox}" FontSize="11" Padding="4,2"
+                                 LostFocus="PlannedDate_LostFocus"/>
+                    </StackPanel>
+                    <TextBlock Text="ガント" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <Border x:Name="ViewToggleSwitch" Width="44" Height="24" CornerRadius="12"
+                            Cursor="Hand" MouseLeftButtonUp="ViewToggleBtn_Click">
+                        <Grid>
+                            <Border x:Name="ToggleThumb" Width="20" Height="20" CornerRadius="10"
+                                    Background="White" HorizontalAlignment="Left"
+                                    Margin="2,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="詳細" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 検索/フィルターセクション（検索ボタンでトグル） -->
+        <Border x:Name="SearchSection" Grid.Row="1" Visibility="Collapsed"
+                ClipToBounds="True"
+                Padding="12,8" Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <!-- 右: 検索ボックス -->
+                <TextBox x:Name="SearchBox" DockPanel.Dock="Right" Width="280"
+                         Style="{StaticResource DarkTextBox}" Tag="タスク名・担当者で検索"
+                         TextChanged="Filter_Changed" VerticalAlignment="Center"/>
+                <!-- 左: ラベル付きフィルター -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="カテゴリー：" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="CbCategoryFilter"
+                              Style="{StaticResource DarkComboBox}"
+                              SelectionChanged="Filter_Changed" VerticalAlignment="Center"
+                              Margin="0,0,14,0"/>
+                    <TextBlock Text="ステータス：" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="CbStatusFilter"
+                              Style="{StaticResource DarkComboBox}"
+                              SelectionChanged="Filter_Changed" VerticalAlignment="Center"
+                              Margin="0,0,14,0">
+                        <ComboBoxItem Content="すべてのステータス" IsSelected="True"/>
+                        <ComboBoxItem Content="未着手"/>
+                        <ComboBoxItem Content="対応中"/>
+                        <ComboBoxItem Content="レビュー中"/>
+                        <ComboBoxItem Content="完了"/>
+                    </ComboBox>
+                    <TextBlock Text="優先度：" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="CbPriorityFilter"
+                              Style="{StaticResource DarkComboBox}"
+                              SelectionChanged="Filter_Changed" VerticalAlignment="Center">
+                        <ComboBoxItem Content="すべての優先度" IsSelected="True"/>
+                        <ComboBoxItem Content="高"/>
+                        <ComboBoxItem Content="中"/>
+                        <ComboBoxItem Content="低"/>
+                    </ComboBox>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- 列ヘッダー -->
+        <Grid Grid.Row="2" Background="{StaticResource BgSecondaryBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="52"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,1,1" Height="36"/>
+
+            <!-- 通常モード列ヘッダー（ガントモード用） -->
+            <Grid x:Name="ColumnHeaderNormal" Grid.Column="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="HeaderTaskTreeCol" Width="480"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,1,1" Height="36">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="66"/>
+                            <ColumnDefinition Width="90"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="タスク名" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Padding="8,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="担当者" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="優先度" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="ステータス" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Padding="6,0" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <ScrollViewer Grid.Column="1" x:Name="HeaderScroll"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollBarVisibility="Disabled"
+                              Background="{StaticResource BgSecondaryBrush}" Height="36">
+                    <Canvas x:Name="DateHeaderCanvas" Height="36"
+                            VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- 詳細モード列ヘッダー -->
+            <Border x:Name="ColumnHeaderDetail" Grid.Column="1" Height="36"
+                    Visibility="Collapsed"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="95"/>
+                        <ColumnDefinition Width="85"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="75"/>
+                        <ColumnDefinition Width="60"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="1" Text="タスク名" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Padding="8,0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="省略形" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Text="中分類" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="タグ" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="5" Text="予定期間" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="6" Text="担当者" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="7" Text="優先度" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="8" Text="ステータス" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Padding="6,0" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- コンテンツエリア: 縦ツールバー + メイン -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="52"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 縦型ツールバー -->
+            <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
+                    <!-- カテゴリー操作ボタン -->
+                    <Button x:Name="BtnCatAdd" ToolTip="カテゴリー追加 (Ctrl+Shift+;)"
+                            Style="{StaticResource VToolbarBtn}" Click="AddCategory_Click">
+                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                    <Button x:Name="BtnCatEdit" ToolTip="カテゴリー編集 (F3)" IsEnabled="False"
+                            Style="{StaticResource VToolbarBtn}" Click="EditCategory_Click">
+                        <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                    <Button x:Name="BtnCatDelete" ToolTip="カテゴリー削除" IsEnabled="False"
+                            Style="{StaticResource VToolbarBtn}" Click="DeleteCategory_Click">
+                        <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                    <Separator Style="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}" Margin="6,4"/>
+                    <!-- タスク操作ボタン -->
+                    <Button x:Name="BtnEditTask" ToolTip="タスク編集 (F2)" IsEnabled="False"
+                            Style="{StaticResource VToolbarBtn}" Click="EditTask_Click">
+                        <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                    <Button ToolTip="タスク追加 (Ctrl+Shift+;)" Style="{StaticResource VToolbarBtn}" Click="AddTask_Click">
+                        <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                    <Button x:Name="BtnDeleteTask" ToolTip="タスク削除 (Ctrl+-)" IsEnabled="False"
+                            Style="{StaticResource VToolbarBtn}" Click="DeleteTask_Click">
+                        <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                    <Button x:Name="BtnCommentTask" ToolTip="コメント (Ctrl+K)" IsEnabled="False"
+                            Style="{StaticResource VToolbarBtn}" Click="EditComment_Click">
+                        <Path Data="{StaticResource Bi.ChatDotsFill}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                    <Button x:Name="BtnSchedule" ToolTip="予定設定 (Ctrl+H)" Style="{StaticResource VToolbarBtn}" Click="ScheduleTask_Click">
+                        <Path Data="{StaticResource Bi.CalendarRange}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                    <Button ToolTip="検索/絞り込み (Ctrl+F)" Style="{StaticResource VToolbarBtn}" Click="ToggleSearch_Click">
+                        <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                    <Button ToolTip="CSV出力 (Ctrl+P)" Style="{StaticResource VToolbarBtn}" Click="ExportCsv_Click">
+                        <Path Data="{StaticResource Bi.BoxArrowUp}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                    <Button ToolTip="WBS出力 (Ctrl+Shift+P)" Style="{StaticResource VToolbarBtn}" Click="ExportWbs_Click">
+                        <Path Data="{StaticResource Bi.FileEarmarkSpreadsheet}" Style="{StaticResource BiIcon}"/>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- メインコンテンツ (DockPanel: 右に詳細パネル) -->
+            <DockPanel Grid.Column="1">
+
+                <!-- 右: 詳細サイドパネル（タスク選択時・詳細モード時に表示） -->
+                <Border x:Name="DetailSidePanel" DockPanel.Dock="Right" Width="0"
+                        ClipToBounds="True"
+                        Background="{StaticResource BgCardBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1,0,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border Grid.Row="0" Padding="12,8"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" ToolTip="閉じる"
+                                        Style="{StaticResource VToolbarBtn}" Width="28" Height="28"
+                                        Click="CloseDetailPanel_Click">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="DetailPanelTitle"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="TaskDetailPanel" Margin="16,12"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- メインスクロール -->
+                <ScrollViewer x:Name="MainScroll" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition x:Name="TaskTreeColDef" Width="480"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel x:Name="TaskTree" Grid.Column="0"/>
+
+                        <ScrollViewer Grid.Column="1" x:Name="BarScroll"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      ScrollChanged="BarScroll_ScrollChanged">
+                            <StackPanel x:Name="GanttStack"
+                                        VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                        </ScrollViewer>
+                    </Grid>
+                </ScrollViewer>
+            </DockPanel>
+        </Grid>
+        </Grid>
+
+        <!-- Drag overlay (ghost / drop indicator) -->
+        <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False"/>
+    </Grid>
+</Page>

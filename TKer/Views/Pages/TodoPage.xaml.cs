@@ -28,9 +28,12 @@ public partial class TodoPage : Page, IRefreshable
 
         InitializeComponent();
 
-        _svc.DataChanged += (_, _) => Dispatcher.Invoke(Refresh);
-        Loaded += (_, _) => Refresh();
+        _svc.DataChanged += OnDataChanged;
+        Loaded   += (_, _) => Refresh();
+        Unloaded += (_, _) => _svc.DataChanged -= OnDataChanged;
     }
+
+    private void OnDataChanged(object? sender, EventArgs e) => Dispatcher.Invoke(Refresh);
 
     // ── IRefreshable ─────────────────────────────────────
     public void Refresh()

@@ -114,7 +114,15 @@ public class ProjectService
         }
 
         var json = JsonConvert.SerializeObject(CurrentProject, Formatting.Indented);
-        File.WriteAllText(ProjectFilePath, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+
+        // 一時ファイルに書き出してから置換し、書き込み途中のクラッシュでも本体が壊れないようにする
+        var tmp = ProjectFilePath + ".tmp";
+        File.WriteAllText(tmp, json, encoding);
+        if (File.Exists(ProjectFilePath))
+            File.Replace(tmp, ProjectFilePath, null);
+        else
+            File.Move(tmp, ProjectFilePath);
         _hasUnsavedChanges = false;
     }
 
@@ -126,17 +134,20 @@ public class ProjectService
         if (CurrentProject == null) return;
         CurrentProject.Settings.ProjectPath = newBase;
         foreach (var cat in CurrentProject.Categories)
-        {
-            if (!string.IsNullOrEmpty(cat.FolderPath))
-                cat.FolderPath = cat.FolderPath.Replace(oldBase, newBase);
-        }
+            cat.FolderPath = RebasePath(cat.FolderPath, oldBase, newBase);
         foreach (var task in CurrentProject.Tasks)
-        {
-            if (!string.IsNullOrEmpty(task.FolderPath))
-                task.FolderPath = task.FolderPath.Replace(oldBase, newBase);
-        }
+            task.FolderPath = RebasePath(task.FolderPath, oldBase, newBase);
         MarkDirtyAndSave();
         ProjectChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>パスの先頭が oldBase の場合のみ newBase に置き換える（部分文字列誤置換を防ぐ）</summary>
+    private static string RebasePath(string path, string oldBase, string newBase)
+    {
+        if (string.IsNullOrEmpty(path)) return path;
+        if (path.StartsWith(oldBase, StringComparison.OrdinalIgnoreCase))
+            return newBase + path[oldBase.Length..];
+        return path;
     }
 
     /// <summary>プロジェクトフォルダが移動されていれば自動修正して読み込む</summary>
@@ -168,6 +179,7 @@ public class ProjectService
         var reloaded = JsonConvert.DeserializeObject<ProjectData>(json);
         if (reloaded == null) return false;
         CurrentProject = reloaded;
+        _hasUnsavedChanges = false;
         ProjectChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -309,17 +321,19 @@ public class ProjectService
         if (renameFolder && existing.FolderCreated && Directory.Exists(existing.FolderPath))
         {
             var parentDir  = Path.GetDirectoryName(existing.FolderPath)!;
-            var newFolderName = $"{existing.Id}_{SanitizeName(category.Name)}";
+            var oldPath    = existing.FolderPath;
+            var newFolderName = $"{existing.Order:D3}_{SanitizeName(category.Name)}";
             var newFolderPath = EnsureUniqueFolder(Path.Combine(parentDir, newFolderName));
-            if (newFolderPath != existing.FolderPath)
+            if (!string.Equals(newFolderPath, oldPath, StringComparison.OrdinalIgnoreCase))
             {
-                Directory.Move(existing.FolderPath, newFolderPath);
+                Directory.Move(oldPath, newFolderPath);
                 existing.FolderPath = newFolderPath;
                 // 配下タスクのパス更新
                 foreach (var t in CurrentProject.Tasks.Where(t => t.CategoryId == existing.Id))
                 {
-                    if (t.FolderPath.StartsWith(existing.FolderPath))
-                        t.FolderPath = Path.Combine(newFolderPath, Path.GetFileName(t.FolderPath));
+                    if (!string.IsNullOrEmpty(t.FolderPath) &&
+                        t.FolderPath.StartsWith(oldPath, StringComparison.OrdinalIgnoreCase))
+                        t.FolderPath = newFolderPath + t.FolderPath[oldPath.Length..];
                 }
             }
         }

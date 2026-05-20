@@ -30,9 +30,12 @@ public partial class CalendarPage : Page, IRefreshable
         InitializeComponent();
         _year  = DateTime.Today.Year;
         _month = DateTime.Today.Month;
-        _svc.DataChanged += (_, _) => Dispatcher.Invoke(RenderCalendar);
-        Loaded += (_, _) => Refresh();
+        _svc.DataChanged += OnDataChanged;
+        Loaded   += (_, _) => Refresh();
+        Unloaded += (_, _) => _svc.DataChanged -= OnDataChanged;
     }
+
+    private void OnDataChanged(object? sender, EventArgs e) => Dispatcher.Invoke(RenderCalendar);
 
     public void NavigateTo(DateTime date)
     {
@@ -250,22 +253,23 @@ public partial class CalendarPage : Page, IRefreshable
                     $"[実績] {t.Name}\n{t.ActualStartDate:M/d}～{t.ActualEndDate:M/d}");
                 sp.Children.Add(chip);
             }
+        }
 
-            int totalItems = cell.PlannedTasks.Count + cell.ActualTasks.Count
-                           + scheduleEvents.Count(ev => ev.StartTime.Date <= date.Date && ev.EndTime.Date >= date.Date);
-            int shown = Math.Min(2, cell.PlannedTasks.Count)
-                      + Math.Min(1, cell.ActualTasks.Count)
-                      + Math.Min(2, (int)scheduleEvents.Count(ev => ev.StartTime.Date <= date.Date && ev.EndTime.Date >= date.Date));
-            int overflow = totalItems - shown;
-            if (overflow > 0)
+        // オーバーフロー表示（イベントのみの日でも算出するため cellMap ブロック外で計算）
+        int plannedCount = cell?.PlannedTasks.Count ?? 0;
+        int actualCount  = cell?.ActualTasks.Count  ?? 0;
+        int eventCount   = scheduleEvents.Count(ev => ev.StartTime.Date <= date.Date && ev.EndTime.Date >= date.Date);
+        int totalItems   = plannedCount + actualCount + eventCount;
+        int shown        = Math.Min(2, plannedCount) + Math.Min(1, actualCount) + Math.Min(2, eventCount);
+        int overflow     = totalItems - shown;
+        if (overflow > 0)
+        {
+            sp.Children.Add(new TextBlock
             {
-                sp.Children.Add(new TextBlock
-                {
-                    Text       = $"+{overflow}件",
-                    FontSize   = 10,
-                    Foreground = new SolidColorBrush(Color.FromRgb(120, 119, 116))
-                });
-            }
+                Text       = $"+{overflow}件",
+                FontSize   = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(120, 119, 116))
+            });
         }
 
         border.Child = sp;

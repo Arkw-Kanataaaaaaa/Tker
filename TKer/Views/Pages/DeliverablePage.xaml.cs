@@ -120,7 +120,7 @@ public partial class DeliverablePage : Page, IRefreshable
     private void OpenOutput_Click(object sender, RoutedEventArgs e)
     {
         if (!string.IsNullOrEmpty(_lastOutputPath) && System.IO.Directory.Exists(_lastOutputPath))
-            Process.Start("explorer.exe", _lastOutputPath);
+            ShellHelper.OpenInExplorer(_lastOutputPath);
     }
 
     private void OpenZip_Click(object sender, RoutedEventArgs e)

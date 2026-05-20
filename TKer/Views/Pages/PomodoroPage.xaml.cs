@@ -29,6 +29,7 @@ public partial class PomodoroPage : Page, IRefreshable
     private int  _totalSecs   = 0;   // そのフェーズの総秒
     private int  _sessionsDone = 0;  // 完了した作業セッション数（サイクル内）
     private int  _todaySessions = 0;
+    private int  _todayMinutes  = 0;
     private int  _todayBreaks   = 0;
 
     // 設定（UIから読む）
@@ -112,8 +113,9 @@ public partial class PomodoroPage : Page, IRefreshable
         {
             _todaySessions++;
             _sessionsDone++;
+            _todayMinutes += WorkMin;
             TxtTodaySessions.Text = _todaySessions.ToString();
-            TxtTodayMinutes.Text  = (_todaySessions * WorkMin).ToString();
+            TxtTodayMinutes.Text  = _todayMinutes.ToString();
         }
         else
         {

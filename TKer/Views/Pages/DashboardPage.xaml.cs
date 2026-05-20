@@ -58,7 +58,7 @@ public partial class DashboardPage : Page, IRefreshable
 
         var work = project.ActualWork;
         var today = DateTime.Today;
-        var weekStart  = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+        var weekStart  = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
         double totalH = work.Sum(w => w.Hours);

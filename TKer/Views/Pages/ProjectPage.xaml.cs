@@ -583,7 +583,7 @@ public partial class ProjectPage : Page, IRefreshable
         border.MouseLeave      += (_, _) => border.Background = Brushes.Transparent;
         border.MouseLeftButtonUp += (_, _) =>
         {
-            if (child.IsDirectory) Process.Start("explorer.exe", child.FullPath);
+            if (child.IsDirectory) ShellHelper.OpenInExplorer(child.FullPath);
             else Process.Start(new ProcessStartInfo(child.FullPath) { UseShellExecute = true });
         };
         return border;
@@ -961,7 +961,7 @@ public partial class ProjectPage : Page, IRefreshable
         if (node == null) return;
 
         if (node.IsDirectory)
-            Process.Start("explorer.exe", node.FullPath);
+            ShellHelper.OpenInExplorer(node.FullPath);
         else
             Process.Start(new ProcessStartInfo(node.FullPath) { UseShellExecute = true });
     }
@@ -1427,6 +1427,6 @@ public partial class ProjectPage : Page, IRefreshable
     {
         var path = _vm.ProjectService.CurrentProject?.Settings.ProjectPath;
         if (!string.IsNullOrEmpty(path) && System.IO.Directory.Exists(path))
-            Process.Start("explorer.exe", path);
+            ShellHelper.OpenInExplorer(path);
     }
 }

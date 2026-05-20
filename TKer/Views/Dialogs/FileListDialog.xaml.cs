@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using TKer.Helpers;
 using TKer.Models;
 using TKer.Services;
 
@@ -39,7 +40,7 @@ public partial class FileListDialog : Window
     {
         if (FileList.SelectedItem is not FileNode node) return;
         if (node.IsDirectory)
-            Process.Start("explorer.exe", node.FullPath);
+            ShellHelper.OpenInExplorer(node.FullPath);
         else
             Process.Start(new ProcessStartInfo(node.FullPath) { UseShellExecute = true });
     }
@@ -47,7 +48,7 @@ public partial class FileListDialog : Window
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         if (Directory.Exists(_task.FolderPath))
-            Process.Start("explorer.exe", _task.FolderPath);
+            ShellHelper.OpenInExplorer(_task.FolderPath);
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

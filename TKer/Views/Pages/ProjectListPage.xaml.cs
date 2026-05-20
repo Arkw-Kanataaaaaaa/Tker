@@ -36,9 +36,21 @@ public partial class ProjectListPage : Page, IRefreshable
         Loaded += (_, _) =>
         {
             if (Window.GetWindow(this) is { } win)
+            {
+                win.KeyDown -= Window_KeyDown;
                 win.KeyDown += Window_KeyDown;
+                _keyDownWindow = win;
+            }
+        };
+        Unloaded += (_, _) =>
+        {
+            if (_keyDownWindow is { } win)
+                win.KeyDown -= Window_KeyDown;
+            _keyDownWindow = null;
         };
     }
+
+    private Window? _keyDownWindow;
 
     // ── IRefreshable ──────────────────────────────────────
     public void Refresh()
@@ -411,7 +423,7 @@ public partial class ProjectListPage : Page, IRefreshable
         var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == path);
         var folder = entry?.ProjectPath ?? System.IO.Path.GetDirectoryName(path) ?? "";
         if (System.IO.Directory.Exists(folder))
-            System.Diagnostics.Process.Start("explorer.exe", folder);
+            ShellHelper.OpenInExplorer(folder);
         else
             AppDialog.ShowError("フォルダが見つかりません", "エラー", Window.GetWindow(this));
     }
@@ -1244,7 +1256,7 @@ public partial class ProjectListPage : Page, IRefreshable
         border.MouseLeave        += (_, _) => border.Background = Brushes.Transparent;
         border.MouseLeftButtonUp += (_, _) =>
         {
-            if (child.IsDirectory) Process.Start("explorer.exe", child.FullPath);
+            if (child.IsDirectory) ShellHelper.OpenInExplorer(child.FullPath);
             else Process.Start(new ProcessStartInfo(child.FullPath) { UseShellExecute = true });
         };
         return border;
@@ -1573,7 +1585,7 @@ public partial class ProjectListPage : Page, IRefreshable
         if (node == null) return;
 
         if (node.IsDirectory)
-            Process.Start("explorer.exe", node.FullPath);
+            ShellHelper.OpenInExplorer(node.FullPath);
         else
             Process.Start(new ProcessStartInfo(node.FullPath) { UseShellExecute = true });
     }
@@ -2011,6 +2023,6 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         var path = _vm.ProjectService.CurrentProject?.Settings.ProjectPath;
         if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            Process.Start("explorer.exe", path);
+            ShellHelper.OpenInExplorer(path);
     }
 }

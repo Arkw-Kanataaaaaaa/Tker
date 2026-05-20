@@ -5,6 +5,7 @@ using System.Windows.Media;
 
 namespace TKer.Views;
 
+/// <summary>サイドナビゲーション用のアイコン・ラベル・バッジを持つカスタムコントロール。</summary>
 public partial class NavItem : System.Windows.Controls.UserControl
 {
     public static readonly DependencyProperty IconProperty =
@@ -37,9 +38,11 @@ public partial class NavItem : System.Windows.Controls.UserControl
 
     public NavItem() { InitializeComponent(); }
 
+    /// <summary>依存関係プロパティ変更時にビジュアルを更新するコールバック。</summary>
     private static void OnPropsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         => ((NavItem)d).UpdateVisuals();
 
+    /// <summary>アクティブ状態・バッジ数に応じてアイコン・ラベル・背景を更新する。</summary>
     private void UpdateVisuals()
     {
         IconBlock.Text = Icon;
@@ -74,6 +77,7 @@ public partial class NavItem : System.Windows.Controls.UserControl
         }
     }
 
+    /// <summary>ナビゲーション項目がクリックされたときにバインドされたコマンドを実行する。</summary>
     private void Root_Click(object sender, MouseButtonEventArgs e)
     {
         if (Command?.CanExecute(CommandParameter) == true)

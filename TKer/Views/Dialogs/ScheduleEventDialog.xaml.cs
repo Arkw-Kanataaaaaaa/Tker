@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -6,6 +6,7 @@ using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>スケジュールイベントの新規作成・編集を行うダイアログ。</summary>
 public partial class ScheduleEventDialog : Window
 {
     // 返り値プロパティ
@@ -17,6 +18,7 @@ public partial class ScheduleEventDialog : Window
     public bool    EventIsAllDay    { get; private set; }
     public string  EventColor       { get; private set; } = "#2383E2";
 
+    /// <summary>既存イベントまたはデフォルト日付を基にフォームを初期化する。</summary>
     public ScheduleEventDialog(ScheduleEvent? existing, DateTime defaultDate)
     {
         InitializeComponent();
@@ -47,6 +49,7 @@ public partial class ScheduleEventDialog : Window
 
     private void ChkAllDay_Changed(object sender, RoutedEventArgs e) => UpdateTimeVisibility();
 
+    /// <summary>終日チェックの状態に応じて時刻入力パネルの表示を切り替える。</summary>
     private void UpdateTimeVisibility()
     {
         var vis = ChkAllDay.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
@@ -54,12 +57,14 @@ public partial class ScheduleEventDialog : Window
         TimeEndPanel.Visibility   = vis;
     }
 
+    /// <summary>カラーラジオボタンの選択変更でイベントカラーを更新する。</summary>
     private void Color_Checked(object sender, RoutedEventArgs e)
     {
         if (sender is RadioButton rb)
             EventColor = rb.Tag?.ToString() ?? "#2383E2";
     }
 
+    /// <summary>指定カラーに対応するラジオボタンを選択状態にする。</summary>
     private void SelectColorRadio(string color)
     {
         var target = color.ToUpperInvariant();
@@ -76,6 +81,7 @@ public partial class ScheduleEventDialog : Window
         EventColor = "#2383E2";
     }
 
+    /// <summary>入力値を検証してイベントプロパティに反映しダイアログを確定する。</summary>
     private void BtnOk_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtTitle.Text))
@@ -120,6 +126,7 @@ public partial class ScheduleEventDialog : Window
 
     private void BtnCancel_Click(object sender, RoutedEventArgs e) => DialogResult = false;
 
+    /// <summary>時刻文字列をTimeSpanに変換する。変換失敗時はフォールバック値を返す。</summary>
     private static TimeSpan ParseTime(string text, TimeSpan fallback)
     {
         if (TimeSpan.TryParseExact(text.Trim(), @"hh\:mm", null, out var ts)) return ts;

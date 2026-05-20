@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -6,6 +6,7 @@ using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>タスクの新規作成・編集を行うダイアログ。</summary>
 public partial class TaskDialog : Window
 {
     public string CategoryId { get; private set; } = "";
@@ -23,12 +24,14 @@ public partial class TaskDialog : Window
     public string Tags { get; private set; } = "";
     public bool DelayApproved { get; private set; } = false;
 
+    /// <summary>Escキーでダイアログをキャンセル閉じする。</summary>
     protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
     {
         base.OnPreviewKeyDown(e);
         if (e.Key == System.Windows.Input.Key.Escape) { DialogResult = false; e.Handled = true; }
     }
 
+    /// <summary>カテゴリー一覧と既存タスクを受け取りフォームを初期化する。</summary>
     public TaskDialog(TaskItem? existing, List<Category> categories, bool isPersonalMode = false)
     {
         InitializeComponent();
@@ -60,12 +63,14 @@ public partial class TaskDialog : Window
         }
     }
 
+    /// <summary>コンボボックスの表示テキストが一致する項目を選択状態にする。</summary>
     private static void SetComboByText(System.Windows.Controls.ComboBox cb, string text)
     {
         foreach (System.Windows.Controls.ComboBoxItem item in cb.Items)
             if (item.Content as string == text) { cb.SelectedItem = item; return; }
     }
 
+    /// <summary>入力値を検証してタスクプロパティに反映しダイアログを確定する。</summary>
     private void OK_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtName.Text))
@@ -92,6 +97,7 @@ public partial class TaskDialog : Window
         DialogResult = true;
     }
 
+    /// <summary>指定カテゴリーIDをコンボボックスで選択状態にする。</summary>
     public void PresetCategory(string categoryId)
     {
         CbCategory.SelectedValue = categoryId;

@@ -16,6 +16,7 @@ using TKer.Services;
 
 namespace TKer.Views.Widgets;
 
+/// <summary>月カレンダーとイベント・タスクのドット表示を持つデスクトップウィジェットウィンドウ。</summary>
 public partial class CalendarWidget : Window
 {
     // ── Win32 ──────────────────────────────────────────────
@@ -44,6 +45,7 @@ public partial class CalendarWidget : Window
     private DispatcherTimer? _desktopModeTimer;
 
     // ── コンストラクタ ────────────────────────────────────
+    /// <summary>サービスを受け取り、位置・サイズを復元して自動更新タイマーを開始する。</summary>
     public CalendarWidget(ScheduleService svc, ProjectService proj, AppSettingsService appSettings)
     {
         _svc         = svc;
@@ -80,6 +82,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── 設定適用 ──────────────────────────────────────────
+    /// <summary>設定値を読み込んで背景色・テキスト色・ピンアイコンをウィジェットに反映する。</summary>
     private void ApplySettings()
     {
         _ws = _appSettings.WidgetSettings;
@@ -119,6 +122,7 @@ public partial class CalendarWidget : Window
         Render();
     }
 
+    /// <summary>デスクトップモード・最前面固定・通常モードのいずれかにウィンドウの表示順を設定する。</summary>
     private void ApplyWindowMode()
     {
         _desktopModeTimer?.Stop();
@@ -150,6 +154,7 @@ public partial class CalendarWidget : Window
         }
     }
 
+    /// <summary>ピンボタンのアイコンとツールチップをデスクトップモード・最前面の状態に応じて更新する。</summary>
     private void UpdatePinIcon()
     {
         if (_ws.DesktopMode)
@@ -173,6 +178,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── カレンダー描画 ────────────────────────────────────
+    /// <summary>曜日ヘッダーとカレンダーセルを再構築してカレンダーを描画する。</summary>
     private void Render()
     {
         TxtMonthYear.Text = $"{_year}年 {_month}月";
@@ -245,6 +251,7 @@ public partial class CalendarWidget : Window
         CalGrid.Rows = rows / 7;
     }
 
+    /// <summary>指定日付のカレンダーセルをイベント・タスクのドットとツールチップ付きで生成する。</summary>
     private Border BuildCell(DateTime date, bool isCurrent,
         IEnumerable<ScheduleEvent> events, IEnumerable<TaskItem> tasks)
     {
@@ -368,6 +375,7 @@ public partial class CalendarWidget : Window
     };
 
     // ── ヘッダーボタン ────────────────────────────────────
+    /// <summary>前月へ移動してカレンダーを再描画する。</summary>
     private void BtnPrev_Click(object s, RoutedEventArgs e)
     {
         var d = new DateTime(_year, _month, 1).AddMonths(-1);
@@ -375,6 +383,7 @@ public partial class CalendarWidget : Window
         Render();
     }
 
+    /// <summary>翌月へ移動してカレンダーを再描画する。</summary>
     private void BtnNext_Click(object s, RoutedEventArgs e)
     {
         var d = new DateTime(_year, _month, 1).AddMonths(1);
@@ -382,6 +391,7 @@ public partial class CalendarWidget : Window
         Render();
     }
 
+    /// <summary>閉じるボタンクリック時にウィジェットを非表示にして設定を保存する。</summary>
     private void BtnClose_Click(object s, RoutedEventArgs e)
     {
         _ws.IsVisible = false;
@@ -389,6 +399,7 @@ public partial class CalendarWidget : Window
         Hide();
     }
 
+    /// <summary>ピンボタンクリック時に通常・最前面・デスクトップモードを順番にトグルする。</summary>
     private void BtnPin_Click(object s, RoutedEventArgs e)
     {
         if (_ws.DesktopMode)
@@ -417,6 +428,7 @@ public partial class CalendarWidget : Window
         => ShowSettingsDialog();
 
     // ── ドラッグ移動 ─────────────────────────────────────
+    /// <summary>ヘッダー部分のマウスダウンでウィンドウをドラッグ移動する。</summary>
     private void Header_MouseDown(object s, MouseButtonEventArgs e)
     {
         if (e.LeftButton == MouseButtonState.Pressed)
@@ -424,6 +436,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── リサイズグリップ ──────────────────────────────────
+    /// <summary>リサイズグリップのマウスダウンでネイティブリサイズメッセージを送信してウィンドウサイズ変更を開始する。</summary>
     private void ResizeGrip_MouseDown(object s, MouseButtonEventArgs e)
     {
         if (e.LeftButton == MouseButtonState.Pressed)
@@ -436,6 +449,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── 位置・サイズ保存 ──────────────────────────────────
+    /// <summary>ウィンドウ位置変更時に Left・Top を設定に保存する。</summary>
     private void Widget_LocationChanged(object s, EventArgs e)
     {
         if (_suppressSave || !IsLoaded) return;
@@ -444,6 +458,7 @@ public partial class CalendarWidget : Window
         _appSettings.SaveWidgetSettings(_ws);
     }
 
+    /// <summary>ウィンドウサイズ変更時に Width・Height を設定に保存する。</summary>
     private void Widget_SizeChanged(object s, SizeChangedEventArgs e)
     {
         if (_suppressSave || !IsLoaded) return;
@@ -452,6 +467,7 @@ public partial class CalendarWidget : Window
         _appSettings.SaveWidgetSettings(_ws);
     }
 
+    /// <summary>閉じる操作をHideに差し替えて非表示状態を設定に保存する。</summary>
     private void Widget_Closing(object s, System.ComponentModel.CancelEventArgs e)
     {
         if (_forceClose) return; // アプリ終了時はそのまま閉じる
@@ -473,6 +489,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── 設定ダイアログ ────────────────────────────────────
+    /// <summary>設定ダイアログを表示し、OKが返ったら設定を保存して外観とウィンドウモードを再適用する。</summary>
     private void ShowSettingsDialog()
     {
         var dlg = new WidgetSettingsDialog(_ws) { Owner = this };
@@ -485,6 +502,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── ヘルパー ──────────────────────────────────────────
+    /// <summary>16進数カラー文字列とオパシティからSolidColorBrushを生成する。</summary>
     private static SolidColorBrush ParseBrush(string hex, double opacity = 1.0)
     {
         try
@@ -496,6 +514,7 @@ public partial class CalendarWidget : Window
         catch { return new SolidColorBrush(Colors.Gray); }
     }
 
+    /// <summary>16進数カラー文字列とオパシティからColorを生成する。</summary>
     private static Color ParseColor(string hex, double opacity = 1.0)
     {
         try
@@ -507,6 +526,7 @@ public partial class CalendarWidget : Window
     }
 
     // ── 公開メソッド（MainWindow から呼び出し） ────────────
+    /// <summary>設定から位置・サイズを復元してウィジェットを表示し、表示状態を設定に保存する。</summary>
     public void ShowWidget()
     {
         _ws = _appSettings.WidgetSettings;

@@ -6,6 +6,7 @@ using TKer.Models;
 
 namespace TKer.Views.Widgets;
 
+/// <summary>カレンダーウィジェットの外観・動作設定を編集するダイアログウィンドウ。</summary>
 public partial class WidgetSettingsDialog : Window
 {
     // 編集中の設定コピー
@@ -14,6 +15,7 @@ public partial class WidgetSettingsDialog : Window
     /// <summary>OKを押したときに確定した設定を返す</summary>
     public CalendarWidgetSettings Result { get; private set; } = new();
 
+    /// <summary>現在の設定のディープコピーを作成してダイアログを初期化する。</summary>
     public WidgetSettingsDialog(CalendarWidgetSettings current)
     {
         InitializeComponent();
@@ -25,6 +27,7 @@ public partial class WidgetSettingsDialog : Window
     }
 
     // ── 値の読み込み ──────────────────────────────────────
+    /// <summary>編集中の設定値をUIコントロールに読み込む。</summary>
     private void LoadValues()
     {
         // 色
@@ -56,6 +59,7 @@ public partial class WidgetSettingsDialog : Window
     private void ColorText_Changed(object sender, TextChangedEventArgs e)
         => UpdateColorPreviews();
 
+    /// <summary>各スライダーの現在値をラベルテキストとして更新する。</summary>
     private void UpdateSliderLabels()
     {
         LblOpacity.Text          = $"{SldrOpacity.Value:F2}";
@@ -64,6 +68,7 @@ public partial class WidgetSettingsDialog : Window
         LblFontSize.Text         = $"{(int)SldrFontSize.Value}";
     }
 
+    /// <summary>各カラーテキストボックスの値に基づいてプレビューボーダーの背景色を更新する。</summary>
     private void UpdateColorPreviews()
     {
         SetPreview(PreviewBg,     TxtBgColor.Text);
@@ -73,6 +78,7 @@ public partial class WidgetSettingsDialog : Window
         SetPreview(PreviewBorder, TxtBorderColor.Text);
     }
 
+    /// <summary>16進数カラー文字列をパースしてプレビューBorderの背景色に設定する。</summary>
     private static void SetPreview(System.Windows.Controls.Border preview, string hex)
     {
         try
@@ -108,6 +114,7 @@ public partial class WidgetSettingsDialog : Window
     private void Theme_Light(object s, RoutedEventArgs e)
         => ApplyTheme("#F0F5F7FF", "#1565C0", "#212121", "#757575", "#BBDEFB");
 
+    /// <summary>指定されたテーマカラーをカラーテキストボックスに一括設定する。</summary>
     private void ApplyTheme(string bg, string accent, string text, string dim, string border)
     {
         TxtBgColor.Text     = bg;
@@ -118,6 +125,7 @@ public partial class WidgetSettingsDialog : Window
     }
 
     // ── OK / キャンセル ───────────────────────────────────
+    /// <summary>UI入力値を設定オブジェクトに収集してResultに設定し、ダイアログをtrueで閉じる。</summary>
     private void BtnOk_Click(object s, RoutedEventArgs e)
     {
         // 現在の入力を収集
@@ -143,6 +151,7 @@ public partial class WidgetSettingsDialog : Window
         => DialogResult = false;
 
     // ── ユーティリティ ────────────────────────────────────
+    /// <summary>設定オブジェクトを全フィールドコピーしてディープコピーを生成する。</summary>
     private static CalendarWidgetSettings CloneSettings(CalendarWidgetSettings src) => new()
     {
         Left            = src.Left,

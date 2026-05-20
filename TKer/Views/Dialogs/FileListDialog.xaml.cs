@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,11 +8,13 @@ using TKer.Services;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>タスクフォルダ内のファイルツリーを表示するダイアログ。</summary>
 public partial class FileListDialog : Window
 {
     private readonly TaskItem _task;
     private readonly ProjectService _svc;
 
+    /// <summary>タスクとサービスを受け取りファイル一覧を読み込んで初期化する。</summary>
     public FileListDialog(TaskItem task, ProjectService svc)
     {
         _task = task;
@@ -25,6 +27,7 @@ public partial class FileListDialog : Window
         LoadFiles();
     }
 
+    /// <summary>タスクフォルダのツリー構造を取得してリストに設定する。</summary>
     private void LoadFiles()
     {
         var node = _svc.GetTaskFolderTree(_task);
@@ -36,6 +39,7 @@ public partial class FileListDialog : Window
         FileList.ItemsSource = node.Children;
     }
 
+    /// <summary>ファイルノードをダブルクリックしてファイルまたはフォルダを開く。</summary>
     private void FileList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (FileList.SelectedItem is not FileNode node) return;
@@ -45,6 +49,7 @@ public partial class FileListDialog : Window
             Process.Start(new ProcessStartInfo(node.FullPath) { UseShellExecute = true });
     }
 
+    /// <summary>タスクフォルダをエクスプローラーで開く。</summary>
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         if (Directory.Exists(_task.FolderPath))

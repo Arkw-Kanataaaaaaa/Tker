@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,12 +10,14 @@ using TKer.Services;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>アプリ全体の設定（一般・テーマ・ショートカット・ツールバー・ログ）を編集するダイアログ。</summary>
 public partial class AppSettingsDialog : Window
 {
     private readonly AppSettingsService _svc;
     private List<AppShortcut> _shortcuts;
     private List<string>      _menuOrder;
 
+    /// <summary>現在の設定値を各UIコントロールに読み込んで初期化する。</summary>
     public AppSettingsDialog(AppSettingsService svc)
     {
         _svc = svc;
@@ -77,6 +79,7 @@ public partial class AppSettingsDialog : Window
     }
 
     // ══════ 一般設定 ══════
+    /// <summary>背景画像ファイルをダイアログで選択してパスをセットする。</summary>
     private void BrowseBg_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
@@ -91,6 +94,7 @@ public partial class AppSettingsDialog : Window
     private void ClearBg_Click(object sender, RoutedEventArgs e) => TxtBgPath.Text = "";
 
     // ══════ テーマ ══════
+    /// <summary>透明度スライダーの値が変化したときにラベルを更新する。</summary>
     private void SliderOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (LblOpacity != null)
@@ -98,6 +102,7 @@ public partial class AppSettingsDialog : Window
     }
 
     // ══════ ショートカット ══════
+    /// <summary>ショートカット一覧パネルを現在のリストで再構築する。</summary>
     private void RefreshShortcutList()
     {
         ScListPanel.Children.Clear();
@@ -154,6 +159,7 @@ public partial class AppSettingsDialog : Window
         }
     }
 
+    /// <summary>ファイルダイアログでショートカット先を選択して一覧に追加する。</summary>
     private void AddShortcut_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
@@ -203,6 +209,7 @@ public partial class AppSettingsDialog : Window
     }
 
     // ══════ ツールバー ══════
+    /// <summary>ツールバー順序リストボックスを現在の順序で再描画する。</summary>
     private void RefreshMenuOrderList()
     {
         TbListBox.Items.Clear();
@@ -215,6 +222,7 @@ public partial class AppSettingsDialog : Window
     private void TbMoveUp_Click(object sender, RoutedEventArgs e)   => TbMove(-1);
     private void TbMoveDown_Click(object sender, RoutedEventArgs e) => TbMove(+1);
 
+    /// <summary>ツールバー項目を指定した方向に移動する。</summary>
     private void TbMove(int delta)
     {
         int idx = TbListBox.SelectedIndex;
@@ -227,6 +235,7 @@ public partial class AppSettingsDialog : Window
     }
 
     // ══════ OK / Cancel ══════
+    /// <summary>入力値を検証してサービスに保存し、ダイアログを閉じる。</summary>
     private void OK_Click(object sender, RoutedEventArgs e)
     {
         if (!int.TryParse(TxtGraceDays.Text, out var days) || days < 0)
@@ -277,6 +286,7 @@ public partial class AppSettingsDialog : Window
 
     private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
+    /// <summary>コンボボックスのタグが一致する項目を選択状態にする。</summary>
     private static void SelectComboByTag(ComboBox cb, string tag)
     {
         foreach (ComboBoxItem item in cb.Items)

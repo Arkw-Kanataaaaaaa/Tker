@@ -1,8 +1,9 @@
-﻿using System.Windows;
+using System.Windows;
 using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>プロジェクト名・説明・バージョン・担当者を編集するダイアログ。</summary>
 public partial class ProjectSettingsDialog : Window
 {
     public string ProjectName { get; private set; } = "";
@@ -10,6 +11,7 @@ public partial class ProjectSettingsDialog : Window
     public string Version     { get; private set; } = "";
     public string Manager     { get; private set; } = "";
 
+    /// <summary>既存プロジェクトデータをフォームに反映して初期化する。</summary>
     public ProjectSettingsDialog(ProjectData project)
     {
         InitializeComponent();
@@ -21,6 +23,7 @@ public partial class ProjectSettingsDialog : Window
         TxtManager.Text     = project.Manager;
     }
 
+    /// <summary>入力値を検証してプロパティに反映しダイアログを確定する。</summary>
     private void OK_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtName.Text))

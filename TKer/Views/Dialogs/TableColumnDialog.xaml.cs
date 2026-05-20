@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,6 +7,7 @@ using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>カスタムテーブルの名前とカラム定義を編集するダイアログ。</summary>
 public partial class TableColumnDialog : Window
 {
     public string TableName { get; private set; } = string.Empty;
@@ -14,6 +15,7 @@ public partial class TableColumnDialog : Window
 
     private readonly List<(TextBox NameBox, ComboBox TypeBox)> _rows = new();
 
+    /// <summary>既存テーブルがある場合はその値をフォームに反映して初期化する。</summary>
     public TableColumnDialog(CustomTable? existing = null)
     {
         InitializeComponent();
@@ -35,6 +37,7 @@ public partial class TableColumnDialog : Window
         UpdateNoColumnText();
     }
 
+    /// <summary>指定した名前と型でカラム入力行をリストに追加する。</summary>
     private void AddColumnRow(string name, string type)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
@@ -87,11 +90,13 @@ public partial class TableColumnDialog : Window
         _rows.Add(captured);
     }
 
+    /// <summary>カラムが0件のときの空欄メッセージ表示を更新する。</summary>
     private void UpdateNoColumnText()
     {
         NoColumnText.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>入力値を検証してテーブル名とカラム定義を確定しダイアログを閉じる。</summary>
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtTableName.Text))

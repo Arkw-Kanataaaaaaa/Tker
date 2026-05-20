@@ -1,14 +1,16 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>タスクのステータスとメモを素早く更新するダイアログ。</summary>
 public partial class QuickStatusDialog : Window
 {
     public string NewStatus { get; private set; } = "";
     public string NewNotes  { get; private set; } = "";
 
+    /// <summary>対象タスクの現在ステータスをコンボボックスに反映して初期化する。</summary>
     public QuickStatusDialog(TaskItem task)
     {
         InitializeComponent();
@@ -29,6 +31,7 @@ public partial class QuickStatusDialog : Window
             SystemCommands.CloseWindowCommand, (_, _) => DialogResult = false));
     }
 
+    /// <summary>選択されたステータスとメモをプロパティに設定してダイアログを確定する。</summary>
     private void BtnOk_Click(object sender, RoutedEventArgs e)
     {
         NewStatus = (CmbStatus.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";

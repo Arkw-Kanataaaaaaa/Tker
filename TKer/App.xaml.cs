@@ -11,10 +11,12 @@ using TKer.WidgetHost;
 
 namespace TKer;
 
+/// <summary>アプリケーションのエントリポイント。通常モードとウィジェット専用モードの起動を振り分ける。</summary>
 public partial class App : Application
 {
     private WidgetHostApp? _widgetHostApp;
 
+    /// <summary>起動引数を確認してウィジェット専用モードまたは通常モードで起動する。</summary>
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -31,6 +33,7 @@ public partial class App : Application
     }
 
     // ── ウィジェット専用プロセス ──────────────────────────
+    /// <summary>ウィジェット専用プロセスとしてトレイアイコン常駐モードで起動する。</summary>
     private void StartWidgetMode()
     {
         // 二重起動チェック
@@ -78,6 +81,7 @@ public partial class App : Application
     }
 
     // ── 通常モード ────────────────────────────────────────
+    /// <summary>ハードウェアアクセラレーションとスムーズスクロールを有効化してメインウィンドウを表示する。</summary>
     private void StartNormalMode()
     {
         // ハードウェアアクセラレーション強制
@@ -108,12 +112,14 @@ public partial class App : Application
         mainWindow.Show();
     }
 
+    /// <summary>アプリ終了時にウィジェットホストを破棄する。</summary>
     protected override void OnExit(ExitEventArgs e)
     {
         _widgetHostApp?.Dispose();
         base.OnExit(e);
     }
 
+    /// <summary>テーマカラー設定をアプリケーションリソースに反映してUI全体の配色を更新する。</summary>
     public static void ApplyTheme(ThemeColors t)
     {
         var res = Current.Resources;
@@ -151,18 +157,21 @@ public partial class App : Application
             res["DropdownBgBrush"] = new SolidColorBrush(ddBg);
     }
 
+    /// <summary>指定ファクターで色を暗くしたColorを返す。</summary>
     private static Color Darken(Color c, double factor)
         => Color.FromArgb(c.A,
             (byte)(c.R * factor),
             (byte)(c.G * factor),
             (byte)(c.B * factor));
 
+    /// <summary>フォントファミリー名が指定されている場合にウィンドウのフォントを適用する。</summary>
     public static void ApplyFont(string? fontFamily, System.Windows.Window window)
     {
         if (!string.IsNullOrWhiteSpace(fontFamily))
             window.FontFamily = new FontFamily(fontFamily);
     }
 
+    /// <summary>16進数文字列をColorに変換し、成否をboolで返す。</summary>
     private static bool TryParse(string hex, out Color color)
     {
         try { color = (Color)ColorConverter.ConvertFromString(hex); return true; }

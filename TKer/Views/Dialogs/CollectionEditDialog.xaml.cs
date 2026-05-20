@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -9,6 +9,7 @@ using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>コレクションの新規作成・編集を行うダイアログ。</summary>
 public partial class CollectionEditDialog : Window
 {
     private readonly Collection?          _existing;
@@ -17,6 +18,7 @@ public partial class CollectionEditDialog : Window
     /// <summary>OK 押下後に確定したコレクション情報</summary>
     public Collection? Result { get; private set; }
 
+    /// <summary>既存コレクションがある場合はその値をフォームに反映して初期化する。</summary>
     public CollectionEditDialog(Collection? existing = null)
     {
         InitializeComponent();
@@ -46,6 +48,7 @@ public partial class CollectionEditDialog : Window
 
     // ══════ フィールド一覧 ══════
 
+    /// <summary>フィールド一覧パネルを現在のフィールドリストで再構築する。</summary>
     private void RefreshFieldList()
     {
         FieldListPanel.Children.Clear();
@@ -66,6 +69,7 @@ public partial class CollectionEditDialog : Window
             FieldListPanel.Children.Add(BuildFieldRow(field));
     }
 
+    /// <summary>フィールドの種別に応じたアイコンとバッジを含む行UIを構築する。</summary>
     private UIElement BuildFieldRow(CollectionField field)
     {
         var (icon, label, badgeColor) = field.FieldType switch
@@ -144,6 +148,7 @@ public partial class CollectionEditDialog : Window
 
     // ══════ イベント ══════
 
+    /// <summary>新規フィールド名と種別を入力して一覧に追加する。</summary>
     private void AddField_Click(object sender, RoutedEventArgs e)
     {
         var name = TxtNewFieldName.Text.Trim();
@@ -163,6 +168,7 @@ public partial class CollectionEditDialog : Window
         RefreshFieldList();
     }
 
+    /// <summary>フォルダー選択ダイアログでコレクションフォルダを設定する。</summary>
     private void BrowseFolder_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog
@@ -173,6 +179,7 @@ public partial class CollectionEditDialog : Window
             TxtFolder.Text = dlg.FolderName;
     }
 
+    /// <summary>入力を検証してコレクションオブジェクトを生成しダイアログを確定する。</summary>
     private void OK_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtName.Text))
@@ -206,6 +213,7 @@ public partial class CollectionEditDialog : Window
 
     // ══════ ユーティリティ ══════
 
+    /// <summary>アプリケーションリソースからブラシを取得する。見つからない場合は透明を返す。</summary>
     private static Brush Brush(string key)
     {
         try { return (Brush)Application.Current.Resources[key]; }

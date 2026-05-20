@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
@@ -6,10 +6,12 @@ namespace TKer.Views.Dialogs;
 
 public enum AppDialogType { Info, Warning, Error, Confirm }
 
+/// <summary>情報・警告・エラー・確認用の汎用アプリダイアログ。</summary>
 public partial class AppDialog : Window
 {
     public bool Confirmed { get; private set; } = false;
 
+    /// <summary>ダイアログの種類と内容を指定して初期化する。</summary>
     private AppDialog(string title, string message, AppDialogType type, bool showCancel)
     {
         InitializeComponent();
@@ -34,6 +36,7 @@ public partial class AppDialog : Window
         ButtonPanel.Children.Add(ok);
     }
 
+    /// <summary>指定ラベルと結果値でボタンを生成して返す。</summary>
     private Button MakeButton(string label, bool result, bool isPrimary)
     {
         var btn = new Button
@@ -57,6 +60,7 @@ public partial class AppDialog : Window
     public static void ShowWarning(string message, string title = "警告", Window? owner = null)
         => Show(title, message, AppDialogType.Warning, false, owner);
 
+    /// <summary>確認ダイアログを表示し、ユーザーの選択結果を返す。</summary>
     public static bool Confirm(string message, string title = "確認", Window? owner = null)
     {
         var dlg = new AppDialog(title, message, AppDialogType.Confirm, showCancel: true);
@@ -65,6 +69,7 @@ public partial class AppDialog : Window
         return dlg.Confirmed;
     }
 
+    /// <summary>指定種別のダイアログを表示する内部メソッド。</summary>
     private static void Show(string title, string message, AppDialogType type, bool showCancel, Window? owner)
     {
         var dlg = new AppDialog(title, message, type, showCancel);

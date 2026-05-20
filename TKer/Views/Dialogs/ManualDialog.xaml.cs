@@ -1,12 +1,14 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>アプリの操作マニュアルを目次ナビゲーション付きで表示するダイアログ。</summary>
 public partial class ManualDialog : Window
 {
+    /// <summary>マニュアルダイアログを初期化し最初のページを表示する。</summary>
     public ManualDialog()
     {
         InitializeComponent();
@@ -15,6 +17,7 @@ public partial class ManualDialog : Window
         TocList.SelectedIndex = 0;
     }
 
+    /// <summary>目次の選択項目に応じて対応するページコンテンツを描画する。</summary>
     private void TocList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         ContentPanel.Children.Clear();
@@ -88,6 +91,7 @@ public partial class ManualDialog : Window
     { Background = new SolidColorBrush(Color.FromRgb(37,45,64)), Margin = new Thickness(0,8,0,8) });
 
     // ── ページ内容 ───────────────────────────────
+    /// <summary>ホーム画面の説明コンテンツを描画する。</summary>
     private void RenderHome()
     {
         H1("🏠 ホーム画面");
@@ -105,6 +109,7 @@ public partial class ManualDialog : Window
         P("現在開いているプロジェクトの各画面へワンクリックで遷移できます。プロジェクト未選択時はグレーアウトします。");
     }
 
+    /// <summary>プロジェクト作成の説明コンテンツを描画する。</summary>
     private void RenderCreateProject()
     {
         H1("📂 プロジェクト作成");
@@ -125,6 +130,7 @@ public partial class ManualDialog : Window
         Warn("インポートはタスクを追加します。既存タスクが重複して登録されることがあります。");
     }
 
+    /// <summary>複数プロジェクト管理の説明コンテンツを描画する。</summary>
     private void RenderMultiProject()
     {
         H1("🔄 複数プロジェクトの管理");
@@ -142,6 +148,7 @@ public partial class ManualDialog : Window
         Warn("project_data.json が存在しないプロジェクトは一覧から自動的に削除されます。");
     }
 
+    /// <summary>カテゴリー管理の説明コンテンツを描画する。</summary>
     private void RenderCategory()
     {
         H1("📂 カテゴリー管理");
@@ -155,6 +162,7 @@ public partial class ManualDialog : Window
         Warn("カテゴリーを削除すると、配下のタスクもすべて削除されます。フォルダは削除されません。");
     }
 
+    /// <summary>タスク管理の説明コンテンツを描画する。</summary>
     private void RenderTask()
     {
         H1("✅ タスク管理");
@@ -173,6 +181,7 @@ public partial class ManualDialog : Window
         P("ステータスボタン・カテゴリードロップダウン・検索テキストボックスで絞り込みができます。これらは同時に適用されます。");
     }
 
+    /// <summary>フォルダ管理の説明コンテンツを描画する。</summary>
     private void RenderFolder()
     {
         H1("📁 フォルダ管理");
@@ -186,6 +195,7 @@ public partial class ManualDialog : Window
         Tip("プロジェクト画面のフォルダツリーでプロジェクト全体の構成を俯瞰できます。");
     }
 
+    /// <summary>ガントチャートの説明コンテンツを描画する。</summary>
     private void RenderGantt()
     {
         H1("📊 ガントチャート");
@@ -198,6 +208,7 @@ public partial class ManualDialog : Window
         Tip("青バーと緑バーのズレが遅延を示します。緑が右に飛び出していれば遅延です。");
     }
 
+    /// <summary>カレンダー・スケジュールの説明コンテンツを描画する。</summary>
     private void RenderCalendar()
     {
         H1("📅 カレンダー・スケジュール");
@@ -208,6 +219,7 @@ public partial class ManualDialog : Window
         Tip("遅延日数がマイナスの場合は前倒し完了を意味します。");
     }
 
+    /// <summary>成果物まとめ機能の説明コンテンツを描画する。</summary>
     private void RenderDeliverable()
     {
         H1("📦 成果物まとめ");
@@ -231,6 +243,7 @@ public partial class ManualDialog : Window
         Tip("INDEX.mdをそのまま提出書類の目次として活用できます。");
     }
 
+    /// <summary>よくある質問のコンテンツを描画する。</summary>
     private void RenderFaq()
     {
         H1("❓ よくある質問");

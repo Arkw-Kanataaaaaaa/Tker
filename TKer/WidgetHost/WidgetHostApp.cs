@@ -11,16 +11,11 @@ using TKer.Views.Widgets;
 
 namespace TKer.WidgetHost;
 
-/// <summary>
-/// ウィジェット専用プロセスのエントリポイント管理クラス。
-/// --widget フラグで起動された時のみ使用される。
-/// システムトレイアイコン + BookmarkWidget を管理する。
-/// WinForms 非依存 — Hardcodet.NotifyIcon.Wpf (TaskbarIcon) を使用。
-/// </summary>
+/// <summary>--widget フラグ起動時に使用するウィジェット専用プロセスのトレイアイコンとBookmarkWidgetを管理するクラス。</summary>
 public class WidgetHostApp : IDisposable
 {
     // ── Mutex（二重起動防止） ─────────────────────────────
-    private static readonly string MutexName = "TKer.WidgetProcess.v1";
+    private static readonly string MUTEX_NAME = "TKer.WidgetProcess.v1";
     private Mutex? _mutex;
 
     // ── サービス ─────────────────────────────────────────
@@ -42,22 +37,24 @@ public class WidgetHostApp : IDisposable
     private DispatcherTimer?   _reloadTimer;   // デバウンス用
 
     // ── アプリデータディレクトリ ──────────────────────────
-    private static readonly string AppDataDir =
+    private static readonly string APP_DATA_DIR =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TKer");
 
     // ── 公開：二重起動チェック ────────────────────────────
+    /// <summary>Mutexを確認してウィジェットプロセスが既に起動中かどうかを返す。</summary>
     public static bool IsAlreadyRunning()
     {
-        var mutex = new Mutex(true, MutexName, out bool created);
+        var mutex = new Mutex(true, MUTEX_NAME, out bool created);
         if (!created) { mutex.Dispose(); return true; }
         mutex.Dispose();
         return false;
     }
 
     // ── コンストラクタ ────────────────────────────────────
+    /// <summary>サービスを初期化し、前回開いていたプロジェクトを読み込んでロガーを設定する。</summary>
     public WidgetHostApp()
     {
-        _mutex = new Mutex(true, MutexName, out bool created);
+        _mutex = new Mutex(true, MUTEX_NAME, out bool created);
         if (!created) { _mutex.Dispose(); _mutex = null; }
 
         _appSettings = new AppSettingsService();
@@ -77,6 +74,7 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── 起動 ─────────────────────────────────────────────
+    /// <summary>トレイアイコンとBookmarkWidgetを構築し、ファイル監視を開始してウィジェットを表示する。</summary>
     public void Start()
     {
         BuildTrayIcon();
@@ -94,6 +92,7 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── システムトレイアイコン構築（WPF ネイティブ） ──────
+    /// <summary>WPFネイティブのTaskbarIconを構築し、コンテキストメニューとダブルクリックイベントを設定する。</summary>
     private void BuildTrayIcon()
     {
         _trayIcon = new TaskbarIcon
@@ -144,6 +143,7 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── ウィジェット表示切替 ──────────────────────────────
+    /// <summary>BookmarkWidgetの表示・非表示をUIスレッド上でトグルする。</summary>
     private void ToggleBookmarkWidget()
     {
         Application.Current.Dispatcher.Invoke(() =>
@@ -157,6 +157,7 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── メインアプリの起動 ────────────────────────────────
+    /// <summary>メインアプリを引数なしで別プロセスとして起動する。</summary>
     private static void LaunchMainApp()
     {
         try
@@ -169,6 +170,7 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── アプリ終了 ────────────────────────────────────────
+    /// <summary>トレイアイコンとウィジェットを破棄してアプリケーションを終了する。</summary>
     private void ExitApp()
     {
         AppLogger.Instance.Info("WidgetHostApp", "ExitApp", "ウィジェットプロセス終了");
@@ -178,9 +180,10 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── ファイル変更監視 ──────────────────────────────────
+    /// <summary>settings.json・todos.json・schedule.jsonのファイル変更監視を開始する。</summary>
     private void StartFileWatchers()
     {
-        if (!Directory.Exists(AppDataDir)) return;
+        if (!Directory.Exists(APP_DATA_DIR)) return;
 
         _reloadTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _reloadTimer.Tick += (_, _) => { _reloadTimer.Stop(); OnFilesChanged(); };
@@ -190,11 +193,12 @@ public class WidgetHostApp : IDisposable
         WatchFile("schedule.json",  ref _scheduleWatcher);
     }
 
+    /// <summary>指定ファイルのFileSystemWatcherを作成してデータ変更イベントを購読する。</summary>
     private void WatchFile(string fileName, ref FileSystemWatcher? watcher)
     {
         try
         {
-            watcher = new FileSystemWatcher(AppDataDir, fileName)
+            watcher = new FileSystemWatcher(APP_DATA_DIR, fileName)
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
                 EnableRaisingEvents = true
@@ -204,6 +208,7 @@ public class WidgetHostApp : IDisposable
         catch { /* 監視失敗は無視 */ }
     }
 
+    /// <summary>ファイル変更イベントを受けてデバウンスタイマーをリセット・再起動する。</summary>
     private void OnDataFileChanged(object sender, FileSystemEventArgs e)
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
@@ -213,6 +218,7 @@ public class WidgetHostApp : IDisposable
         });
     }
 
+    /// <summary>デバウンス後にウィジェットが表示中であれば再描画をトリガーする。</summary>
     private void OnFilesChanged()
     {
         AppLogger.Instance.Debug("WidgetHostApp", "OnFilesChanged", "設定ファイル変更を検出・リロード");
@@ -225,6 +231,7 @@ public class WidgetHostApp : IDisposable
     }
 
     // ── IDisposable ──────────────────────────────────────
+    /// <summary>ファイル監視・トレイアイコン・MutexをすべてDisposeして解放する。</summary>
     public void Dispose()
     {
         _settingsWatcher?.Dispose();

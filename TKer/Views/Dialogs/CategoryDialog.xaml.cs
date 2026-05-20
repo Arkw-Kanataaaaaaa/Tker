@@ -1,8 +1,9 @@
-﻿using System.Windows;
+using System.Windows;
 using TKer.Models;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>カテゴリーの新規作成・編集を行うダイアログ。</summary>
 public partial class CategoryDialog : Window
 {
     public string CategoryName { get; private set; } = "";
@@ -10,6 +11,7 @@ public partial class CategoryDialog : Window
     public string Color { get; private set; } = "#3D7EFF";
     public bool RenameFolder { get; private set; } = false;
 
+    /// <summary>既存カテゴリーがある場合はその値をフォームに反映して初期化する。</summary>
     public CategoryDialog(Category? existing)
     {
         InitializeComponent();
@@ -24,6 +26,7 @@ public partial class CategoryDialog : Window
         }
     }
 
+    /// <summary>入力値を検証してプロパティに反映しダイアログを確定する。</summary>
     private void OK_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtName.Text))

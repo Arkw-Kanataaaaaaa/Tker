@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,6 +8,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>アラート一覧を表示するダイアログ。</summary>
 public partial class AlertListDialog : Window
 {
     private readonly AppSettingsService _svc;
@@ -15,6 +16,7 @@ public partial class AlertListDialog : Window
     private List<AlertItem> _allAlerts = new();
     private string _filter = "All";
 
+    /// <summary>アラート一覧ダイアログを初期化し、アラートを読み込む。</summary>
     public AlertListDialog(AppSettingsService svc, MainViewModel vm)
     {
         _svc = svc;
@@ -25,12 +27,14 @@ public partial class AlertListDialog : Window
         Load();
     }
 
+    /// <summary>サービスからアラートを収集してフィルターを適用する。</summary>
     private void Load()
     {
         _allAlerts = _svc.CollectAlerts();
         ApplyFilter();
     }
 
+    /// <summary>現在のフィルター条件に基づいてアラートを絞り込みグリッドに反映する。</summary>
     private void ApplyFilter()
     {
         var filtered = _filter switch
@@ -44,17 +48,20 @@ public partial class AlertListDialog : Window
         CountLabel.Text = $"{filtered.Count} 件";
     }
 
+    /// <summary>フィルターボタンのクリックでフィルター種別を切り替える。</summary>
     private void Filter_Click(object sender, RoutedEventArgs e)
     {
         _filter = ((Button)sender).Tag as string ?? "All";
         ApplyFilter();
     }
 
+    /// <summary>グリッドのダブルクリックでプロジェクトを開く。</summary>
     private void AlertGrid_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         OpenProject_Click(sender, e);
     }
 
+    /// <summary>選択したアラートのプロジェクトを開いてタスク一覧へ遷移する。</summary>
     private void OpenProject_Click(object sender, RoutedEventArgs e)
     {
         if (AlertGrid.SelectedItem is AlertItem alert)

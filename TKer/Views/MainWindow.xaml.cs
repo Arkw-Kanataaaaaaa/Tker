@@ -15,6 +15,7 @@ using TKer.Views.Widgets;
 
 namespace TKer.Views;
 
+/// <summary>アプリケーションのメインウィンドウ。ナビゲーション・ウィジェット・ウィンドウ操作を統括する。</summary>
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _vm;
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
     // ── ウィジェット ────────────────────────────────────────
     private BookmarkWidget?  _bookmarkWidget;
 
+    /// <summary>メインウィンドウを初期化し、ViewModelのバインド・背景・ウィジェットを設定する。</summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -66,9 +68,10 @@ public partial class MainWindow : Window
     }
 
     // ── 動画壁紙の拡張子リスト ────────────────────────────
-    private static readonly string[] VideoExtensions =
+    private static readonly string[] VIDEO_EXTENSIONS =
         { ".mp4", ".avi", ".wmv", ".mov", ".mkv", ".webm" };
 
+    /// <summary>設定に基づいて動画・画像・無地の背景をウィンドウに適用する。</summary>
     public void ApplyBackground()
     {
         var path = _vm.AppSettingsService.BackgroundImagePath;
@@ -77,7 +80,7 @@ public partial class MainWindow : Window
         {
             var ext = Path.GetExtension(path).ToLowerInvariant();
 
-            if (Array.Exists(VideoExtensions, e => e == ext))
+            if (Array.Exists(VIDEO_EXTENSIONS, e => e == ext))
             {
                 // ── 動画壁紙 ──
                 Background = (System.Windows.Media.Brush)FindResource("BgPrimaryBrush");
@@ -109,6 +112,7 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>動画壁紙が終端に達したときにループ再生を開始する。</summary>
     private void BgVideo_MediaEnded(object sender, System.Windows.RoutedEventArgs e)
     {
         // ループ再生
@@ -116,6 +120,7 @@ public partial class MainWindow : Window
         BgVideoElement.Play();
     }
 
+    /// <summary>動画壁紙の再生を停止し、ソースをクリアして非表示にする。</summary>
     private void StopBgVideo()
     {
         BgVideoElement.MediaEnded -= BgVideo_MediaEnded;
@@ -129,6 +134,7 @@ public partial class MainWindow : Window
     // ────────────────────────────────────────────────────────
     private bool _isNavigating = false;
 
+    /// <summary>現在のビュー名に対応するページを生成し、フェードアニメーション付きで画面遷移する。</summary>
     private void NavigateToCurrentView()
     {
         if (_isNavigating) return;
@@ -209,6 +215,7 @@ public partial class MainWindow : Window
         _                     => new HomePage(_vm),
     };
 
+    /// <summary>ローディングオーバーレイをフェードアウトアニメーションで非表示にする。</summary>
     private void HideLoadingOverlay()
     {
         var anim = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500))
@@ -224,6 +231,7 @@ public partial class MainWindow : Window
     }
 
     // ── ファイル変更通知クリック ─────────────────────────────
+    /// <summary>ファイル変更通知トーストをクリックしたときにクイックステータスダイアログを開く。</summary>
     private void FileChangeToast_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         var taskId = _vm.FileChangeTaskId;
@@ -249,6 +257,7 @@ public partial class MainWindow : Window
     private void AppSettings_Click(object sender, System.Windows.RoutedEventArgs e)
         => _vm.NavigateToCommand.Execute("AppSettings");
 
+    /// <summary>バージョン情報ダイアログを表示する。</summary>
     private void MenuAbout_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         MessageBox.Show(
@@ -270,12 +279,14 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
+    /// <summary>タスクリストページへ遷移してカテゴリ追加ダイアログを開く。</summary>
     private void MenuNewCategory_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         _vm.NavigateToCommand.Execute("TaskList");
         _taskListPage.AddCategory_Click(this, new System.Windows.RoutedEventArgs());
     }
 
+    /// <summary>タスクリストページへ遷移してタスク追加ダイアログを開く。</summary>
     private void MenuNewTask_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         _vm.NavigateToCommand.Execute("TaskList");
@@ -288,6 +299,7 @@ public partial class MainWindow : Window
     private void MenuExportWbs_Click(object sender, System.Windows.RoutedEventArgs e)
         => _taskListPage.TriggerExportWbs();
 
+    /// <summary>新規プロジェクト作成ダイアログを開き、カテゴリテンプレートを適用してプロジェクト一覧へ遷移する。</summary>
     private void NewProject_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         var dlg = new Views.Dialogs.NewProjectDialog { Owner = this };
@@ -306,6 +318,7 @@ public partial class MainWindow : Window
         _vm.NavigateToCommand.Execute("ProjectList");
     }
 
+    /// <summary>ファイル選択ダイアログでプロジェクトファイルを選択して読み込む。</summary>
     private void OpenProject_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
@@ -317,6 +330,7 @@ public partial class MainWindow : Window
             _vm.SwitchProjectCommand.Execute(dlg.FileName);
     }
 
+    /// <summary>設定に保存されたメニュー順序に従い、トップメニューの項目を並び替える。</summary>
     public void ApplyMenuOrder()
     {
         var order = _vm.AppSettingsService.MenuOrder.ToList();
@@ -363,6 +377,7 @@ public partial class MainWindow : Window
     // スナップレイアウト用：BtnMaximize のホバー状態トラッキング
     private bool _maxBtnHovered = false;
 
+    /// <summary>DWMトランジションを有効化し、スナップレイアウト対応の WndProc フックを登録する。</summary>
     private void EnableNativeAnimations()
     {
         var hwnd = new WindowInteropHelper(this).Handle;
@@ -382,6 +397,7 @@ public partial class MainWindow : Window
     // WinCtrlBtn スタイルは IsMouseOver / IsPressed トリガーベースのため
     // VisualStateManager.GoToState は効かない。
     // テンプレート内の "Bd" Border を Template.FindName で直接操作してホバー色を再現する。
+    /// <summary>最大化ボタンのテンプレート内 Border の背景色をホバー状態に応じて直接変更する。</summary>
     private void SetMaxBtnBackground(string state)
     {
         try
@@ -399,6 +415,7 @@ public partial class MainWindow : Window
         catch { /* リソース未解決時は無視 */ }
     }
 
+    /// <summary>WM_NCHITTEST など最大化ボタン関連ウィンドウメッセージを処理してスナップレイアウトとアニメーションを制御する。</summary>
     private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         // ── WM_NCHITTEST ──
@@ -482,6 +499,7 @@ public partial class MainWindow : Window
     }
 
     // ── ウィンドウ操作 ─────────────────────────────────────
+    /// <summary>DWM フラッシュ後にバックグラウンドスレッドで最小化アニメーションを確実に発火させる。</summary>
     private void WinMinimize_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         var hwnd = new WindowInteropHelper(this).Handle;
@@ -506,6 +524,7 @@ public partial class MainWindow : Window
     private void WinClose_Click(object sender, System.Windows.RoutedEventArgs e)
         => Close();
 
+    /// <summary>ウィンドウ状態変化時に最大化アイコンを切り替え、最大化マージンを補正する。</summary>
     private void Window_StateChanged(object sender, EventArgs e)
     {
         if (BtnMaximize == null || MaximizeIcon == null) return;
@@ -523,6 +542,7 @@ public partial class MainWindow : Window
             : new Thickness(0);
     }
 
+    /// <summary>WidgetServiceProvider を構築して BookmarkWidget インスタンスを初期化する。</summary>
     private void InitBookmarkWidget()
     {
         var svc = new TKer.Services.WidgetServiceProvider(
@@ -538,6 +558,7 @@ public partial class MainWindow : Window
         _bookmarkWidget = new BookmarkWidget(svc);
     }
 
+    /// <summary>栞ウィジェットの表示・非表示をトグルする。</summary>
     private void MenuBookmarkWidget_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         if (_bookmarkWidget == null) InitBookmarkWidget();
@@ -548,6 +569,7 @@ public partial class MainWindow : Window
             _bookmarkWidget.ShowWidget();
     }
 
+    /// <summary>ウィジェット専用プロセスを --widget 引数付きで起動する。</summary>
     private void MenuLaunchWidgetProcess_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         try
@@ -572,6 +594,7 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>ウィンドウを閉じる前にプロジェクトを保存しウィジェットを強制終了する。</summary>
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
@@ -582,4 +605,5 @@ public partial class MainWindow : Window
     }
 }
 
+/// <summary>ページが画面遷移時に最新データを再読み込みするためのインターフェース。</summary>
 public interface IRefreshable { void Refresh(); }

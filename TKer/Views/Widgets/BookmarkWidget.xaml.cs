@@ -9,27 +9,12 @@ using TKer.Services;
 
 namespace TKer.Views.Widgets;
 
-/// <summary>
-/// 画面上を自由に移動できる「栞」型ウィジェットランチャー。
-///
-/// ─ 移動方法 ─────────────────────────────────────────
-///   タブ最上部のドラッグハンドル（・・・）を左クリックしたままドラッグ
-///
-/// ─ パネル開閉 ──────────────────────────────────────
-///   ◀ ボタン、または各ツールアイコンをクリック
-///   タブ背景（ボタン以外の空き領域）をクリックしても開閉できる
-///
-/// ─ 設計メモ（Left 調整）────────────────────────────
-///   パネルは常にタブの LEFT に展開する。
-///   パネルを開くとき  → Left -= PanelWidth  (タブの画面座標を維持)
-///   パネルを閉じるとき → Left += PanelWidth  (タブの画面座標を維持)
-///   保存する値は「タブの Left 画面座標」= パネル閉時の Window.Left
-/// </summary>
+/// <summary>画面上を自由にドラッグ移動できる栞型ウィジェットランチャー。タブとスライドパネルで構成される。</summary>
 public partial class BookmarkWidget : Window
 {
     // ── 定数 ──────────────────────────────────────────
-    private const double PanelWidth = 280.0;
-    private const double TabWidth   = 52.0;
+    private const double PANEL_WIDTH = 280.0;
+    private const double TAB_WIDTH   = 52.0;
 
     // ── 依存 ──────────────────────────────────────────
     private readonly WidgetServiceProvider _svc;
@@ -41,6 +26,7 @@ public partial class BookmarkWidget : Window
     private bool _suppressSave = false;
 
     // ── コンストラクタ ────────────────────────────────
+    /// <summary>サービスプロバイダーを受け取り、ウィジェットの位置を復元して初期化する。</summary>
     public BookmarkWidget(WidgetServiceProvider svc)
     {
         _svc     = svc;
@@ -59,6 +45,7 @@ public partial class BookmarkWidget : Window
     // ────────────────────────────────────────────────
     // ドラッグハンドル（タブ最上部 ・・・ の帯）
     // ────────────────────────────────────────────────
+    /// <summary>ドラッグハンドルのマウスダウンでウィンドウをドラッグ移動し、完了後に位置を保存する。</summary>
     private void DragHandle_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     {
         e.Handled = true; // TabBorder.Tab_MouseLeftButtonDown への伝播を止める
@@ -73,6 +60,7 @@ public partial class BookmarkWidget : Window
     // ────────────────────────────────────────────────
     // タブ背景クリック（ボタン以外の空き領域）→ パネル開閉
     // ────────────────────────────────────────────────
+    /// <summary>タブ背景のクリックでパネルを開閉する（ボタン・ドラッグハンドル領域のクリックは除外）。</summary>
     private void Tab_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left) return;
@@ -92,12 +80,14 @@ public partial class BookmarkWidget : Window
     // ────────────────────────────────────────────────
     // パネル開閉
     // ────────────────────────────────────────────────
+    /// <summary>パネルの開閉状態をトグルする。</summary>
     private void TogglePanel()
     {
         if (_isPanelOpen) ClosePanel();
         else              OpenPanel();
     }
 
+    /// <summary>パネルを左方向に展開し、タブの画面座標を維持しながらウィンドウ幅を拡張する。</summary>
     private void OpenPanel()
     {
         if (_isPanelOpen) return;
@@ -106,30 +96,31 @@ public partial class BookmarkWidget : Window
         //    現在 Width=52 → Left がタブの画面Left と同じ
         //    Width=332 にすると列0(パネル)が左に出るため Left を -280 補正
         double tabScreenLeft = Left; // 閉じているとき Left = タブ画面Left
-        double newLeft = tabScreenLeft - PanelWidth;
+        double newLeft = tabScreenLeft - PANEL_WIDTH;
 
         // 画面外に出ないようクランプ（最低でも 0）
         newLeft = Math.Max(SystemParameters.WorkArea.Left, newLeft);
 
         _isPanelOpen = true;
         Left  = newLeft;
-        Width = PanelWidth + TabWidth;
+        Width = PANEL_WIDTH + TAB_WIDTH;
 
         ExpandPanel.Visibility = Visibility.Visible;
         TxtToggle.Text = "▶"; // 現在 OPEN → クリックで閉じる
         BuildPanelContent();
     }
 
+    /// <summary>パネルを閉じてウィンドウをタブ幅のみに縮小し、タブの画面座標を維持する。</summary>
     private void ClosePanel()
     {
         if (!_isPanelOpen) return;
 
-        // タブの現在の画面 Left = Left(window) + PanelWidth(column0幅)
-        double tabScreenLeft = Left + PanelWidth;
+        // タブの現在の画面 Left = Left(window) + PANEL_WIDTH(column0幅)
+        double tabScreenLeft = Left + PANEL_WIDTH;
 
         _isPanelOpen = false;
         Left  = tabScreenLeft; // まず位置を確定
-        Width = TabWidth;      // 次にリサイズ（左側が縮む）
+        Width = TAB_WIDTH;      // 次にリサイズ（左側が縮む）
 
         ExpandPanel.Visibility = Visibility.Collapsed;
         TxtToggle.Text = "◀"; // 現在 CLOSED → クリックで開く
@@ -145,6 +136,7 @@ public partial class BookmarkWidget : Window
     // ────────────────────────────────────────────────
     // ツールアイコンボタン
     // ────────────────────────────────────────────────
+    /// <summary>TODOボタンクリック時にパネルを開いてTODOコンテンツを表示する。</summary>
     private void BtnTodo_Click(object s, RoutedEventArgs e)
     {
         if (!_isPanelOpen) OpenPanel();
@@ -152,6 +144,7 @@ public partial class BookmarkWidget : Window
         ShowTodoContent();
     }
 
+    /// <summary>メモボタンクリック時にパネルを開いてクイックメモパネルを表示する。</summary>
     private void BtnNote_Click(object s, RoutedEventArgs e)
     {
         if (!_isPanelOpen) OpenPanel();
@@ -161,6 +154,7 @@ public partial class BookmarkWidget : Window
     private void BtnPomodoro_Click(object s, RoutedEventArgs e)
         => NavigateMainWindow("Pomodoro");
 
+    /// <summary>タスクボタンクリック時にパネルを開いてタスクコンテンツを表示する。</summary>
     private void BtnTask_Click(object s, RoutedEventArgs e)
     {
         if (!_isPanelOpen) OpenPanel();
@@ -171,6 +165,7 @@ public partial class BookmarkWidget : Window
     private void BtnCalendar_Click(object s, RoutedEventArgs e)
         => NavigateMainWindow("Calendar");
 
+    /// <summary>ウィジェット非表示ボタンクリック時にパネルを閉じて非表示状態を保存する。</summary>
     private void BtnCloseWidget_Click(object s, RoutedEventArgs e)
     {
         ClosePanel();
@@ -181,6 +176,7 @@ public partial class BookmarkWidget : Window
     // ────────────────────────────────────────────────
     // パネルコンテンツ構築
     // ────────────────────────────────────────────────
+    /// <summary>進行中タスクと未完了TODOの一覧、およびクイックTODO追加フォームをパネルに構築する。</summary>
     private void BuildPanelContent()
     {
         if (PanelContent == null) return;
@@ -225,6 +221,7 @@ public partial class BookmarkWidget : Window
         BuildPanelContent();
     }
 
+    /// <summary>クイックメモ入力エリアとTODOとして保存するボタンをパネルに表示する。</summary>
     private void ShowNotePanel()
     {
         if (PanelContent == null) return;
@@ -280,6 +277,7 @@ public partial class BookmarkWidget : Window
         Margin = new Thickness(0, 0, 0, 4)
     };
 
+    /// <summary>タスク情報を表示するチップUI要素を生成して返す。</summary>
     private Border BuildTaskChip(TaskItem task)
     {
         var isOverdue = task.IsOverdue;
@@ -317,6 +315,7 @@ public partial class BookmarkWidget : Window
         return border;
     }
 
+    /// <summary>TODOアイテムのチェックボックス付きチップUI要素を生成して返す。</summary>
     private Border BuildTodoChip(TodoItem todo)
     {
         Color accent;
@@ -352,6 +351,7 @@ public partial class BookmarkWidget : Window
         };
     }
 
+    /// <summary>テキストボックスと追加ボタンからなるクイックTODO入力フォームを生成して返す。</summary>
     private Border BuildQuickTodoForm()
     {
         var container = new Border
@@ -428,20 +428,20 @@ public partial class BookmarkWidget : Window
             if (double.IsNaN(bs.TabLeft) || double.IsNaN(bs.TabTop))
             {
                 // 初回起動: 右端・縦 30% の位置
-                tabLeft = screen.Right - TabWidth;
+                tabLeft = screen.Right - TAB_WIDTH;
                 tabTop  = screen.Top + screen.Height * 0.30;
             }
             else
             {
                 // 保存済み位置を画面内にクランプ
-                tabLeft = Math.Clamp(bs.TabLeft, screen.Left, screen.Right - TabWidth);
+                tabLeft = Math.Clamp(bs.TabLeft, screen.Left, screen.Right - TAB_WIDTH);
                 tabTop  = Math.Clamp(bs.TabTop,  screen.Top,  screen.Bottom - 80);
             }
 
             // パネルが閉じているとき: Window.Left = タブ画面Left
             Left  = tabLeft;
             Top   = tabTop;
-            Width = TabWidth; // 念のため閉じた状態に戻す
+            Width = TAB_WIDTH; // 念のため閉じた状態に戻す
         }
         finally
         {
@@ -457,8 +457,8 @@ public partial class BookmarkWidget : Window
     {
         if (_suppressSave || !IsLoaded) return;
 
-        // タブ画面 Left: パネル閉=Left、パネル開=Left+PanelWidth
-        double tabScreenLeft = _isPanelOpen ? Left + PanelWidth : Left;
+        // タブ画面 Left: パネル閉=Left、パネル開=Left+PANEL_WIDTH
+        double tabScreenLeft = _isPanelOpen ? Left + PANEL_WIDTH : Left;
 
         var bs = _svc.AppSettingsService.BookmarkWidgetSettings;
         bs.TabLeft   = tabScreenLeft;
@@ -467,6 +467,7 @@ public partial class BookmarkWidget : Window
         _svc.AppSettingsService.SaveBookmarkSettings(bs);
     }
 
+    /// <summary>ウィジェットを非表示状態として設定に保存する。</summary>
     private void SaveHidden()
     {
         var bs = _svc.AppSettingsService.BookmarkWidgetSettings;
@@ -477,6 +478,7 @@ public partial class BookmarkWidget : Window
     // ────────────────────────────────────────────────
     // ウィンドウイベント
     // ────────────────────────────────────────────────
+    /// <summary>ウィンドウを閉じる操作をHideに差し替えて非表示状態を保存する。</summary>
     private void Widget_Closing(object s, System.ComponentModel.CancelEventArgs e)
     {
         if (_forceClose) return;

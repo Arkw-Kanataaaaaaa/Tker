@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -30,6 +30,7 @@ public class ProgressConditionDialog : Window
     private readonly ProgressBar _progressBar;
     private readonly TextBlock   _progressLabel;
 
+    /// <summary>タスクを受け取り進捗条件ダイアログのレイアウトと初期データを構築する。</summary>
     public ProgressConditionDialog(TaskItem task)
     {
         _task       = task;
@@ -135,6 +136,7 @@ public class ProgressConditionDialog : Window
     }
 
     // ── タイトルバー（標準パターン） ──────────────────────
+    /// <summary>標準パターンのタイトルバーUIを構築して返す。</summary>
     private Border BuildTitleBar()
     {
         var bar = new Border
@@ -177,6 +179,7 @@ public class ProgressConditionDialog : Window
     }
 
     // ── 条件追加 ─────────────────────────────────────────
+    /// <summary>指定された種別の進捗条件を追加する。ファイル/アプリ種別はダイアログでパスを選択する。</summary>
     private void AddCondition(ProgressConditionType type)
     {
         var condition = new ProgressCondition
@@ -214,6 +217,7 @@ public class ProgressConditionDialog : Window
     }
 
     // ── 条件リストの再描画 ────────────────────────────────
+    /// <summary>条件リストパネルを現在の条件一覧で再構築し達成率を更新する。</summary>
     private void RebuildList()
     {
         _listPanel.Children.Clear();
@@ -244,6 +248,7 @@ public class ProgressConditionDialog : Window
             : "条件なし";
     }
 
+    /// <summary>1つの進捗条件を表す行UIを構築して返す。</summary>
     private Border BuildConditionRow(ProgressCondition cond)
     {
         var accentColor = cond.Type switch
@@ -345,6 +350,7 @@ public class ProgressConditionDialog : Window
     }
 
     // ── 保存 ─────────────────────────────────────────────
+    /// <summary>編集した条件リストをタスクに反映してダイアログを閉じる。</summary>
     private void SaveAndClose()
     {
         _task.ProgressConditions = _conditions;
@@ -352,6 +358,7 @@ public class ProgressConditionDialog : Window
     }
 
     // ── ボタンヘルパー ────────────────────────────────────
+    /// <summary>追加操作用のセカンダリスタイルボタンを生成する。</summary>
     private Button MakeAddBtn(string text, Action onClick)
     {
         var btn = new Button
@@ -367,6 +374,7 @@ public class ProgressConditionDialog : Window
         return btn;
     }
 
+    /// <summary>セカンダリスタイルのボタンを指定マージン付きで生成する。</summary>
     private Button MakeSecondaryBtn(string label, Action action, Thickness margin)
     {
         var btn = new Button
@@ -379,6 +387,7 @@ public class ProgressConditionDialog : Window
         return btn;
     }
 
+    /// <summary>プライマリスタイルのボタンを生成する。</summary>
     private static Button MakePrimaryBtn(string label, Action action)
     {
         var btn = new Button
@@ -397,6 +406,7 @@ public class ProgressConditionDialog : Window
         Application.Current.TryFindResource(key) as Brush ?? Brushes.Transparent;
 
     // ── その他ヘルパー ────────────────────────────────────
+    /// <summary>ProgressConditionを複製して返す。</summary>
     private static ProgressCondition CloneCondition(ProgressCondition src) => new()
     {
         Id = src.Id, Label = src.Label, Type = src.Type, Path = src.Path,
@@ -404,6 +414,7 @@ public class ProgressConditionDialog : Window
     };
 
     // ── RelayCommand（InputBinding 用） ───────────────────
+    /// <summary>InputBinding用の汎用リレーコマンド。</summary>
     private sealed class RelayCommand(Action<object?> execute) : ICommand
     {
         public event EventHandler? CanExecuteChanged { add { } remove { } }

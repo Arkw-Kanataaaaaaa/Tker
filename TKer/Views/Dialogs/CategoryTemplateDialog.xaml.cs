@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -7,6 +7,7 @@ using System.Windows.Media;
 
 namespace TKer.Views.Dialogs;
 
+/// <summary>テンプレートカテゴリー選択ダイアログで使用する選択可能なカテゴリー項目。</summary>
 public class TemplateCategoryItem : INotifyPropertyChanged
 {
     private bool _isSelected = true;
@@ -28,11 +29,12 @@ public class TemplateCategoryItem : INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 }
 
+/// <summary>組み込みおよびカスタムのカテゴリーテンプレートから一括選択するダイアログ。</summary>
 public partial class CategoryTemplateDialog : Window
 {
     public List<TemplateCategoryItem> SelectedCategories { get; private set; } = new();
 
-    private static readonly Dictionary<string, List<TemplateCategoryItem>> Templates = new()
+    private static readonly Dictionary<string, List<TemplateCategoryItem>> TEMPLATES = new()
     {
         ["ソフトウェア開発"] = new()
         {
@@ -81,6 +83,7 @@ public partial class CategoryTemplateDialog : Window
     };
 
     /// <param name="customPresets">AppSettingsから渡すカスタムプリセット（null可）</param>
+    /// <summary>組み込みテンプレートとカスタムプリセットを統合してダイアログを初期化する。</summary>
     public CategoryTemplateDialog(IEnumerable<TKer.Models.CategoryPreset>? customPresets = null)
     {
         InitializeComponent();
@@ -88,26 +91,27 @@ public partial class CategoryTemplateDialog : Window
             SystemCommands.CloseWindowCommand, (_, _) => { DialogResult = false; }));
 
         // 組み込みテンプレート + カスタムプリセットを統合
-        var allKeys = Templates.Keys.ToList();
+        var allKeys = TEMPLATES.Keys.ToList();
         if (customPresets != null)
         {
             foreach (var p in customPresets)
             {
-                if (!Templates.ContainsKey($"[カスタム] {p.Name}"))
+                if (!TEMPLATES.ContainsKey($"[カスタム] {p.Name}"))
                 {
-                    Templates[$"[カスタム] {p.Name}"] = p.Categories.Select(c =>
+                    TEMPLATES[$"[カスタム] {p.Name}"] = p.Categories.Select(c =>
                         new TemplateCategoryItem { Name = c.Name, Color = c.Color, Description = c.Description }).ToList();
                 }
             }
         }
 
-        CmbTemplate.ItemsSource  = Templates.Keys.ToList();
+        CmbTemplate.ItemsSource  = TEMPLATES.Keys.ToList();
         CmbTemplate.SelectedIndex = 0;
     }
 
+    /// <summary>選択されたテンプレートのカテゴリー一覧をリストに表示する。</summary>
     private void CmbTemplate_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (CmbTemplate.SelectedItem is string key && Templates.TryGetValue(key, out var items))
+        if (CmbTemplate.SelectedItem is string key && TEMPLATES.TryGetValue(key, out var items))
         {
             var copies = items.Select(i => new TemplateCategoryItem
             {
@@ -117,11 +121,13 @@ public partial class CategoryTemplateDialog : Window
         }
     }
 
+    /// <summary>すべての項目を選択状態にする。</summary>
     private void SelectAll_Click(object sender, RoutedEventArgs e)
     {
         foreach (var item in GetItems()) item.IsSelected = true;
     }
 
+    /// <summary>すべての項目の選択を解除する。</summary>
     private void DeselectAll_Click(object sender, RoutedEventArgs e)
     {
         foreach (var item in GetItems()) item.IsSelected = false;
@@ -131,6 +137,7 @@ public partial class CategoryTemplateDialog : Window
         => CategoryItems.ItemsSource as IEnumerable<TemplateCategoryItem>
            ?? Enumerable.Empty<TemplateCategoryItem>();
 
+    /// <summary>選択中のカテゴリーを確定してダイアログを閉じる。</summary>
     private void OK_Click(object sender, RoutedEventArgs e)
     {
         SelectedCategories = GetItems().Where(i => i.IsSelected).ToList();

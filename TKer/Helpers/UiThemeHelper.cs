@@ -6,8 +6,12 @@ using TKer.Models;
 
 namespace TKer.Helpers;
 
+/// <summary>
+/// UI テーマ（背景色・文字色・ボーダー色）の適用を担うヘルパー。
+/// </summary>
 public static class UiThemeHelper
 {
+    /// <summary>SectionTheme 設定をカード Border 要素へ適用する。</summary>
     public static void ApplySectionTheme(Border card, SectionTheme theme)
     {
         if (!string.IsNullOrEmpty(theme.BgColor))
@@ -50,6 +54,21 @@ public static class UiThemeHelper
             }
             catch { }
         }
+    }
+
+    /// <summary>
+    /// 16進数カラーと不透明度から SolidColorBrush を生成して対象 Border の背景に適用する。
+    /// パースに失敗した場合は Transparent を設定する。
+    /// </summary>
+    public static void ApplyColorBackground(Border target, string hexColor, double opacity)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hexColor);
+            color.A = (byte)(opacity * 255);
+            target.Background = new SolidColorBrush(color);
+        }
+        catch { target.Background = Brushes.Transparent; }
     }
 
 }

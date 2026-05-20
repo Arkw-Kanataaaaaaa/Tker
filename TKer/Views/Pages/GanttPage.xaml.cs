@@ -10,6 +10,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>プロジェクトタスクのガントチャートを表示するページ。</summary>
 public partial class GanttPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
@@ -18,19 +19,20 @@ public partial class GanttPage : Page, IRefreshable
     private bool     _hideCompleted = false;   // ⑭
     private bool     _isSyncing     = false;   // ③ スクロール無限ループ防止
 
-    private const double ColW  = 32;
-    private const double RowH  = 38;
-    private const double PlanY = 8;
-    private const double ActY  = 22;
-    private const double BarH  = 12;
+    private const double COL_W  = 32;
+    private const double ROW_H  = 38;
+    private const double PLAN_Y = 8;
+    private const double ACT_Y  = 22;
+    private const double BAR_H  = 12;
 
-    private static readonly SolidColorBrush PlanBrush    = new(Color.FromArgb(180, 61, 126, 255));
-    private static readonly SolidColorBrush ActBrush     = new(Color.FromArgb(180, 0, 230, 118));
-    private static readonly SolidColorBrush TodayBrush   = new(Color.FromArgb(200, 0, 212, 255));
-    private static readonly SolidColorBrush CatBrush     = new(Color.FromArgb(30, 61, 126, 255));
-    private static readonly SolidColorBrush GridBrush    = new(Color.FromArgb(60, 37, 45, 64));
-    private static readonly SolidColorBrush WeekendBrush = new(Color.FromArgb(20, 255, 255, 255));
+    private static readonly SolidColorBrush PLAN_BRUSH    = new(Color.FromArgb(180, 61, 126, 255));
+    private static readonly SolidColorBrush ACT_BRUSH     = new(Color.FromArgb(180, 0, 230, 118));
+    private static readonly SolidColorBrush TODAY_BRUSH   = new(Color.FromArgb(200, 0, 212, 255));
+    private static readonly SolidColorBrush CAT_BRUSH     = new(Color.FromArgb(30, 61, 126, 255));
+    private static readonly SolidColorBrush GRID_BRUSH    = new(Color.FromArgb(60, 37, 45, 64));
+    private static readonly SolidColorBrush WEEKEND_BRUSH = new(Color.FromArgb(20, 255, 255, 255));
 
+    /// <summary>ガントページを初期化し、表示開始日を設定する。</summary>
     public GanttPage(MainViewModel vm)
     {
         _vm = vm;
@@ -38,8 +40,10 @@ public partial class GanttPage : Page, IRefreshable
         _viewStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     }
 
+    /// <summary>ガントチャートを再描画する。</summary>
     public void Refresh() => RenderGantt();
 
+    /// <summary>現在の表示範囲でガントチャート全体を描画する。</summary>
     private void RenderGantt()
     {
         if (_vm.ProjectService.CurrentProject == null) return;
@@ -61,8 +65,8 @@ public partial class GanttPage : Page, IRefreshable
         }
         bool performanceWarning = rows.Count > 200; // suppress re-check
 
-        double totalW = ColW * _viewDays;
-        double totalH = RowH * rows.Count;
+        double totalW = COL_W * _viewDays;
+        double totalH = ROW_H * rows.Count;
 
         GanttCanvas.Width  = totalW;
         GanttCanvas.Height = totalH;
@@ -78,7 +82,7 @@ public partial class GanttPage : Page, IRefreshable
         for (int i = 0; i < _viewDays; i++)
         {
             var d        = _viewStart.AddDays(i);
-            double x     = i * ColW;
+            double x     = i * COL_W;
             bool isWeekend = d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
             bool isToday   = d.Date == DateTime.Today;
 
@@ -101,12 +105,12 @@ public partial class GanttPage : Page, IRefreshable
             {
                 Text      = d.Day.ToString(),
                 Foreground = isToday
-                    ? TodayBrush
+                    ? TODAY_BRUSH
                     : isWeekend
                         ? new SolidColorBrush(Color.FromRgb(100, 120, 160))
                         : new SolidColorBrush(Color.FromRgb(74, 85, 104)),
                 FontSize  = 9,
-                Width     = ColW,
+                Width     = COL_W,
                 TextAlignment = System.Windows.TextAlignment.Center,
                 FontFamily = new FontFamily("Consolas"),
                 FontWeight = isToday ? FontWeights.Bold : FontWeights.Normal
@@ -120,14 +124,14 @@ public partial class GanttPage : Page, IRefreshable
                 var line = new Line
                 {
                     X1 = x, Y1 = 0, X2 = x, Y2 = totalH,
-                    Stroke = GridBrush, StrokeThickness = 1
+                    Stroke = GRID_BRUSH, StrokeThickness = 1
                 };
                 GanttCanvas.Children.Add(line);
             }
 
             if (isWeekend)
             {
-                var rect = new Rectangle { Width = ColW, Height = totalH, Fill = WeekendBrush };
+                var rect = new Rectangle { Width = COL_W, Height = totalH, Fill = WEEKEND_BRUSH };
                 Canvas.SetLeft(rect, x);
                 Canvas.SetTop(rect, 0);
                 GanttCanvas.Children.Add(rect);
@@ -135,14 +139,14 @@ public partial class GanttPage : Page, IRefreshable
         }
 
         // 今日ライン
-        double todayX = (DateTime.Today.Date - _viewStart.Date).TotalDays * ColW;
+        double todayX = (DateTime.Today.Date - _viewStart.Date).TotalDays * COL_W;
         if (todayX >= 0 && todayX <= totalW)
         {
             var todayLine = new Rectangle
             {
                 Width  = 2,
                 Height = totalH,
-                Fill   = TodayBrush,
+                Fill   = TODAY_BRUSH,
                 Opacity = 0.8
             };
             Canvas.SetLeft(todayLine, todayX);
@@ -155,15 +159,15 @@ public partial class GanttPage : Page, IRefreshable
         for (int ri = 0; ri < rows.Count; ri++)
         {
             var row    = rows[ri];
-            double rowY = ri * RowH;
+            double rowY = ri * ROW_H;
 
             // ③ ラベル列をStackPanelに直接追加（スクロール同期）
             var labelBorder = new Border
             {
-                Height           = RowH,
-                BorderBrush      = GridBrush,
+                Height           = ROW_H,
+                BorderBrush      = GRID_BRUSH,
                 BorderThickness  = new Thickness(0, 0, 0, 1),
-                Background       = row.IsCategory ? CatBrush : Brushes.Transparent,
+                Background       = row.IsCategory ? CAT_BRUSH : Brushes.Transparent,
                 Padding          = new Thickness(row.IndentLevel == 0 ? 12 : row.IndentLevel == 1 ? 28 : 44, 0, 8, 0)
             };
             var labelText = new TextBlock
@@ -183,26 +187,27 @@ public partial class GanttPage : Page, IRefreshable
             // 行区切り線
             GanttCanvas.Children.Add(new Line
             {
-                X1 = 0, Y1 = rowY + RowH - 0.5, X2 = totalW, Y2 = rowY + RowH - 0.5,
-                Stroke = GridBrush, StrokeThickness = 1
+                X1 = 0, Y1 = rowY + ROW_H - 0.5, X2 = totalW, Y2 = rowY + ROW_H - 0.5,
+                Stroke = GRID_BRUSH, StrokeThickness = 1
             });
 
             if (row.IsCategory) continue;
 
-            DrawBar(row.PlannedStart, row.PlannedEnd, rowY + PlanY, BarH, PlanBrush,
+            DrawBar(row.PlannedStart, row.PlannedEnd, rowY + PLAN_Y, BAR_H, PLAN_BRUSH,
                 $"予定: {row.PlannedStart:MM/dd}〜{row.PlannedEnd:MM/dd}");
-            DrawBar(row.ActualStart, row.ActualEnd, rowY + ActY, BarH, ActBrush,
+            DrawBar(row.ActualStart, row.ActualEnd, rowY + ACT_Y, BAR_H, ACT_BRUSH,
                 $"実績: {row.ActualStart:MM/dd}〜{row.ActualEnd:MM/dd}");
         }
     }
 
+    /// <summary>指定期間のガントバーをキャンバスに描画する。</summary>
     private void DrawBar(DateTime? start, DateTime? end, double y, double h,
                          SolidColorBrush brush, string tooltip)
     {
         if (!start.HasValue || !end.HasValue) return;
-        double totalW  = ColW * _viewDays;
-        double x       = (start.Value.Date - _viewStart.Date).TotalDays * ColW;
-        double w       = Math.Max(((end.Value.Date - start.Value.Date).TotalDays + 1) * ColW, ColW * 0.5);
+        double totalW  = COL_W * _viewDays;
+        double x       = (start.Value.Date - _viewStart.Date).TotalDays * COL_W;
+        double w       = Math.Max(((end.Value.Date - start.Value.Date).TotalDays + 1) * COL_W, COL_W * 0.5);
         if (x + w < 0 || x > totalW) return;
 
         double clippedX = Math.Max(x, 0);
@@ -219,13 +224,13 @@ public partial class GanttPage : Page, IRefreshable
         GanttCanvas.Children.Add(rect);
     }
 
-    // ③ BarScroll 横スクロール → HeaderScroll と同期
+    /// <summary>横スクロール変更時にヘッダーを同期する。</summary>
     private void BarScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         HeaderScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
     }
 
-    // ③ BodyVScroll 縦スクロール → LabelScroll と同期
+    /// <summary>縦スクロール変更時にラベル列を同期する。</summary>
     private void BodyVScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (_isSyncing) return;
@@ -234,6 +239,7 @@ public partial class GanttPage : Page, IRefreshable
         _isSyncing = false;
     }
 
+    /// <summary>ラベル列縦スクロール変更時にボディを同期する。</summary>
     private void LabelScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (_isSyncing) return;
@@ -242,6 +248,7 @@ public partial class GanttPage : Page, IRefreshable
         _isSyncing = false;
     }
 
+    /// <summary>前月に移動してガントを再描画する。</summary>
     private void PrevMonth_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddMonths(-1);
@@ -249,6 +256,7 @@ public partial class GanttPage : Page, IRefreshable
         RenderGantt();
     }
 
+    /// <summary>翌月に移動してガントを再描画する。</summary>
     private void NextMonth_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddMonths(1);
@@ -256,16 +264,17 @@ public partial class GanttPage : Page, IRefreshable
         RenderGantt();
     }
 
+    /// <summary>今日の日付を含む月に戻ってガントを再描画する。</summary>
     private void Today_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         _viewDays  = 60;
         RenderGantt();
-        double todayX = (DateTime.Today - _viewStart.Date).TotalDays * ColW;
+        double todayX = (DateTime.Today - _viewStart.Date).TotalDays * COL_W;
         BarScroll.ScrollToHorizontalOffset(Math.Max(todayX - 100, 0));
     }
 
-    // ⑫ 全体表示: タスク最小日〜最大日
+    /// <summary>全タスクの日付範囲に合わせて表示範囲を調整する。</summary>
     private void FitAll_Click(object sender, RoutedEventArgs e)
     {
         var (min, max) = _vm.ProjectService.GetTaskDateRange();
@@ -274,7 +283,7 @@ public partial class GanttPage : Page, IRefreshable
         RenderGantt();
     }
 
-    // ⑭ 完了タスク表示トグル
+    /// <summary>完了タスクの表示・非表示を切り替えてガントを再描画する。</summary>
     private void ToggleCompleted_Click(object sender, RoutedEventArgs e)
     {
         _hideCompleted = !_hideCompleted;

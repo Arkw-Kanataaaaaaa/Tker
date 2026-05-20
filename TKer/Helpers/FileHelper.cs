@@ -2,6 +2,9 @@ using System.IO;
 
 namespace TKer.Helpers;
 
+/// <summary>
+/// ファイル操作に関するユーティリティ。
+/// </summary>
 public static class FileHelper
 {
     /// <summary>ファイルサイズをエクスプローラー風に整形する。</summary>

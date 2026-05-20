@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using Newtonsoft.Json;
@@ -11,23 +11,31 @@ namespace TKer.Services;
 /// </summary>
 public class SetupService
 {
-    private const string KickFileName = "setup.pf.json";
-    private const string CompletedFolder = "作業完了";
-    private const string TemplateFolder = "_templates";
-    private const string DocsFolder = "_docs";
+    private const string KICK_FILE_NAME    = "setup.pf.json";
+    private const string COMPLETED_FOLDER  = "作業完了";
+    private const string TEMPLATE_FOLDER   = "_templates";
+    private const string DOCS_FOLDER       = "_docs";
 
+    /// <summary>キックファイルの設定内容を表すクラス。</summary>
     public class KickConfig
     {
+        /// <summary>プロジェクト名。</summary>
         public string ProjectName { get; set; } = "NewProject";
+        /// <summary>プロジェクトの説明。</summary>
         public string Description { get; set; } = "";
+        /// <summary>デフォルトカテゴリー一覧。</summary>
         public string[] DefaultCategories { get; set; } = Array.Empty<string>();
+        /// <summary>デフォルトフォルダを作成するかどうか。</summary>
         public bool CreateDefaultFolders { get; set; } = true;
+        /// <summary>設定ファイルのバージョン。</summary>
         public string Version { get; set; } = "1.0";
+        /// <summary>作成者名。</summary>
         public string CreatedBy { get; set; } = "";
     }
 
     private readonly ProjectService _projectService;
 
+    /// <summary>ProjectService を受け取って初期化する。</summary>
     public SetupService(ProjectService projectService)
     {
         _projectService = projectService;
@@ -49,7 +57,7 @@ public class SetupService
             CreatedBy = Environment.UserName
         };
 
-        var kickPath = Path.Combine(targetDirectory, KickFileName);
+        var kickPath = Path.Combine(targetDirectory, KICK_FILE_NAME);
         var json = JsonConvert.SerializeObject(config, Formatting.Indented);
         File.WriteAllText(kickPath, json);
         return kickPath;
@@ -109,17 +117,19 @@ public class SetupService
         }
     }
 
+    /// <summary>プロジェクトの標準フォルダ構成を作成する。</summary>
     private void CreateDefaultStructure(KickConfig config)
     {
         if (_projectService.CurrentProject == null) return;
         var projectPath = _projectService.CurrentProject.Settings.ProjectPath;
 
         // 標準フォルダ
-        Directory.CreateDirectory(Path.Combine(projectPath, CompletedFolder));
-        Directory.CreateDirectory(Path.Combine(projectPath, TemplateFolder));
-        Directory.CreateDirectory(Path.Combine(projectPath, DocsFolder));
+        Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER));
+        Directory.CreateDirectory(Path.Combine(projectPath, TEMPLATE_FOLDER));
+        Directory.CreateDirectory(Path.Combine(projectPath, DOCS_FOLDER));
     }
 
+    /// <summary>プロジェクトフォルダに README.md を生成する。</summary>
     private void WriteReadme(KickConfig config)
     {
         if (_projectService.CurrentProject == null) return;
@@ -159,11 +169,11 @@ public class SetupService
     /// キックファイルが存在するかチェック
     /// </summary>
     public static bool HasKickFile(string directory)
-        => File.Exists(Path.Combine(directory, KickFileName));
+        => File.Exists(Path.Combine(directory, KICK_FILE_NAME));
 
     /// <summary>
     /// キックファイルのパスを返す
     /// </summary>
     public static string GetKickFilePath(string directory)
-        => Path.Combine(directory, KickFileName);
+        => Path.Combine(directory, KICK_FILE_NAME);
 }

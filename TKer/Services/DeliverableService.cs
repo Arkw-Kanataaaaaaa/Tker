@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -17,6 +17,7 @@ public class DeliverableService
 {
     private readonly ProjectService _projectService;
 
+    /// <summary>ProjectService を受け取って初期化する。</summary>
     public DeliverableService(ProjectService projectService)
     {
         _projectService = projectService;
@@ -25,6 +26,7 @@ public class DeliverableService
     // =====================================================
     // 成果物まとめ設定
     // =====================================================
+    /// <summary>成果物集約の動作オプションを保持するクラス。</summary>
     public class CollectOptions
     {
         /// <summary>集約先ベースパス（省略時はプロジェクトフォルダ内に生成）</summary>
@@ -50,30 +52,46 @@ public class DeliverableService
     // =====================================================
     // 集約実行結果
     // =====================================================
+    /// <summary>成果物集約の実行結果を保持するクラス。</summary>
     public class CollectResult
     {
+        /// <summary>処理が成功したかどうか。</summary>
         public bool     Success          { get; set; }
+        /// <summary>出力先フォルダのフルパス。</summary>
         public string   OutputPath       { get; set; } = "";
+        /// <summary>生成された ZIP ファイルのパス（生成しない場合は null）。</summary>
         public string?  ZipPath          { get; set; }
+        /// <summary>生成されたインデックスファイルのパス（生成しない場合は null）。</summary>
         public string?  IndexPath        { get; set; }
+        /// <summary>集約されたファイルの総数。</summary>
         public int      TotalFiles       { get; set; }
+        /// <summary>集約されたファイルの合計バイト数。</summary>
         public long     TotalBytes       { get; set; }
+        /// <summary>処理中に発生したエラーメッセージの一覧。</summary>
         public List<string> Errors       { get; set; } = new();
+        /// <summary>集約されたファイルエントリの一覧。</summary>
         public List<FileEntry> Files     { get; set; } = new();
     }
 
+    /// <summary>集約された個々のファイル情報を表すクラス。</summary>
     public class FileEntry
     {
+        /// <summary>所属カテゴリー名。</summary>
         public string CategoryName { get; set; } = "";
+        /// <summary>所属タスク名。</summary>
         public string TaskName     { get; set; } = "";
+        /// <summary>ファイル名（タスクフォルダからの相対パス）。</summary>
         public string FileName     { get; set; } = "";
+        /// <summary>コピー先のフルパス。</summary>
         public string DestPath     { get; set; } = "";
+        /// <summary>ファイルサイズ（バイト）。</summary>
         public long   SizeBytes    { get; set; }
     }
 
     // =====================================================
     // メイン: 成果物を集約する
     // =====================================================
+    /// <summary>指定オプションに従って成果物ファイルを集約し、結果を返す。</summary>
     public CollectResult Collect(CollectOptions options)
     {
         var result = new CollectResult();
@@ -197,6 +215,7 @@ public class DeliverableService
     // =====================================================
     // INDEX.md 生成
     // =====================================================
+    /// <summary>成果物インデックス（INDEX.md）をファイルに書き出す。</summary>
     private static void WriteIndex(string path, ProjectData project,
         List<TaskItem> tasks, CollectResult result, CollectOptions options)
     {
@@ -250,6 +269,7 @@ public class DeliverableService
     // =====================================================
     // 完了チェック
     // =====================================================
+    /// <summary>指定カテゴリー（省略時は全体）のタスク完了状況を確認して返す。</summary>
     public (bool allDone, int done, int total, List<TaskItem> incomplete) CheckCompletion(
         string? categoryId = null)
     {
@@ -264,12 +284,14 @@ public class DeliverableService
     // =====================================================
     // ヘルパー
     // =====================================================
+    /// <summary>指定ディレクトリ配下の全ファイルパスを列挙する。</summary>
     private static IEnumerable<string> GetAllFiles(string dir)
     {
         foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
             yield return file;
     }
 
+    /// <summary>フォルダ名として使用できない文字を '_' に置換し、40文字以内に切り詰める。</summary>
     private static string SanitizeFolderName(string name)
     {
         var invalid = Path.GetInvalidFileNameChars();
@@ -277,6 +299,7 @@ public class DeliverableService
         return s.Length > 40 ? s[..40] : s;
     }
 
+    /// <summary>バイト数を人間が読みやすい文字列（B / KB / MB）に変換する。</summary>
     private static string FormatBytes(long bytes) => bytes switch
     {
         < 1024         => $"{bytes} B",

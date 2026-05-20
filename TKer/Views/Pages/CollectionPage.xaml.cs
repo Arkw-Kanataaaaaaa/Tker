@@ -10,6 +10,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>コレクションの一覧・詳細・作成・編集を管理するページ。</summary>
 public partial class CollectionPage : Page, IRefreshable
 {
     private readonly MainViewModel     _vm;
@@ -23,6 +24,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     private enum RightPanel { Empty, Form, Detail }
 
+    /// <summary>コレクションページを初期化してデータを表示する。</summary>
     public CollectionPage(MainViewModel vm)
     {
         _vm  = vm;
@@ -31,6 +33,7 @@ public partial class CollectionPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>一覧・詳細・ツールバーを最新状態に更新する。</summary>
     public void Refresh()
     {
         RefreshList();
@@ -41,6 +44,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ 右パネル3状態 ══════
 
+    /// <summary>右パネルの表示状態（空・フォーム・詳細）を切り替える。</summary>
     private void SetRightPanel(RightPanel panel)
     {
         EmptyStatePanel.Visibility = panel == RightPanel.Empty  ? Visibility.Visible : Visibility.Collapsed;
@@ -50,6 +54,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ ツールバー状態 ══════
 
+    /// <summary>選択状態に応じてツールバーボタンの有効・無効を更新する。</summary>
     private void UpdateToolbarState()
     {
         bool hasSel = _selectedId != null;
@@ -65,6 +70,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ 左パネル：コレクション一覧 ══════
 
+    /// <summary>検索フィルターを適用してコレクション一覧を再描画する。</summary>
     private void RefreshList()
     {
         var filter = TxtSearch.Text;
@@ -96,6 +102,7 @@ public partial class CollectionPage : Page, IRefreshable
             CollectionListPanel.Children.Add(BuildCollectionRow(col));
     }
 
+    /// <summary>コレクション1件分のリスト行UIを生成して返す。</summary>
     private Border BuildCollectionRow(Collection col)
     {
         bool isSel  = col.Id == _selectedId;
@@ -173,6 +180,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ 右パネル：詳細 ══════
 
+    /// <summary>指定IDのコレクション詳細を右パネルに表示する。</summary>
     private void ShowDetail(string? id)
     {
         var col = id == null ? null : _svc.Collections.FirstOrDefault(c => c.Id == id);
@@ -190,6 +198,7 @@ public partial class CollectionPage : Page, IRefreshable
         BuildDetailContent(col);
     }
 
+    /// <summary>コレクションの基本情報・フィールド一覧を詳細パネルに描画する。</summary>
     private void BuildDetailContent(Collection col)
     {
         DetailContentPanel.Children.Clear();
@@ -336,6 +345,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ ツールバーイベント ══════
 
+    /// <summary>検索バーの表示・非表示を切り替える。</summary>
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
     {
         _searchVisible = !_searchVisible;
@@ -347,6 +357,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void NewCollection_Click(object sender, RoutedEventArgs e) => ShowForm(null);
 
+    /// <summary>選択中のコレクションをフォームで編集する。</summary>
     private void EditCollection_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedId == null) return;
@@ -355,6 +366,7 @@ public partial class CollectionPage : Page, IRefreshable
         ShowForm(col);
     }
 
+    /// <summary>確認後に選択中のコレクションを削除する。</summary>
     private void DeleteCollection_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedId == null) return;
@@ -373,6 +385,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ インラインフォーム ══════
 
+    /// <summary>新規または既存コレクションの編集フォームを表示する。</summary>
     private void ShowForm(Collection? existing)
     {
         _editingId = existing?.Id;
@@ -403,6 +416,7 @@ public partial class CollectionPage : Page, IRefreshable
         TxtFormName.Focus();
     }
 
+    /// <summary>フォーム内のフィールド一覧を再描画する。</summary>
     private void RefreshFormFieldList()
     {
         FormFieldListPanel.Children.Clear();
@@ -423,6 +437,7 @@ public partial class CollectionPage : Page, IRefreshable
             FormFieldListPanel.Children.Add(BuildFormFieldRow(field));
     }
 
+    /// <summary>フォームフィールド1件分の行UIを生成して返す。</summary>
     private UIElement BuildFormFieldRow(CollectionField field)
     {
         var (icon, label, badgeColor) = field.FieldType switch
@@ -487,6 +502,7 @@ public partial class CollectionPage : Page, IRefreshable
         };
     }
 
+    /// <summary>フォームに新しいフィールドを追加する。</summary>
     private void AddFormField_Click(object sender, RoutedEventArgs e)
     {
         var name = TxtNewFieldName.Text.Trim();
@@ -500,6 +516,7 @@ public partial class CollectionPage : Page, IRefreshable
         RefreshFormFieldList();
     }
 
+    /// <summary>フォルダー選択ダイアログを開いてフォルダーパスを設定する。</summary>
     private void BrowseFolder_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "コレクションフォルダを選択" };
@@ -507,6 +524,7 @@ public partial class CollectionPage : Page, IRefreshable
             TxtFormFolder.Text = dlg.FolderName;
     }
 
+    /// <summary>フォームの内容を検証してコレクションを保存する。</summary>
     private void SaveForm_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtFormName.Text)) { TxtFormName.Focus(); return; }
@@ -550,6 +568,7 @@ public partial class CollectionPage : Page, IRefreshable
         UpdateToolbarState();
     }
 
+    /// <summary>フォームをキャンセルして詳細パネルに戻る。</summary>
     private void CancelForm_Click(object sender, RoutedEventArgs e)
     {
         _editingId = null;
@@ -559,6 +578,7 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ══════ ユーティリティ ══════
 
+    /// <summary>コレクションのメタ情報文字列を生成して返す。</summary>
     private static string BuildMeta(Collection col)
     {
         var parts = new List<string>();
@@ -568,6 +588,7 @@ public partial class CollectionPage : Page, IRefreshable
         return string.Join("  ·  ", parts);
     }
 
+    /// <summary>アプリリソースからブラシを取得して返す。</summary>
     private static Brush Brush(string key)
     {
         try { return (Brush)Application.Current.Resources[key]; }

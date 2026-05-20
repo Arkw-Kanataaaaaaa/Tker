@@ -16,6 +16,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>記事の一覧・編集・プレビューおよびWordPress投稿を行うページ。</summary>
 public partial class ArticlePage : Page, IRefreshable
 {
     private readonly MainViewModel   _vm;
@@ -24,9 +25,10 @@ public partial class ArticlePage : Page, IRefreshable
     private Article?  _current;
     private bool      _loading = false;   // UI リフレッシュ中は変更通知を抑制
 
-    private static readonly MarkdownPipeline Pipeline =
-        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+    private static readonly MarkdownPIPELINE PIPELINE =
+        new MarkdownPIPELINEBuilder().UseAdvancedExtensions().Build();
 
+    /// <summary>記事ページを初期化してサービスを設定する。</summary>
     public ArticlePage(MainViewModel vm)
     {
         _vm  = vm;
@@ -35,6 +37,7 @@ public partial class ArticlePage : Page, IRefreshable
         Loaded += (_, _) => Refresh();
     }
 
+    /// <summary>テーマを適用して記事一覧とWordPress設定を再読み込みする。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Article_Header"));
@@ -43,6 +46,7 @@ public partial class ArticlePage : Page, IRefreshable
     }
 
     // ── 記事一覧 ──────────────────────────────────────────
+    /// <summary>検索キーワードで絞り込んだ記事一覧をリストに表示する。</summary>
     private void RefreshList(string? keepId = null)
     {
         var q = SearchBox.Text.Trim().ToLower();
@@ -68,6 +72,7 @@ public partial class ArticlePage : Page, IRefreshable
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshList(_current?.Id);
 
     // ── 記事ロード ────────────────────────────────────────
+    /// <summary>指定した記事の内容をエディターフォームに読み込む。</summary>
     private void LoadArticle(Article a)
     {
         _loading = true;
@@ -118,25 +123,29 @@ public partial class ArticlePage : Page, IRefreshable
         _current.Platform = (CmbPlatform.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "note";
     }
 
+    /// <summary>本文の文字数と行数を文字カウントラベルに反映する。</summary>
     private void UpdateWordCount()
     {
         var text = TxtContent.Text ?? "";
         TxtWordCount.Text = $"{text.Length} 文字 / {CountLines(text)} 行";
     }
 
+    /// <summary>文字列の改行数から行数を返す。</summary>
     private static int CountLines(string s) => string.IsNullOrEmpty(s) ? 0 : s.Split('\n').Length;
 
     // ── タブ切替：プレビュー ───────────────────────────────
+    /// <summary>タブ切替時にプレビュータブが選択されたらHTMLを描画する。</summary>
     private void EditorTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (EditorTabs.SelectedIndex != 1) return;
         RenderPreview();
     }
 
+    /// <summary>Markdownをhtmlに変換してプレビューブラウザに表示する。</summary>
     private void RenderPreview()
     {
         var md  = TxtContent.Text ?? "";
-        var html = Markdown.ToHtml(md, Pipeline);
+        var html = Markdown.ToHtml(md, PIPELINE);
         var full = $$"""
             <!DOCTYPE html><html><head>
             <meta charset="utf-8"/>
@@ -163,6 +172,7 @@ public partial class ArticlePage : Page, IRefreshable
 
     private void BtnSave_Click(object sender, RoutedEventArgs e) => SaveCurrent();
 
+    /// <summary>現在の記事のステータスを更新してサービスに保存する。</summary>
     private void SaveCurrent()
     {
         if (_current == null) return;
@@ -211,6 +221,7 @@ public partial class ArticlePage : Page, IRefreshable
     }
 
     // ── WordPress ─────────────────────────────────────────
+    /// <summary>保存済みWordPress設定をフォームに読み込む。</summary>
     private void LoadWpSettings()
     {
         var cfg = _svc.AppSettings.WordPress;
@@ -249,7 +260,7 @@ public partial class ArticlePage : Page, IRefreshable
             var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{cfg.Username}:{cfg.AppPassword}"));
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
 
-            var html = Markdown.ToHtml(_current.Content ?? "", Pipeline);
+            var html = Markdown.ToHtml(_current.Content ?? "", PIPELINE);
             var payload = JsonConvert.SerializeObject(new
             {
                 title   = _current.Title,
@@ -279,6 +290,7 @@ public partial class ArticlePage : Page, IRefreshable
         }
     }
 
+    /// <summary>ファイル名に使えない文字をアンダースコアに置換する。</summary>
     private static string SanitizeFilename(string name)
     {
         foreach (var c in Path.GetInvalidFileNameChars())

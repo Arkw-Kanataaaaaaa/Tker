@@ -21,6 +21,7 @@ public class WidgetServiceProvider
     /// </summary>
     public Action<string> NavigateTo { get; }
 
+    /// <summary>各サービスとナビゲーションコールバックを受け取って初期化する。</summary>
     public WidgetServiceProvider(
         AppSettingsService appSettings,
         ScheduleService    schedule,

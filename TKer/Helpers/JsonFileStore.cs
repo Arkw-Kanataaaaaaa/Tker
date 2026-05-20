@@ -9,13 +9,14 @@ namespace TKer.Helpers;
 /// </summary>
 public static class JsonFileStore
 {
-    public static readonly string AppDataDir =
+    /// <summary>アプリケーションデータの保存ディレクトリパス。</summary>
+    public static readonly string APP_DATA_DIR =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TKer");
 
     /// <summary>指定ファイルを読み込む。存在しない・破損の場合は new T() を返す。</summary>
     public static T Load<T>(string fileName) where T : new()
     {
-        var path = Path.Combine(AppDataDir, fileName);
+        var path = Path.Combine(APP_DATA_DIR, fileName);
         try
         {
             if (File.Exists(path))
@@ -30,9 +31,9 @@ public static class JsonFileStore
     {
         try
         {
-            Directory.CreateDirectory(AppDataDir);
+            Directory.CreateDirectory(APP_DATA_DIR);
             File.WriteAllText(
-                Path.Combine(AppDataDir, fileName),
+                Path.Combine(APP_DATA_DIR, fileName),
                 JsonConvert.SerializeObject(data, Formatting.Indented));
         }
         catch { }

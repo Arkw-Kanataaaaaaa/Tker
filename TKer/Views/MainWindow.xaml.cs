@@ -252,7 +252,7 @@ public partial class MainWindow : Window
     private void MenuAbout_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         MessageBox.Show(
-            $"{TKer.Models.AppVersion.DisplayName}\nBuild {TKer.Models.AppVersion.BuildDate}\n\n© 2025 TKer",
+            $"{TKer.Models.AppVersion.DISPLAY_NAME}\nBuild {TKer.Models.AppVersion.BUILD_DATE}\n\n© 2025 TKer",
             "バージョン情報",
             MessageBoxButton.OK,
             MessageBoxImage.Information);

@@ -4,8 +4,12 @@ using System.Windows.Media;
 
 namespace TKer.Helpers;
 
+/// <summary>
+/// UI バッジ（ラベル風装飾）の生成とカラー管理を行うヘルパー。
+/// </summary>
 public static class UiBadgeHelper
 {
+    /// <summary>指定テキストと色でバッジ用の Border 要素を生成する。</summary>
     public static Border MakeBadge(string text, string hexColor, double margin = 0)
     {
         return new Border
@@ -25,6 +29,7 @@ public static class UiBadgeHelper
         };
     }
 
+    /// <summary>16進数カラー文字列から不透明度を適用した SolidColorBrush を生成する。</summary>
     public static SolidColorBrush ParseBrush(string hex, double opacity = 1.0)
     {
         try
@@ -36,6 +41,7 @@ public static class UiBadgeHelper
         catch { return new SolidColorBrush(Colors.Gray); }
     }
 
+    /// <summary>ステータス文字列に対応する16進数カラー文字列を返す。</summary>
     public static string StatusColor(string status) => status switch
     {
         "完了"       => "#4CAF50",
@@ -46,6 +52,7 @@ public static class UiBadgeHelper
         _            => "#607D8B"
     };
 
+    /// <summary>優先度文字列に対応する16進数カラー文字列を返す。</summary>
     public static string PriorityColor(string priority) => priority switch
     {
         "高" => "#EF5350",

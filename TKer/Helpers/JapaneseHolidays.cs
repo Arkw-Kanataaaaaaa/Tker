@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace TKer.Helpers;
 
+/// <summary>
+/// 日本の祝日・休日判定を提供するヘルパー。
+/// </summary>
 public static class JapaneseHolidays
 {
     private static readonly Dictionary<DateTime, string> _holidays = new()
@@ -87,8 +90,13 @@ public static class JapaneseHolidays
         { new DateTime(2027, 11, 23),"勤労感謝の日" },
     };
 
+    /// <summary>指定日が祝日かどうかを返す。</summary>
     public static bool IsHoliday(DateTime date) => _holidays.ContainsKey(date.Date);
+
+    /// <summary>指定日の祝日名を返す。祝日でない場合は null。</summary>
     public static string? GetName(DateTime date) => _holidays.TryGetValue(date.Date, out var n) ? n : null;
+
+    /// <summary>指定日が土日または祝日かどうかを返す。</summary>
     public static bool IsRestDay(DateTime date) =>
         date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday || IsHoliday(date);
 }

@@ -13,11 +13,13 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>TODOアイテムの一覧・追加・編集・削除を行うページ。</summary>
 public partial class TodoPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
     private readonly TodoService   _svc;
 
+    /// <summary>TODOページを初期化し、データ変更イベントを設定する。</summary>
     public TodoPage(MainViewModel vm)
     {
         _vm  = vm;
@@ -36,6 +38,7 @@ public partial class TodoPage : Page, IRefreshable
     private void OnDataChanged(object? sender, EventArgs e) => Dispatcher.Invoke(Refresh);
 
     // ── IRefreshable ─────────────────────────────────────
+    /// <summary>テーマを適用しバッジとリストを再構築する。</summary>
     public void Refresh()
     {
         // InitializeComponent() 途中の呼び出しをガード
@@ -47,6 +50,7 @@ public partial class TodoPage : Page, IRefreshable
         BuildList(FilterItems(all));
     }
 
+    /// <summary>件数バッジ（全件・完了・期限超過）を更新する。</summary>
     private void UpdateBadges(List<TodoItem> all)
     {
         if (TxtTotalCount == null) return;
@@ -55,6 +59,7 @@ public partial class TodoPage : Page, IRefreshable
         TxtOverdueCount.Text = all.Count(t => t.IsOverdue).ToString();
     }
 
+    /// <summary>検索キーワードとフィルター選択に基づいてアイテムを絞り込む。</summary>
     private List<TodoItem> FilterItems(List<TodoItem> all)
     {
         var kw  = TxtSearch?.Text.Trim() ?? "";
@@ -81,6 +86,7 @@ public partial class TodoPage : Page, IRefreshable
     }
 
     // ── リスト描画 ────────────────────────────────────────
+    /// <summary>TODOアイテムのリストをUIに描画する。</summary>
     private void BuildList(List<TodoItem> items)
     {
         if (TodoPanel == null) return;
@@ -116,6 +122,7 @@ public partial class TodoPage : Page, IRefreshable
         }
     }
 
+    /// <summary>セクションヘッダーテキストブロックを生成して返す。</summary>
     private static TextBlock MakeSectionHeader(string text) => new()
     {
         Text       = text,
@@ -125,6 +132,7 @@ public partial class TodoPage : Page, IRefreshable
         Margin     = new Thickness(0, 8, 0, 4)
     };
 
+    /// <summary>TODOアイテム1件分のカードUIを生成して返す。</summary>
     private Border BuildCard(TodoItem item)
     {
         Color accent;
@@ -253,6 +261,7 @@ public partial class TodoPage : Page, IRefreshable
         return card;
     }
 
+    /// <summary>ラベルと色を指定してバッジボーダーを生成して返す。</summary>
     private static Border MakeBadge(string text, Color color) => new()
     {
         Background  = new SolidColorBrush(Color.FromArgb(0x30, color.R, color.G, color.B)),
@@ -264,6 +273,7 @@ public partial class TodoPage : Page, IRefreshable
         Child   = new TextBlock { Text = text, FontSize = 10, Foreground = new SolidColorBrush(color) }
     };
 
+    /// <summary>アイコン文字とクリックアクションからアイコンボタンを生成して返す。</summary>
     private static Button MakeIconBtn(string icon, Action onClick)
     {
         var btn = new Button
@@ -279,6 +289,7 @@ public partial class TodoPage : Page, IRefreshable
     // ── ダイアログ ────────────────────────────────────────
     private void BtnAdd_Click(object s, RoutedEventArgs e) => OpenEditDialog(null);
 
+    /// <summary>TODO追加・編集ダイアログを開きサービスに保存する。</summary>
     private void OpenEditDialog(TodoItem? item)
     {
         var isNew = item == null;
@@ -305,6 +316,7 @@ public partial class TodoPage : Page, IRefreshable
     }
 
     // ── フィルターイベント ────────────────────────────────
+    /// <summary>検索テキスト変更時にリストを再フィルターする。</summary>
     private void TxtSearch_Changed(object s, TextChangedEventArgs e)
     {
         if (TodoPanel == null) return;
@@ -313,6 +325,7 @@ public partial class TodoPage : Page, IRefreshable
         BuildList(FilterItems(all));
     }
 
+    /// <summary>フィルター選択変更時にリストを再フィルターする。</summary>
     private void CboFilter_Changed(object s, SelectionChangedEventArgs e)
     {
         if (TodoPanel == null) return;
@@ -323,6 +336,7 @@ public partial class TodoPage : Page, IRefreshable
 }
 
 // ── TODO 編集ダイアログ ───────────────────────────────────
+/// <summary>TODOアイテムを追加・編集するダイアログウィンドウ。</summary>
 public class TodoEditDialog : Window
 {
     // 結果プロパティ
@@ -342,6 +356,7 @@ public class TodoEditDialog : Window
     private readonly ComboBox _cboTask;
     private readonly TextBox  _txtMap;
 
+    /// <summary>ダイアログを初期化し、既存アイテムの値をフォームに反映する。</summary>
     public TodoEditDialog(TodoItem? item, IEnumerable<TaskItem>? tasks)
     {
         Title  = item == null ? "TODO 追加" : "TODO 編集";
@@ -434,9 +449,11 @@ public class TodoEditDialog : Window
         Loaded += (_, _) => _txtTitle.Focus();
     }
 
+    /// <summary>ラベルテキストブロックを生成して返す。</summary>
     private static TextBlock Label(string t, Brush fg) =>
         new() { Text = t, Foreground = fg, FontSize = 11, Margin = new Thickness(0, 6, 0, 2) };
 
+    /// <summary>スタイルを適用したテキストボックスを生成して返す。</summary>
     private static TextBox Tb(Brush fg)
     {
         var tb = new TextBox();
@@ -444,6 +461,7 @@ public class TodoEditDialog : Window
         return tb;
     }
 
+    /// <summary>テキストボックスにダークスタイルを適用する。</summary>
     private static void ApplyTbStyle(TextBox tb, Brush fg)
     {
         tb.Background   = new SolidColorBrush(Color.FromRgb(0x25, 0x2C, 0x3F));
@@ -457,6 +475,7 @@ public class TodoEditDialog : Window
 }
 
 // ── ゼロ文字列を Collapsed にするコンバーター ─────────────
+/// <summary>文字列が "0" のとき Collapsed、それ以外は Visible を返すコンバーター。</summary>
 public class ZeroStringToVisibilityConverter : System.Windows.Data.IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)

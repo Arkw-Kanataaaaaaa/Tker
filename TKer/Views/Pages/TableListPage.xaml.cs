@@ -13,6 +13,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>カスタムテーブルの選択・表示・編集・Excel出力を行うページ。</summary>
 public partial class TableListPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
@@ -20,12 +21,14 @@ public partial class TableListPage : Page, IRefreshable
     private DataTable? _displayTable;
     private string _searchText = string.Empty;
 
+    /// <summary>テーブル一覧ページを初期化する。</summary>
     public TableListPage(MainViewModel vm)
     {
         _vm = vm;
         InitializeComponent();
     }
 
+    /// <summary>テーマを適用してテーブルセレクターを再読み込みする。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Table_Header"));
@@ -37,6 +40,7 @@ public partial class TableListPage : Page, IRefreshable
         LoadTableSelector();
     }
 
+    /// <summary>プロジェクトのカスタムテーブル一覧をセレクターに設定する。</summary>
     private void LoadTableSelector()
     {
         var tables = _vm.ProjectService.CurrentProject?.CustomTables ?? new List<CustomTable>();
@@ -54,6 +58,7 @@ public partial class TableListPage : Page, IRefreshable
             ShowNoTable();
     }
 
+    /// <summary>テーブル選択変更時にグリッドを再構築する。</summary>
     private void TableSelector_Changed(object sender, SelectionChangedEventArgs e)
     {
         _currentTable = TableSelector.SelectedItem as CustomTable;
@@ -63,6 +68,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // DataGrid 構築
     // ──────────────────────────────────────────────────
+    /// <summary>選択中テーブルの列定義を元にDataGridを再構築する。</summary>
     private void BuildGrid()
     {
         if (_currentTable == null) { ShowNoTable(); return; }
@@ -99,6 +105,7 @@ public partial class TableListPage : Page, IRefreshable
         PopulateRows();
     }
 
+    /// <summary>検索フィルターを適用してテーブルの行データをDataGridに設定する。</summary>
     private void PopulateRows()
     {
         if (_currentTable == null || _displayTable == null) return;
@@ -128,6 +135,7 @@ public partial class TableListPage : Page, IRefreshable
         TableGrid.ItemsSource = _displayTable.DefaultView;
     }
 
+    /// <summary>テーブル未選択状態のバナーを表示してグリッドを隠す。</summary>
     private void ShowNoTable()
     {
         NoTableBanner.Visibility = Visibility.Visible;
@@ -139,6 +147,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // 新規テーブル
     // ──────────────────────────────────────────────────
+    /// <summary>列定義ダイアログを開いて新しいカスタムテーブルを作成する。</summary>
     private void NewTable_Click(object sender, RoutedEventArgs e)
     {
         if (!_vm.IsProjectLoaded) { MessageBox.Show("プロジェクトを選択してください"); return; }
@@ -160,6 +169,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // テーブル列編集
     // ──────────────────────────────────────────────────
+    /// <summary>列定義ダイアログを開いて選択中テーブルの定義を編集する。</summary>
     private void EditTable_Click(object sender, RoutedEventArgs e)
     {
         if (_currentTable == null) { MessageBox.Show("テーブルを選択してください"); return; }
@@ -199,6 +209,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // テーブル削除
     // ──────────────────────────────────────────────────
+    /// <summary>確認後に選択中のカスタムテーブルを削除する。</summary>
     private void DeleteTable_Click(object sender, RoutedEventArgs e)
     {
         if (_currentTable == null) { MessageBox.Show("テーブルを選択してください"); return; }
@@ -215,6 +226,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // 行操作
     // ──────────────────────────────────────────────────
+    /// <summary>テーブルに新しい空行を追加して最終行にスクロールする。</summary>
     private void AddRow_Click(object sender, RoutedEventArgs e)
     {
         if (_currentTable == null) { MessageBox.Show("テーブルを選択してください"); return; }
@@ -225,6 +237,7 @@ public partial class TableListPage : Page, IRefreshable
             TableGrid.ScrollIntoView(TableGrid.Items[TableGrid.Items.Count - 1]);
     }
 
+    /// <summary>確認後に選択行をテーブルから削除する。</summary>
     private void DeleteRow_Click(object sender, RoutedEventArgs e)
     {
         if (_currentTable == null) return;
@@ -245,6 +258,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // セル編集終了
     // ──────────────────────────────────────────────────
+    /// <summary>セル編集確定時に変更内容をサービスに保存する。</summary>
     private void TableGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
     {
         if (e.EditAction != DataGridEditAction.Commit) return;
@@ -269,6 +283,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // 検索
     // ──────────────────────────────────────────────────
+    /// <summary>検索バーの表示・非表示を切り替える。</summary>
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
     {
         SearchBar.Visibility = SearchBar.Visibility == Visibility.Visible
@@ -283,6 +298,7 @@ public partial class TableListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>検索テキスト変更時にテーブル行を再フィルターする。</summary>
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         _searchText = SearchBox.Text;
@@ -292,6 +308,7 @@ public partial class TableListPage : Page, IRefreshable
     // ──────────────────────────────────────────────────
     // Excel出力
     // ──────────────────────────────────────────────────
+    /// <summary>選択中テーブルをExcelファイルとして保存する。</summary>
     private void ExportExcel_Click(object sender, RoutedEventArgs e)
     {
         if (_currentTable == null) { MessageBox.Show("テーブルを選択してください"); return; }

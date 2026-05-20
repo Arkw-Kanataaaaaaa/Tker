@@ -13,19 +13,20 @@ namespace TKer.Services;
 /// </summary>
 public class AppSettingsService
 {
-    private static readonly string SettingsDir =
+    private static readonly string SETTINGS_DIR =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TKer");
-    private static readonly string SettingsFile =
-        Path.Combine(SettingsDir, "settings.json");
+    private static readonly string SETTINGS_FILE =
+        Path.Combine(SETTINGS_DIR, "settings.json");
 
     private AppSettings _settings;
 
     // ⑩ サマリーキャッシュ（30秒有効）
     private List<ProjectSummary>? _summaryCache;
     private DateTime _summaryCachedAt;
-    private static readonly TimeSpan SummaryCacheTtl = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan SUMMARY_CACHE_TTL = TimeSpan.FromSeconds(30);
 
 
+    /// <summary>設定ファイルを読み込んでサービスを初期化する。</summary>
     public AppSettingsService()
     {
         _settings = Load();
@@ -34,6 +35,7 @@ public class AppSettingsService
     /// <summary>内部設定オブジェクトへの直接アクセス（カスタムプリセット等）</summary>
     public AppSettings Settings => _settings;
 
+    /// <summary>最終オープン日時の降順・ピン留め優先で並べた最近のプロジェクト一覧を返す。</summary>
     public IReadOnlyList<ProjectEntry> RecentProjects =>
         _settings.RecentProjects
             .OrderByDescending(p => p.IsPinned)
@@ -41,6 +43,7 @@ public class AppSettingsService
             .ToList();
 
     // ── 登録 / 更新 ───────────────────────────────
+    /// <summary>プロジェクトを最近のプロジェクト一覧に登録または更新して保存する。</summary>
     public void RegisterProject(string dataFilePath, string projectName,
                                 string projectPath, string description = "")
     {
@@ -71,12 +74,14 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>指定パスのプロジェクトを最近の一覧から削除して保存する。</summary>
     public void RemoveProject(string dataFilePath)
     {
         _settings.RecentProjects.RemoveAll(p => p.DataFilePath == dataFilePath);
         Save();
     }
 
+    /// <summary>指定プロジェクトのピン留め状態を切り替えて保存する。</summary>
     public void TogglePin(string dataFilePath)
     {
         var entry = _settings.RecentProjects.FirstOrDefault(p => p.DataFilePath == dataFilePath);
@@ -87,6 +92,7 @@ public class AppSettingsService
 
 
     // ── アプリ設定の更新 ─────────────────────────
+    /// <summary>アラート設定（猶予日数・完了タスク表示）を更新して保存する。</summary>
     public void UpdateAlertSettings(int graceDays, bool showCompletedInSchedule)
     {
         _settings.AlertNotStartedGraceDays = graceDays;
@@ -94,6 +100,7 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>外観設定（背景・モード・行透過・ガント色など）を更新して保存する。</summary>
     public void UpdateAppearanceSettings(string? backgroundImagePath, string appMode,
         double taskRowOpacity = 1.0, string ganttRowColor = "#EBEBEB", double ganttRowOpacity = 1.0,
         string rowBorderColor = "#606060")
@@ -118,6 +125,7 @@ public class AppSettingsService
     public string ProjectListBgColor    => _settings.ProjectListBgColor;
     public double ProjectListBgOpacity  => _settings.ProjectListBgOpacity;
 
+    /// <summary>プロジェクト一覧の背景色・不透明度を更新して保存する。</summary>
     public void UpdateProjectListBackground(string bgColor, double bgOpacity)
     {
         _settings.ProjectListBgColor   = bgColor;
@@ -128,6 +136,7 @@ public class AppSettingsService
     public string CategoryListBgColor   => _settings.CategoryListBgColor;
     public double CategoryListBgOpacity => _settings.CategoryListBgOpacity;
 
+    /// <summary>カテゴリー一覧の背景色・不透明度を更新して保存する。</summary>
     public void UpdateCategoryListBackground(string bgColor, double bgOpacity)
     {
         _settings.CategoryListBgColor   = bgColor;
@@ -138,6 +147,7 @@ public class AppSettingsService
     public string AppSettingsBgColor    => _settings.AppSettingsBgColor;
     public double AppSettingsBgOpacity  => _settings.AppSettingsBgOpacity;
 
+    /// <summary>アプリ設定画面の背景色・不透明度を更新して保存する。</summary>
     public void UpdateAppSettingsBackground(string bgColor, double bgOpacity)
     {
         _settings.AppSettingsBgColor   = bgColor;
@@ -146,6 +156,7 @@ public class AppSettingsService
     }
     public IReadOnlyList<AppShortcut> Shortcuts => _settings.Shortcuts;
 
+    /// <summary>ショートカット一覧を保存する。</summary>
     public void SaveShortcuts(List<AppShortcut> shortcuts)
     {
         _settings.Shortcuts = shortcuts;
@@ -153,6 +164,7 @@ public class AppSettingsService
     }
 
     public IReadOnlyList<string> MenuOrder => _settings.MenuOrder;
+    /// <summary>メニュー表示順を保存する。</summary>
     public void SaveMenuOrder(List<string> order)
     {
         _settings.MenuOrder = order;
@@ -160,6 +172,7 @@ public class AppSettingsService
     }
 
     public ThemeColors Theme => _settings.Theme;
+    /// <summary>テーマカラーを保存する。</summary>
     public void SaveTheme(ThemeColors theme)
     {
         _settings.Theme = theme;
@@ -167,6 +180,7 @@ public class AppSettingsService
     }
 
     public bool SkipRestartConfirm => _settings.SkipRestartConfirm;
+    /// <summary>再起動確認ダイアログのスキップ設定を保存する。</summary>
     public void SetSkipRestartConfirm(bool skip)
     {
         _settings.SkipRestartConfirm = skip;
@@ -174,6 +188,7 @@ public class AppSettingsService
     }
 
     public PomodoroSettings PomodoroSettings => _settings.Pomodoro;
+    /// <summary>ポモドーロ設定を保存する。</summary>
     public void SavePomodoro(PomodoroSettings p)
     {
         _settings.Pomodoro = p;
@@ -181,6 +196,7 @@ public class AppSettingsService
     }
 
     public List<CategoryPreset> CategoryPresets => _settings.CategoryPresets;
+    /// <summary>カテゴリープリセット一覧を保存する。</summary>
     public void SaveCategoryPresets(List<CategoryPreset> presets)
     {
         _settings.CategoryPresets = presets;
@@ -189,6 +205,7 @@ public class AppSettingsService
 
     // ── カレンダーウィジェット ─────────────────────
     public CalendarWidgetSettings WidgetSettings => _settings.CalendarWidget;
+    /// <summary>カレンダーウィジェット設定を保存する。</summary>
     public void SaveWidgetSettings(CalendarWidgetSettings ws)
     {
         _settings.CalendarWidget = ws;
@@ -197,6 +214,7 @@ public class AppSettingsService
 
     // ── 栞ウィジェット ─────────────────────────────
     public BookmarkWidgetSettings BookmarkWidgetSettings => _settings.BookmarkWidget;
+    /// <summary>栞ウィジェット設定を保存する。</summary>
     public void SaveBookmarkSettings(BookmarkWidgetSettings bs)
     {
         _settings.BookmarkWidget = bs;
@@ -205,6 +223,7 @@ public class AppSettingsService
 
     // ── ログローテーション ────────────────────────
     public LogRotationSettings LogRotation => _settings.LogRotation;
+    /// <summary>ログローテーション設定を保存する。</summary>
     public void SaveLogRotation(LogRotationSettings lr)
     {
         _settings.LogRotation = lr;
@@ -212,7 +231,7 @@ public class AppSettingsService
     }
 
     // ── テーマプリセット ─────────────────────────
-    private static readonly List<ThemePreset> _builtInPresets = new()
+    private static readonly List<ThemePreset> BUILT_IN_PRESETS = new()
     {
         new() {
             Id = "builtin_dark", Name = "ダーク（デフォルト）", IsBuiltIn = true,
@@ -265,9 +284,11 @@ public class AppSettingsService
         },
     };
 
+    /// <summary>組み込みプリセットとユーザープリセットを結合して返す。</summary>
     public IReadOnlyList<ThemePreset> GetAllPresets()
-        => _builtInPresets.Concat(_settings.UserPresets).ToList();
+        => BUILT_IN_PRESETS.Concat(_settings.UserPresets).ToList();
 
+    /// <summary>指定プリセットのテーマとセクションテーマを適用して保存する。</summary>
     public void ApplyPreset(ThemePreset preset)
     {
         _settings.Theme        = CloneTheme(preset.Theme);
@@ -275,6 +296,7 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>現在のテーマ設定から新規プリセットを作成する。</summary>
     public ThemePreset CreatePresetFromCurrent(string name) => new()
     {
         Name          = name,
@@ -283,18 +305,21 @@ public class AppSettingsService
         SectionThemes = new Dictionary<string, SectionTheme>(_settings.SectionThemes)
     };
 
+    /// <summary>ユーザープリセットを追加して保存する。</summary>
     public void SaveUserPreset(ThemePreset preset)
     {
         _settings.UserPresets.Add(preset);
         Save();
     }
 
+    /// <summary>指定IDのユーザープリセットを削除して保存する。</summary>
     public void DeleteUserPreset(string id)
     {
         _settings.UserPresets.RemoveAll(p => p.Id == id);
         Save();
     }
 
+    /// <summary>ThemeColorsオブジェクトをディープコピーして返す。</summary>
     private static ThemeColors CloneTheme(ThemeColors t) => new()
     {
         TextPrimary  = t.TextPrimary,
@@ -311,7 +336,7 @@ public class AppSettingsService
     };
 
     // ── ホームレイアウト ─────────────────────────────
-    private static readonly (string Id, int Row, int Col, int RowSpan, int ColSpan)[] DefaultHomeSlots =
+    private static readonly (string Id, int Row, int Col, int RowSpan, int ColSpan)[] DEFAULT_HOME_SLOTS =
     [
         ("Header",     0, 0, 1, 2),
         ("Alert",      1, 0, 1, 2),
@@ -322,8 +347,8 @@ public class AppSettingsService
         ("QuickNav",   4, 0, 1, 1),
         ("Version",    4, 1, 1, 1),
     ];
-    private static readonly double[] DefaultColumnWidths = { -1, -1 };
-    private static readonly double[] DefaultRowHeights   = { 80, 160, 220, 280, 130 };
+    private static readonly double[] DEFAULT_COLUMN_WIDTHS = { -1, -1 };
+    private static readonly double[] DEFAULT_ROW_HEIGHTS   = { 80, 160, 220, 280, 130 };
 
     /// <summary>
     /// 保存済みスロットが新仕様（Row/Column 設定済み）かを判定。
@@ -340,10 +365,11 @@ public class AppSettingsService
         return false;
     }
 
+    /// <summary>保存済みレイアウトが有効な場合はそれを、そうでなければデフォルトを返す。</summary>
     public List<HomeLayoutSlot> GetEffectiveHomeLayout()
     {
         bool useSaved = IsSavedLayoutValid(_settings.HomeLayout);
-        return DefaultHomeSlots.Select(d =>
+        return DEFAULT_HOME_SLOTS.Select(d =>
         {
             if (useSaved && _settings.HomeLayout.TryGetValue(d.Id, out var saved))
             {
@@ -363,26 +389,30 @@ public class AppSettingsService
         }).ToList();
     }
 
+    /// <summary>保存済みカラム幅が存在すればそれを、なければデフォルトを返す。</summary>
     public List<double> GetEffectiveColumnWidths()
     {
         if (_settings.HomeColumnWidths != null && _settings.HomeColumnWidths.Count > 0)
             return _settings.HomeColumnWidths.ToList();
-        return DefaultColumnWidths.ToList();
+        return DEFAULT_COLUMN_WIDTHS.ToList();
     }
 
+    /// <summary>保存済み行高さが存在すればそれを、なければデフォルトを返す。</summary>
     public List<double> GetEffectiveRowHeights()
     {
         if (_settings.HomeRowHeights != null && _settings.HomeRowHeights.Count > 0)
             return _settings.HomeRowHeights.ToList();
-        return DefaultRowHeights.ToList();
+        return DEFAULT_ROW_HEIGHTS.ToList();
     }
 
+    /// <summary>ホーム画面のレイアウト設定を保存する。</summary>
     public void SaveHomeLayout(Dictionary<string, HomeLayoutSlot> layout)
     {
         _settings.HomeLayout = layout;
         Save();
     }
 
+    /// <summary>ホーム画面のカラム幅と行高さを保存する。</summary>
     public void SaveHomeLanes(List<double> cols, List<double> rows)
     {
         _settings.HomeColumnWidths = cols ?? new List<double>();
@@ -391,8 +421,10 @@ public class AppSettingsService
     }
 
     public IReadOnlyDictionary<string, SectionTheme> SectionThemes => _settings.SectionThemes;
+    /// <summary>指定キーのセクションテーマを返す（未登録時は既定値）。</summary>
     public SectionTheme GetSectionTheme(string key)
         => _settings.SectionThemes.TryGetValue(key, out var t) ? t : new SectionTheme();
+    /// <summary>指定セクションテーマを既存設定にマージして保存する。</summary>
     public void SaveSectionThemes(Dictionary<string, SectionTheme> themes)
     {
         var merged = new Dictionary<string, SectionTheme>(_settings.SectionThemes);
@@ -401,6 +433,7 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>指定キーのセクションテーマを更新して保存する。</summary>
     public void UpdateSectionTheme(string key, SectionTheme theme)
     {
         var dict = new Dictionary<string, SectionTheme>(_settings.SectionThemes) { [key] = theme };
@@ -408,6 +441,7 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>全セクションテーマをリセットして保存する。</summary>
     public void ResetAllSectionThemes()
     {
         _settings.SectionThemes = new();
@@ -415,6 +449,7 @@ public class AppSettingsService
     }
 
     // ⑲ 最近使ったプロジェクト上限管理（最大20件、ピン留め優先）
+    /// <summary>最近使ったプロジェクトを最大20件に切り詰め、ピン留めを優先する。</summary>
     private void TrimRecentProjects()
     {
         const int MaxRecent = 20;
@@ -426,13 +461,14 @@ public class AppSettingsService
     }
 
     // ── ロード / セーブ ───────────────────────────
+    /// <summary>設定ファイルを読み込んで返す（ファイル不在・破損時は新規設定を返す）。</summary>
     private AppSettings Load()
     {
         try
         {
-            if (File.Exists(SettingsFile))
+            if (File.Exists(SETTINGS_FILE))
             {
-                var json = File.ReadAllText(SettingsFile);
+                var json = File.ReadAllText(SETTINGS_FILE);
                 var loaded = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
                 MigrateMenuOrder(loaded);
                 return loaded;
@@ -461,11 +497,12 @@ public class AppSettingsService
         s.MenuOrder = migrated.Distinct().ToList();
     }
 
+    /// <summary>現在の設定をJSONファイルに書き出す。</summary>
     private void Save()
     {
-        Directory.CreateDirectory(SettingsDir);
+        Directory.CreateDirectory(SETTINGS_DIR);
         var json = JsonConvert.SerializeObject(_settings, Formatting.Indented);
-        File.WriteAllText(SettingsFile, json);
+        File.WriteAllText(SETTINGS_FILE, json);
     }
 
     // ── アラート集計（全プロジェクト横断） ─────────
@@ -529,7 +566,7 @@ public class AppSettingsService
     public List<ProjectSummary> CollectSummaries(bool forceRefresh = false)
     {
         if (!forceRefresh && _summaryCache != null &&
-            (DateTime.Now - _summaryCachedAt) < SummaryCacheTtl)
+            (DateTime.Now - _summaryCachedAt) < SUMMARY_CACHE_TTL)
             return _summaryCache;
 
         {

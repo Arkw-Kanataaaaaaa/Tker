@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -31,6 +31,7 @@ public sealed class FileWatcherService : IDisposable
     public event Action<string, string>? TaskFileChanged;
 
     // ── 監視開始 ─────────────────────────────────────────
+    /// <summary>指定タスクのフォルダ監視を開始する。</summary>
     public void WatchTask(TaskItem task)
     {
         if (string.IsNullOrEmpty(task.FolderPath) || !Directory.Exists(task.FolderPath))
@@ -57,6 +58,7 @@ public sealed class FileWatcherService : IDisposable
         }
     }
 
+    /// <summary>指定タスク ID のフォルダ監視を停止する。</summary>
     public void StopWatching(string taskId)
     {
         lock (_lock)
@@ -95,6 +97,7 @@ public sealed class FileWatcherService : IDisposable
     }
 
     // ── イベントハンドラ（ファイル変更検知）────────────
+    /// <summary>ファイル変更イベントを受け取り、デバウンス付きで処理する。</summary>
     private void OnChanged(string taskId, string filePath)
     {
         if (_disposed) return;
@@ -121,6 +124,7 @@ public sealed class FileWatcherService : IDisposable
         }
     }
 
+    /// <summary>デバウンス後に TaskFileChanged イベントを発火する。</summary>
     private void FireEvent(string taskId)
     {
         string? fp;
@@ -137,6 +141,7 @@ public sealed class FileWatcherService : IDisposable
             TaskFileChanged?.Invoke(taskId, fp);
     }
 
+    /// <summary>全ウォッチャーとタイマーを破棄する。</summary>
     public void Dispose()
     {
         _disposed = true;

@@ -14,6 +14,7 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
+/// <summary>UIテーマ・ホームレイアウト・メニュー順序をカスタマイズするページ。</summary>
 public partial class UiCustomizePage : Page, IRefreshable
 {
     private readonly MainViewModel      _vm;
@@ -27,11 +28,11 @@ public partial class UiCustomizePage : Page, IRefreshable
     private string? _selectedHomeId = null;
 
     // ── 正規メニュー項目 ──────────────────────────────────────────────
-    private static readonly string[] CanonicalMenuItems =
+    private static readonly string[] CANONICAL_MENU_ITEMS =
         { "ホーム", "ライブラリ", "タスク管理", "ツール", "カスタマイズ", "ヘルプ" };
 
     // ── ホームコンポーネント ID → 表示名 ─────────────────────────────
-    private static readonly Dictionary<string, string> HomeComponentLabels = new()
+    private static readonly Dictionary<string, string> HOME_COMPONENT_LABELS = new()
     {
         ["RecentTask"] = "直近タスク",
         ["Project"]    = "プロジェクト一覧",
@@ -43,10 +44,10 @@ public partial class UiCustomizePage : Page, IRefreshable
         ["Alert"]      = "アラートセクション",
     };
 
-    private static readonly string[] FixedHomeComponents = { };
+    private static readonly string[] FIXED_HOME_COMPONENTS = { };
 
     // ── 一括適用対象キー（ホーム + 各画面） ─────────────────────────
-    private static readonly string[] AllBulkTargetKeys =
+    private static readonly string[] ALL_BULK_TARGET_KEYS =
     {
         // ホーム画面コンポーネント
         "Header", "Alert", "RecentTask", "Project", "Shortcut", "Calendar", "QuickNav", "Version",
@@ -83,7 +84,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     };
 
     // ── その他画面のコンポーネント定義 ───────────────────────────────
-    private static readonly (string Screen, (string Key, string Label)[] Components)[] Screens =
+    private static readonly (string Screen, (string Key, string Label)[] Components)[] SCREENS =
     [
         ("タスク管理", [
             ("Task_Header",  "ヘッダー"),
@@ -150,6 +151,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         ]),
     ];
 
+    /// <summary>UIカスタマイズページを初期化する。</summary>
     public UiCustomizePage(MainViewModel vm)
     {
         _vm  = vm;
@@ -161,6 +163,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  Refresh
     // ══════════════════════════════════════════════
 
+    /// <summary>テーマ・レイアウト・メニュー順序を再読み込みして画面を更新する。</summary>
     public void Refresh()
     {
         _gridSlots = _svc.GetEffectiveHomeLayout()
@@ -217,11 +220,11 @@ public partial class UiCustomizePage : Page, IRefreshable
         };
 
         var savedOrder = _svc.MenuOrder.ToList();
-        _menuOrder = CanonicalMenuItems
+        _menuOrder = CANONICAL_MENU_ITEMS
             .OrderBy(c =>
             {
                 int i = savedOrder.IndexOf(c);
-                return i < 0 ? CanonicalMenuItems.Length : i;
+                return i < 0 ? CANONICAL_MENU_ITEMS.Length : i;
             })
             .ToList();
         RefreshMenuOrderList();
@@ -233,6 +236,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  Tab 1 — ホーム画面ビジュアルプレビュー
     // ══════════════════════════════════════════════
 
+    /// <summary>ホーム画面レイアウトのビジュアルプレビューを再構築する。</summary>
     private void BuildHomePreview()
     {
         if (HomePreviewGrid == null) return;
@@ -357,6 +361,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         }
     }
 
+    /// <summary>GridSplitter操作後の列幅をキャプチャして内部リストに保存する。</summary>
     private void CaptureColumnWidths()
     {
         if (HomePreviewGrid == null) return;
@@ -368,6 +373,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         BuildHomePreview();
     }
 
+    /// <summary>GridSplitter操作後の行高さをキャプチャして内部リストに保存する。</summary>
     private void CaptureRowHeights()
     {
         if (HomePreviewGrid == null) return;
@@ -378,6 +384,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         BuildHomePreview();
     }
 
+    /// <summary>数値をGridLengthに変換する（0=Auto、負=Star、正=Pixel）。</summary>
     private static GridLength ToGridLength(double v)
     {
         if (v == 0) return GridLength.Auto;
@@ -386,12 +393,14 @@ public partial class UiCustomizePage : Page, IRefreshable
     }
 
     // ── レーン操作 ─────────────────────────────────
+    /// <summary>ホームプレビューグリッドに列を追加する。</summary>
     private void LaneAddCol_Click(object sender, RoutedEventArgs e)
     {
         _columnWidths.Add(-1);
         BuildHomePreview();
     }
 
+    /// <summary>ホームプレビューグリッドの末尾列を削除する。</summary>
     private void LaneRemoveCol_Click(object sender, RoutedEventArgs e)
     {
         if (_columnWidths.Count <= 1) return;
@@ -405,12 +414,14 @@ public partial class UiCustomizePage : Page, IRefreshable
         BuildHomePreview();
     }
 
+    /// <summary>ホームプレビューグリッドに行を追加する。</summary>
     private void LaneAddRow_Click(object sender, RoutedEventArgs e)
     {
         _rowHeights.Add(-1);
         BuildHomePreview();
     }
 
+    /// <summary>ホームプレビューグリッドの末尾行を削除する。</summary>
     private void LaneRemoveRow_Click(object sender, RoutedEventArgs e)
     {
         if (_rowHeights.Count <= 1) return;
@@ -423,6 +434,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         BuildHomePreview();
     }
 
+    /// <summary>ホームレイアウトをデフォルトにリセットする。</summary>
     private void LaneReset_Click(object sender, RoutedEventArgs e)
     {
         _svc.SaveHomeLanes(new List<double>(), new List<double>());
@@ -443,13 +455,14 @@ public partial class UiCustomizePage : Page, IRefreshable
 
     // ── プレビューカード生成 ─────────────────────────────────────────
 
+    /// <summary>ホームコンポーネントのプレビューカードを生成して返す。</summary>
     private Border BuildPreviewCard(string id, HomeLayoutSlot? slot)
     {
         var theme       = _svc.GetSectionTheme(id);
         var isSelected  = id == _selectedHomeId;
         var isFixed     = false;
         var isVisible   = slot?.Visible ?? true;
-        var label       = HomeComponentLabels.TryGetValue(id, out var l) ? l : id;
+        var label       = HOME_COMPONENT_LABELS.TryGetValue(id, out var l) ? l : id;
 
         var fg         = TryBrush("TextPrimaryBrush") ?? Brushes.White;
         var fgDim      = TryBrush("TextDimBrush")     ?? Brushes.Gray;
@@ -615,6 +628,7 @@ public partial class UiCustomizePage : Page, IRefreshable
 
     // ── スケルトンコンテンツ ────────────────────────────────────────
 
+    /// <summary>コンポーネントIDに応じたスケルトンUI要素をパネルに追加する。</summary>
     private void AddSkeletonContent(StackPanel p, string id)
     {
         var fg         = TryBrush("TextPrimaryBrush")  ?? Brushes.White;
@@ -783,8 +797,8 @@ public partial class UiCustomizePage : Page, IRefreshable
             case "Version":
             {
                 p.Children.Add(SectionTitle("ℹ  アプリ情報"));
-                p.Children.Add(new TextBlock { Text = $"バージョン    {TKer.Models.AppVersion.DisplayName}", FontSize = 11, Foreground = fgDim, Margin = new Thickness(0, 0, 0, 3) });
-                p.Children.Add(new TextBlock { Text = $"ビルド日      {TKer.Models.AppVersion.BuildDate}",  FontSize = 11, Foreground = fgDim });
+                p.Children.Add(new TextBlock { Text = $"バージョン    {TKer.Models.AppVersion.DISPLAY_NAME}", FontSize = 11, Foreground = fgDim, Margin = new Thickness(0, 0, 0, 3) });
+                p.Children.Add(new TextBlock { Text = $"ビルド日      {TKer.Models.AppVersion.BUILD_DATE}",  FontSize = 11, Foreground = fgDim });
                 break;
             }
         }
@@ -792,12 +806,13 @@ public partial class UiCustomizePage : Page, IRefreshable
 
     // ── 右パネル: スタイル編集 ──────────────────────────────────────
 
+    /// <summary>選択コンポーネントのスタイル編集パネルを更新する。</summary>
     private void UpdateHomeStylePanel()
     {
         HomeStylePanel.Children.Clear();
         if (_selectedHomeId == null) { ShowHomeStylePlaceholder(); return; }
 
-        var label   = HomeComponentLabels.TryGetValue(_selectedHomeId, out var l) ? l : _selectedHomeId;
+        var label   = HOME_COMPONENT_LABELS.TryGetValue(_selectedHomeId, out var l) ? l : _selectedHomeId;
         var fg      = TryBrush("TextPrimaryBrush") ?? Brushes.White;
         var fgDim   = TryBrush("TextDimBrush")     ?? Brushes.Gray;
         var border  = TryBrush("BorderBrush")       ?? Brushes.DarkGray;
@@ -925,6 +940,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         HomeStylePanel.Children.Add(resetBtn);
     }
 
+    /// <summary>スタイル編集パネルに選択待ちのプレースホルダーを表示する。</summary>
     private void ShowHomeStylePlaceholder()
     {
         HomeStylePanel.Children.Clear();
@@ -936,6 +952,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         });
     }
 
+    /// <summary>カラー入力欄に添えるプレビュードットを生成して返す。</summary>
     private static Border ColorPreviewDot(Brush borderBrush) => new Border
     {
         Width = 24, Height = 24, CornerRadius = new CornerRadius(4),
@@ -943,6 +960,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center
     };
 
+    /// <summary>HEX文字列をColorに変換し失敗時はnullを返す。</summary>
     private static Color? TryParseColor(string s)
     {
         if (string.IsNullOrWhiteSpace(s)) return null;
@@ -954,6 +972,7 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  Tab 2 — 各画面の個別設定（インラインエディター）
     // ══════════════════════════════════════════════
 
+    /// <summary>各画面コンポーネントのスタイル設定パネルを構築する。</summary>
     private void BuildContent()
     {
         ContentPanel.Children.Clear();
@@ -971,7 +990,7 @@ public partial class UiCustomizePage : Page, IRefreshable
             Margin = new Thickness(0, 0, 0, 24)
         });
 
-        foreach (var (screen, components) in Screens)
+        foreach (var (screen, components) in SCREENS)
         {
             ContentPanel.Children.Add(new TextBlock
             {
@@ -1631,7 +1650,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         var bulkBorder  = NullIfEmpty(TxtBulkBorderColor.Text);
         var bulkOpacity = SliderBulkOpacity.Value / 100.0;
 
-        foreach (var key in AllBulkTargetKeys)
+        foreach (var key in ALL_BULK_TARGET_KEYS)
         {
             var existing = _svc.GetSectionTheme(key);
             _svc.UpdateSectionTheme(key, new SectionTheme

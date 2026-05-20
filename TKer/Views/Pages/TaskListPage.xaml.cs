@@ -19,6 +19,7 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
+/// <summary>タスク一覧エクスポート用の行データモデル。</summary>
 public class TaskRow
 {
     public string    Id               { get; set; } = "";
@@ -37,6 +38,7 @@ public class TaskRow
     public TaskItem  Source           { get; set; } = null!;
 }
 
+/// <summary>タスク一覧・ガントチャートを表示するページ。</summary>
 public partial class TaskListPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
@@ -67,19 +69,19 @@ public partial class TaskListPage : Page, IRefreshable
     private const double ActBarY  = 26;
     private const double BarH    = 12;
 
-    private static readonly SolidColorBrush TextPrimBrush  = new(Color.FromRgb(207, 207, 207));
-    private static readonly SolidColorBrush TextSecBrush   = new(Color.FromRgb(120, 119, 116));
-    private static readonly SolidColorBrush TextDimBrush_  = new(Color.FromRgb(72,  72,  72));
-    private static readonly SolidColorBrush BgHoverBrush_  = new(Color.FromRgb(55,  55,  55));
-    private static readonly SolidColorBrush GridBrush_     = new(Color.FromArgb(80, 55, 55, 55));
+    private static readonly SolidColorBrush TEXT_PRIM_BRUSH   = new(Color.FromRgb(207, 207, 207));
+    private static readonly SolidColorBrush TEXT_SEC_BRUSH    = new(Color.FromRgb(120, 119, 116));
+    private static readonly SolidColorBrush TEXT_DIM_BRUSH    = new(Color.FromRgb(72,  72,  72));
+    private static readonly SolidColorBrush BG_HOVER_BRUSH    = new(Color.FromRgb(55,  55,  55));
+    private static readonly SolidColorBrush GRID_BRUSH        = new(Color.FromArgb(80, 55, 55, 55));
     // 列区切り線：行背景より少し明るい半透明白
-    private static readonly SolidColorBrush ColSepBrush_   = new(Color.FromArgb(45, 255, 255, 255));
-    private static readonly SolidColorBrush PlanBrush_     = new(Color.FromArgb(210, 35, 131, 226));
-    private static readonly SolidColorBrush ActBrush_      = new(Color.FromArgb(210, 82, 158, 114));
-    private static readonly SolidColorBrush TodayBrush_    = new(Color.FromArgb(220, 11, 110, 153));
-    private static readonly SolidColorBrush WeekendBrush_  = new(Color.FromArgb(18, 255, 255, 255));
-    private static readonly SolidColorBrush HolidayBrush_  = new(Color.FromArgb(18, 224, 62, 62));
-    private static readonly SolidColorBrush AccentBlueBrush_ = new(Color.FromRgb(35, 131, 226));
+    private static readonly SolidColorBrush COL_SEP_BRUSH     = new(Color.FromArgb(45, 255, 255, 255));
+    private static readonly SolidColorBrush PLAN_BRUSH        = new(Color.FromArgb(210, 35, 131, 226));
+    private static readonly SolidColorBrush ACT_BRUSH         = new(Color.FromArgb(210, 82, 158, 114));
+    private static readonly SolidColorBrush TODAY_BRUSH       = new(Color.FromArgb(220, 11, 110, 153));
+    private static readonly SolidColorBrush WEEKEND_BRUSH     = new(Color.FromArgb(18, 255, 255, 255));
+    private static readonly SolidColorBrush HOLIDAY_BRUSH     = new(Color.FromArgb(18, 224, 62, 62));
+    private static readonly SolidColorBrush ACCENT_BLUE_BRUSH = new(Color.FromRgb(35, 131, 226));
 
     private enum RowKind { Category, Task, AddTask }
     private record RowDef(RowKind Kind, Category? Cat, TaskItem? Task);
@@ -106,6 +108,7 @@ public partial class TaskListPage : Page, IRefreshable
     private TaskItem? _dropTargetTask;
     private bool      _dropBefore;
 
+    /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
     public TaskListPage(MainViewModel vm)
     {
         _vm = vm;
@@ -137,6 +140,7 @@ public partial class TaskListPage : Page, IRefreshable
 
     private Window? _keyDownWindow;
 
+    /// <summary>ウィンドウ全体のキーボードショートカットを処理する。</summary>
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         if (!IsVisible) return;
@@ -204,8 +208,10 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>パーソナルモードかどうかを返す。</summary>
     private bool IsPersonalMode => _vm.AppSettingsService.AppMode == "Personal";
 
+    /// <summary>ページ全体のUIを最新データで再描画する。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Task_Header"));
@@ -232,6 +238,7 @@ public partial class TaskListPage : Page, IRefreshable
     // UI Construction
     // ══════════════════════════════════════════════════════
 
+    /// <summary>タスクツリーとガントチャートのUI要素を構築する。</summary>
     private void BuildUI()
     {
         if (TaskTree == null || GanttStack == null) return;
@@ -321,6 +328,7 @@ public partial class TaskListPage : Page, IRefreshable
         DrawDateHeader(_ganttTotalW);
     }
 
+    /// <summary>ガント/詳細モードに応じた右パネルの総幅を計算する。</summary>
     private double ComputeTotalW()
     {
         double avail = BarScroll.ActualWidth > 0 ? BarScroll.ActualWidth : 0;
@@ -333,9 +341,10 @@ public partial class TaskListPage : Page, IRefreshable
             }
             return ColW * _viewDays;
         }
-        return Math.Max(DetailCanvasMinW, avail);
+        return Math.Max(DETAIL_CANVAS_MIN_W, avail);
     }
 
+    /// <summary>ステータスフィルターコンボボックスの選択値を返す。</summary>
     private string GetFilterStatus()
     {
         if (CbStatusFilter?.SelectedItem is ComboBoxItem item)
@@ -346,6 +355,7 @@ public partial class TaskListPage : Page, IRefreshable
         return "";
     }
 
+    /// <summary>優先度フィルターコンボボックスの選択値を返す。</summary>
     private string GetFilterPriority()
     {
         if (CbPriorityFilter?.SelectedItem is ComboBoxItem item)
@@ -356,6 +366,7 @@ public partial class TaskListPage : Page, IRefreshable
         return "";
     }
 
+    /// <summary>カテゴリー行の左パネルUI要素を生成する。</summary>
     private Border BuildCategoryRow(Category cat, Color catColor, bool expanded,
         out SolidColorBrush bgBrush, out SolidColorBrush hoverBrush)
     {
@@ -371,7 +382,7 @@ public partial class TaskListPage : Page, IRefreshable
         {
             Text = expanded ? "▼" : "▶", Width = 28,
             VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 10, Foreground = TextSecBrush,
+            FontSize = 10, Foreground = TEXT_SEC_BRUSH,
             TextAlignment = TextAlignment.Center
         };
         _categoryArrows[cat.Id] = arrow;
@@ -390,7 +401,7 @@ public partial class TaskListPage : Page, IRefreshable
         var name = new TextBlock
         {
             Text = cat.Name, FontWeight = FontWeights.Bold, FontSize = 14,
-            Foreground = TextPrimBrush, VerticalAlignment = VerticalAlignment.Center
+            Foreground = TEXT_PRIM_BRUSH, VerticalAlignment = VerticalAlignment.Center
         };
         panel.Children.Add(name);
 
@@ -404,6 +415,7 @@ public partial class TaskListPage : Page, IRefreshable
         return border;
     }
 
+    /// <summary>カテゴリーの展開・折りたたみをアニメーション付きで切り替える。</summary>
     private void ToggleCategoryAnimated(Category cat)
     {
         if (_isAnimating) return;
@@ -467,6 +479,7 @@ public partial class TaskListPage : Page, IRefreshable
         else { OnComplete(); }
     }
 
+    /// <summary>タスク行のUI要素を生成する。</summary>
     private Border BuildTaskRow(TaskItem task, string catColorStr)
     {
         var catColor     = ParseColor(catColorStr);
@@ -474,6 +487,7 @@ public partial class TaskListPage : Page, IRefreshable
         return BuildTaskRowNormal(task, catColor, isCompleted);
     }
 
+    /// <summary>タスク行の通常表示グリッドを構築する。</summary>
     private Border BuildTaskRowNormal(TaskItem task, Color catColor, bool isCompleted)
     {
         var grid = new Grid { Height = RowH };
@@ -499,7 +513,7 @@ public partial class TaskListPage : Page, IRefreshable
         {
             Text = task.Name, VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0, 4, 0), FontSize = 14,
-            Foreground = isCompleted ? TextDimBrush_ : TextPrimBrush,
+            Foreground = isCompleted ? TEXT_DIM_BRUSH : TEXT_PRIM_BRUSH,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
         if (isCompleted) nameTb.TextDecorations = TextDecorations.Strikethrough;
@@ -510,7 +524,7 @@ public partial class TaskListPage : Page, IRefreshable
         var assigneeTb = new TextBlock
         {
             Text = task.Assignee, VerticalAlignment = VerticalAlignment.Center,
-            FontSize = 13, Foreground = TextSecBrush,
+            FontSize = 13, Foreground = TEXT_SEC_BRUSH,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
         Grid.SetColumn(assigneeTb, 2);
@@ -531,7 +545,7 @@ public partial class TaskListPage : Page, IRefreshable
         {
             var sep = new Rectangle
             {
-                Width = 1, Fill = ColSepBrush_,
+                Width = 1, Fill = COL_SEP_BRUSH,
                 VerticalAlignment = VerticalAlignment.Stretch,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 IsHitTestVisible = false
@@ -543,6 +557,7 @@ public partial class TaskListPage : Page, IRefreshable
         return WrapTaskRow(grid, task);
     }
 
+    /// <summary>タスク行グリッドをBorderでラップしてマウスイベントを設定する。</summary>
     private Border WrapTaskRow(Grid grid, TaskItem task)
     {
         double rowOpacity = _vm.AppSettingsService.TaskRowOpacity;
@@ -574,7 +589,7 @@ public partial class TaskListPage : Page, IRefreshable
         border.MouseEnter += (_, _) =>
         {
             if (_selectedTask?.Id != task.Id)
-                border.Background = BgHoverBrush_;
+                border.Background = BG_HOVER_BRUSH;
         };
         border.MouseLeave += (_, _) =>
         {
@@ -599,6 +614,7 @@ public partial class TaskListPage : Page, IRefreshable
         return border;
     }
 
+    /// <summary>優先度バッジBorderを生成する。</summary>
     private static Border MakePriorityBadge(string priority)
     {
         var (pbg, pfg) = priority switch
@@ -621,6 +637,7 @@ public partial class TaskListPage : Page, IRefreshable
         return badge;
     }
 
+    /// <summary>ステータスバッジBorderを生成する。</summary>
     private static Border MakeStatusBadge(string status)
     {
         var (sbg, sfg) = status switch
@@ -644,11 +661,12 @@ public partial class TaskListPage : Page, IRefreshable
         return badge;
     }
 
+    /// <summary>タスク追加行のUI要素を生成する。</summary>
     private Border BuildAddTaskRow(Category cat)
     {
         var tb = new TextBlock
         {
-            Text = "＋  タスクを追加", FontSize = 13, Foreground = TextDimBrush_,
+            Text = "＋  タスクを追加", FontSize = 13, Foreground = TEXT_DIM_BRUSH,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(52, 0, 0, 0)
         };
         var addRowBg = new SolidColorBrush(Color.FromArgb(18, 100, 100, 100));
@@ -658,12 +676,13 @@ public partial class TaskListPage : Page, IRefreshable
             Background = addRowBg,
             BorderBrush = _rowBorderBrush, BorderThickness = new Thickness(0, 0, 1, 1)
         };
-        border.MouseEnter += (_, _) => { border.Background = BgHoverBrush_; tb.Foreground = AccentBlueBrush_; };
-        border.MouseLeave += (_, _) => { border.Background = addRowBg;         tb.Foreground = TextDimBrush_; };
+        border.MouseEnter += (_, _) => { border.Background = BG_HOVER_BRUSH; tb.Foreground = ACCENT_BLUE_BRUSH; };
+        border.MouseLeave += (_, _) => { border.Background = addRowBg;         tb.Foreground = TEXT_DIM_BRUSH; };
         border.MouseLeftButtonUp += (_, _) => AddTaskInCategory(cat);
         return border;
     }
 
+    /// <summary>タスク行を選択状態にしてツールバーボタンを有効化する。</summary>
     private void SelectTaskRow(TaskItem task, Border border,
         SolidColorBrush selBg, SolidColorBrush selBorderColor, SolidColorBrush normalBg)
     {
@@ -687,6 +706,7 @@ public partial class TaskListPage : Page, IRefreshable
         UpdateScheduleInputFields(task);
     }
 
+    /// <summary>タスク行の選択状態を解除してツールバーボタンを無効化する。</summary>
     private void ClearSelection()
     {
         if (_selectedTaskBorder != null)
@@ -706,6 +726,7 @@ public partial class TaskListPage : Page, IRefreshable
     // Detail Side Panel
     // ══════════════════════════════════════════════════════
 
+    /// <summary>詳細サイドパネルを開いてタスク情報を表示する。</summary>
     private void ShowDetailPanel(TaskItem task)
     {
         DetailPanelTitle.Text = task.Name;
@@ -721,6 +742,7 @@ public partial class TaskListPage : Page, IRefreshable
         DetailSidePanel.BeginAnimation(WidthProperty, anim);
     }
 
+    /// <summary>詳細サイドパネルを閉じる。</summary>
     private void CloseDetailPanel_Click(object sender, RoutedEventArgs e)
     {
         var anim = new DoubleAnimation(DetailSidePanel.Width, 0, TimeSpan.FromMilliseconds(160))
@@ -730,6 +752,7 @@ public partial class TaskListPage : Page, IRefreshable
         DetailSidePanel.BeginAnimation(WidthProperty, anim);
     }
 
+    /// <summary>詳細パネルにタスク情報を埋め込む。</summary>
     private void FillDetailPanel(TaskItem task)
     {
         TaskDetailPanel.Children.Clear();
@@ -739,7 +762,7 @@ public partial class TaskListPage : Page, IRefreshable
         {
             TaskDetailPanel.Children.Add(new TextBlock
             {
-                Text = "省略形（タスク名）", FontSize = 11, Foreground = TextSecBrush,
+                Text = "省略形（タスク名）", FontSize = 11, Foreground = TEXT_SEC_BRUSH,
                 Margin = new Thickness(0, 0, 0, 4)
             });
             TaskDetailPanel.Children.Add(new Border
@@ -749,7 +772,7 @@ public partial class TaskListPage : Page, IRefreshable
                 Margin       = new Thickness(0, 0, 0, 14),
                 Child        = new TextBlock
                 {
-                    Text = task.NameShort, FontSize = 13, Foreground = TextPrimBrush,
+                    Text = task.NameShort, FontSize = 13, Foreground = TEXT_PRIM_BRUSH,
                     TextWrapping = TextWrapping.Wrap
                 }
             });
@@ -759,6 +782,7 @@ public partial class TaskListPage : Page, IRefreshable
         FillTaskFolderSection(task);
     }
 
+    /// <summary>詳細パネルのタスクフォルダセクションを描画する。</summary>
     private void FillTaskFolderSection(TaskItem task)
     {
         var headerSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 6) };
@@ -766,7 +790,7 @@ public partial class TaskListPage : Page, IRefreshable
         {
             Text = "📁 タスクフォルダ", FontFamily = new FontFamily("Yu Gothic UI"),
             FontWeight = FontWeights.Bold, FontSize = 13,
-            Foreground = TextPrimBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0,0,12,0)
+            Foreground = TEXT_PRIM_BRUSH, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0,0,12,0)
         });
 
         if (Directory.Exists(task.FolderPath))
@@ -801,7 +825,7 @@ public partial class TaskListPage : Page, IRefreshable
                 TaskDetailPanel.Children.Add(new TextBlock
                 {
                     Text = "ファイルがありません", FontSize = 11,
-                    Foreground = TextDimBrush_, Margin = new Thickness(0, 4, 0, 0)
+                    Foreground = TEXT_DIM_BRUSH, Margin = new Thickness(0, 4, 0, 0)
                 });
             }
             else
@@ -809,14 +833,14 @@ public partial class TaskListPage : Page, IRefreshable
                 foreach (var entry in entries)
                 {
                     bool isDir    = Directory.Exists(entry);
-                    var  icon     = isDir ? "📁" : GetFileIcon(entry);
+                    var  icon     = isDir ? "📁" : FileHelper.GetFileIcon(entry);
                     var  entryPath = entry;
                     bool isTagged  = !isDir && task.ProgressTagFiles.Any(f =>
                         string.Equals(f, entryPath, StringComparison.OrdinalIgnoreCase));
 
                     var row = new Border
                     {
-                        BorderBrush = GridBrush_, BorderThickness = new Thickness(0, 0, 0, 1),
+                        BorderBrush = GRID_BRUSH, BorderThickness = new Thickness(0, 0, 0, 1),
                         Padding = new Thickness(0, 5, 0, 5), Cursor = Cursors.Hand
                     };
 
@@ -869,7 +893,7 @@ public partial class TaskListPage : Page, IRefreshable
                             ToolTip    = isTagged ? "進捗タグを解除" : "進捗タグを付ける",
                             Foreground = isTagged
                                 ? new SolidColorBrush(Color.FromRgb(0, 191, 216))
-                                : TextSecBrush,
+                                : TEXT_SEC_BRUSH,
                             Style = (Style)Application.Current.Resources["SecondaryButton"]
                         };
                         tagBtn.Click += (_, e2) =>
@@ -899,7 +923,7 @@ public partial class TaskListPage : Page, IRefreshable
                         Text = System.IO.Path.GetFileName(entry), FontSize = 12,
                         Foreground = isTagged
                             ? new SolidColorBrush(Color.FromRgb(0, 191, 216))
-                            : TextPrimBrush,
+                            : TEXT_PRIM_BRUSH,
                         TextTrimming = TextTrimming.CharacterEllipsis
                     });
                     dockPnl.Children.Add(nameSp);
@@ -907,7 +931,7 @@ public partial class TaskListPage : Page, IRefreshable
                     row.Child = dockPnl;
                     row.MouseEnter += (_, _) =>
                     {
-                        row.Background  = BgHoverBrush_;
+                        row.Background  = BG_HOVER_BRUSH;
                         renBtn.Visibility = Visibility.Visible;
                         delBtn.Visibility = Visibility.Visible;
                     };
@@ -932,12 +956,13 @@ public partial class TaskListPage : Page, IRefreshable
             TaskDetailPanel.Children.Add(new TextBlock
             {
                 Text = "フォルダが存在しません", FontSize = 11,
-                Foreground = TextDimBrush_, Margin = new Thickness(0, 4, 0, 0)
+                Foreground = TEXT_DIM_BRUSH, Margin = new Thickness(0, 4, 0, 0)
             });
         }
     }
 
     // ── タスクフォルダ ファイル操作 ────────────────────────
+    /// <summary>タスクフォルダに新規ファイルを作成する。</summary>
     private void TaskFolder_NewFile(TaskItem task)
     {
         var name = PromptSimple("新規ファイル名（拡張子を含む）", "メモ.txt");
@@ -952,6 +977,7 @@ public partial class TaskListPage : Page, IRefreshable
         catch (Exception ex) { MessageBox.Show($"作成失敗: {ex.Message}"); }
     }
 
+    /// <summary>タスクフォルダ内に新規フォルダを作成する。</summary>
     private void TaskFolder_NewFolder(TaskItem task)
     {
         var name = PromptSimple("新規フォルダ名", "新しいフォルダ");
@@ -961,6 +987,7 @@ public partial class TaskListPage : Page, IRefreshable
         catch (Exception ex) { MessageBox.Show($"作成失敗: {ex.Message}"); }
     }
 
+    /// <summary>タスクフォルダ内のエントリを名前変更する。</summary>
     private void TaskFolder_Rename(TaskItem task, string entryPath, bool isDir)
     {
         var oldName = System.IO.Path.GetFileName(entryPath);
@@ -976,6 +1003,7 @@ public partial class TaskListPage : Page, IRefreshable
         catch (Exception ex) { MessageBox.Show($"名前変更失敗: {ex.Message}"); }
     }
 
+    /// <summary>タスクフォルダ内のエントリを削除する。</summary>
     private void TaskFolder_Delete(TaskItem task, string entryPath, bool isDir)
     {
         var typeName = isDir ? "フォルダ" : "ファイル";
@@ -990,6 +1018,7 @@ public partial class TaskListPage : Page, IRefreshable
         catch (Exception ex) { MessageBox.Show($"削除失敗: {ex.Message}"); }
     }
 
+    /// <summary>ファイルの進捗タグを切り替える。</summary>
     private void TaskFolder_ToggleTag(TaskItem task, string filePath)
     {
         var existing = task.ProgressTagFiles
@@ -1003,12 +1032,14 @@ public partial class TaskListPage : Page, IRefreshable
         FillTaskFolderSection_Reload(task);
     }
 
+    /// <summary>詳細パネルのフォルダセクションを再描画する。</summary>
     private void FillTaskFolderSection_Reload(TaskItem task)
     {
         // 詳細パネルを再描画
         FillDetailPanel(task);
     }
 
+    /// <summary>シンプルなテキスト入力ダイアログを表示して入力値を返す。</summary>
     private string? PromptSimple(string label, string defaultValue)
     {
         var win = new Window
@@ -1020,18 +1051,18 @@ public partial class TaskListPage : Page, IRefreshable
             Background = new SolidColorBrush(Color.FromRgb(32, 32, 32))
         };
         var sp = new StackPanel { Margin = new Thickness(16) };
-        sp.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = TextSecBrush, Margin = new Thickness(0,0,0,8) });
+        sp.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = TEXT_SEC_BRUSH, Margin = new Thickness(0,0,0,8) });
         var tb = new TextBox
         {
             Text = defaultValue, Padding = new Thickness(8, 6, 8, 6),
             Background = new SolidColorBrush(Color.FromRgb(47, 47, 47)),
-            Foreground = TextPrimBrush, BorderBrush = GridBrush_,
+            Foreground = TEXT_PRIM_BRUSH, BorderBrush = GRID_BRUSH,
             Margin = new Thickness(0, 0, 0, 12)
         };
         sp.Children.Add(tb);
         var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var ok = new Button { Content = "OK", Width = 72, Height = 28, Margin = new Thickness(0,0,8,0),
-            Background = AccentBlueBrush_, Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+            Background = ACCENT_BLUE_BRUSH, Foreground = Brushes.White, BorderThickness = new Thickness(0) };
         var cancel = new Button { Content = "キャンセル", Width = 80, Height = 28 };
         ok.Click     += (_, _) => win.DialogResult = true;
         cancel.Click += (_, _) => win.DialogResult = false;
@@ -1047,7 +1078,7 @@ public partial class TaskListPage : Page, IRefreshable
     // ══════════════════════════════════════════════════════
 
     // 詳細モード列定義: (開始X, 列幅, ラベル)
-    private static readonly (double X, double W, string Label)[] DetailColumns =
+    private static readonly (double X, double W, string Label)[] DETAIL_COLUMNS =
     {
         (   0, 110, "カテゴリー"),
         ( 115, 100, "中分類"),
@@ -1059,9 +1090,9 @@ public partial class TaskListPage : Page, IRefreshable
         ( 865, 215, "説明"),
         (1085, 200, "備考"),
     };
-    private const double DetailCanvasMinW = 1290.0;
+    private const double DETAIL_CANVAS_MIN_W = 1290.0;
 
-    // ヘッダー（DateHeaderCanvas）のみを描画
+    /// <summary>日付ヘッダーキャンバスを描画する。</summary>
     private void DrawDateHeader(double totalW)
     {
         DateHeaderCanvas.Width = totalW;
@@ -1082,7 +1113,7 @@ public partial class TaskListPage : Page, IRefreshable
                 if (d.ToString("M月") != lastMonth)
                 {
                     lastMonth = d.ToString("M月");
-                    var ml = new TextBlock { Text = d.ToString("M月"), FontSize = 9, FontFamily = new FontFamily("Consolas"), Foreground = TextSecBrush };
+                    var ml = new TextBlock { Text = d.ToString("M月"), FontSize = 9, FontFamily = new FontFamily("Consolas"), Foreground = TEXT_SEC_BRUSH };
                     Canvas.SetLeft(ml, x + 2); Canvas.SetTop(ml, 2);
                     DateHeaderCanvas.Children.Add(ml);
                 }
@@ -1091,9 +1122,9 @@ public partial class TaskListPage : Page, IRefreshable
                     Text = d.Day.ToString(), Width = ColW, TextAlignment = TextAlignment.Center,
                     FontSize = 9, FontFamily = new FontFamily("Consolas"),
                     FontWeight = isToday ? FontWeights.Bold : FontWeights.Normal,
-                    Foreground = isToday ? TodayBrush_ :
+                    Foreground = isToday ? TODAY_BRUSH :
                                  isHoliday ? new SolidColorBrush(Color.FromRgb(224, 62, 62)) :
-                                 isWeekend ? new SolidColorBrush(Color.FromRgb(80, 120, 180)) : TextDimBrush_
+                                 isWeekend ? new SolidColorBrush(Color.FromRgb(80, 120, 180)) : TEXT_DIM_BRUSH
                 };
                 Canvas.SetLeft(dayTb, x); Canvas.SetTop(dayTb, 20);
                 DateHeaderCanvas.Children.Add(dayTb);
@@ -1101,16 +1132,16 @@ public partial class TaskListPage : Page, IRefreshable
         }
         else
         {
-            for (int ci = 0; ci < DetailColumns.Length; ci++)
+            for (int ci = 0; ci < DETAIL_COLUMNS.Length; ci++)
             {
-                var (cx, cw, label) = DetailColumns[ci];
-                double actualW = (ci == DetailColumns.Length - 1) ? totalW - cx : cw;
+                var (cx, cw, label) = DETAIL_COLUMNS[ci];
+                double actualW = (ci == DETAIL_COLUMNS.Length - 1) ? totalW - cx : cw;
                 if (cx > 0)
-                    DateHeaderCanvas.Children.Add(new Line { X1 = cx, Y1 = 0, X2 = cx, Y2 = 36, Stroke = GridBrush_, StrokeThickness = 1 });
+                    DateHeaderCanvas.Children.Add(new Line { X1 = cx, Y1 = 0, X2 = cx, Y2 = 36, Stroke = GRID_BRUSH, StrokeThickness = 1 });
                 var hdr = new TextBlock
                 {
                     Text = label, FontSize = 11, FontWeight = FontWeights.Bold,
-                    Foreground = TextSecBrush,
+                    Foreground = TEXT_SEC_BRUSH,
                     Width = Math.Max(actualW - 8, 0), TextTrimming = TextTrimming.CharacterEllipsis
                 };
                 Canvas.SetLeft(hdr, cx + 4); Canvas.SetTop(hdr, 10);
@@ -1119,7 +1150,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
-    // カテゴリ行（右パネル）：透過なし・グリッド線なし
+    /// <summary>カテゴリー行の右パネル（ガント側）UI要素を生成する。</summary>
     private Border BuildGanttCatRow(SolidColorBrush catBg)
     {
         return new Border
@@ -1129,7 +1160,7 @@ public partial class TaskListPage : Page, IRefreshable
         };
     }
 
-    // タスク行（ガントモード）：設定から色・透過率を適用
+    /// <summary>タスク行のガントモード右パネルUI要素を生成する。</summary>
     private Border BuildGanttTaskRow(TaskItem task, double totalW)
     {
         byte alpha = (byte)Math.Clamp((int)Math.Round(_vm.AppSettingsService.GanttRowOpacity * 255), 0, 255);
@@ -1137,7 +1168,7 @@ public partial class TaskListPage : Page, IRefreshable
         var canvas = new Canvas { Width = totalW, Height = RowH };
         canvas.Children.Add(new Rectangle { Width = totalW, Height = RowH, Fill = new SolidColorBrush(Color.FromArgb(alpha, ganttColor.R, ganttColor.G, ganttColor.B)) });
         AddGanttRowLines(canvas, totalW);
-        DrawBarOnCanvas(canvas, task.PlannedStartDate, task.PlannedEndDate, PlanBarY, BarH, PlanBrush_, $"予定: {task.PlannedStartDate:M/d}〜{task.PlannedEndDate:M/d}");
+        DrawBarOnCanvas(canvas, task.PlannedStartDate, task.PlannedEndDate, PlanBarY, BarH, PLAN_BRUSH, $"予定: {task.PlannedStartDate:M/d}〜{task.PlannedEndDate:M/d}");
         DrawActualWorkOnCanvas(canvas, task.Id, ActBarY, BarH);
         canvas.Children.Add(new Line { X1 = 0, Y1 = RowH - 0.5, X2 = totalW, Y2 = RowH - 0.5, Stroke = _rowBorderBrush, StrokeThickness = 1 });
         var border = new Border { Height = RowH, Child = canvas, ClipToBounds = true };
@@ -1146,16 +1177,16 @@ public partial class TaskListPage : Page, IRefreshable
         return border;
     }
 
-    // タスク行（詳細モード）：左パネルと同じ外観
+    /// <summary>タスク行の詳細モード右パネルUI要素を生成する。</summary>
     private Border BuildDetailTaskRow(TaskItem task, ProjectData project, double totalW)
     {
         byte alpha = (byte)Math.Clamp((int)Math.Round(_vm.AppSettingsService.TaskRowOpacity * 255), 0, 255);
         var canvas = new Canvas { Width = totalW, Height = RowH };
         canvas.Children.Add(new Rectangle { Width = totalW, Height = RowH, Fill = new SolidColorBrush(Color.FromArgb(alpha, 47, 47, 47)) });
         // 縦区切り線
-        foreach (var (cx, _, _) in DetailColumns)
+        foreach (var (cx, _, _) in DETAIL_COLUMNS)
             if (cx > 0)
-                canvas.Children.Add(new Line { X1 = cx, Y1 = 0, X2 = cx, Y2 = RowH, Stroke = ColSepBrush_, StrokeThickness = 1 });
+                canvas.Children.Add(new Line { X1 = cx, Y1 = 0, X2 = cx, Y2 = RowH, Stroke = COL_SEP_BRUSH, StrokeThickness = 1 });
         canvas.Children.Add(new Line { X1 = 0, Y1 = RowH - 0.5, X2 = totalW, Y2 = RowH - 0.5, Stroke = _rowBorderBrush, StrokeThickness = 1 });
 
         var catName = project.Categories.FirstOrDefault(c => c.Id == task.CategoryId)?.Name ?? "";
@@ -1165,12 +1196,12 @@ public partial class TaskListPage : Page, IRefreshable
             ? $"{task.ActualStartDate.Value:yyyy/MM/dd}〜{task.ActualEndDate.Value:yyyy/MM/dd}" : "";
         double totalHours = project.ActualWork.Where(a => a.TaskId == task.Id).Sum(a => a.Hours);
         string actualWork = totalHours > 0 ? $"{totalHours:F1}時間" : "";
-        AddDetailCellOnCanvas(canvas, 0, catName,                totalW);
-        AddDetailCellOnCanvas(canvas, 1, task.SubCategory ?? "", totalW);
+        AddDetailCellOnCanvas(canvas, 0, catName,                 totalW);
+        AddDetailCellOnCanvas(canvas, 1, task.SubCategory ?? "",  totalW);
         AddDetailCellOnCanvas(canvas, 2, task.Environment  ?? "", totalW);
-        AddDetailCellOnCanvas(canvas, 3, period,                 totalW, new FontFamily("Consolas"), 10, centered: true);
-        AddDetailCellOnCanvas(canvas, 4, actualPeriod,           totalW, new FontFamily("Consolas"), 10, centered: true);
-        AddDetailCellOnCanvas(canvas, 5, actualWork,             totalW, centered: true);
+        AddDetailCellOnCanvas(canvas, 3, period,                  totalW, new FontFamily("Consolas"), 10, centered: true);
+        AddDetailCellOnCanvas(canvas, 4, actualPeriod,            totalW, new FontFamily("Consolas"), 10, centered: true);
+        AddDetailCellOnCanvas(canvas, 5, actualWork,              totalW, centered: true);
         AddDetailCellOnCanvas(canvas, 6, task.Tags         ?? "", totalW);
         AddDetailCellOnCanvas(canvas, 7, task.Description  ?? "", totalW);
         AddDetailCellOnCanvas(canvas, 8, task.Notes        ?? "", totalW);
@@ -1181,7 +1212,7 @@ public partial class TaskListPage : Page, IRefreshable
         return border;
     }
 
-    // 空行（AddTask行・右パネル）
+    /// <summary>ガント右パネルのタスク追加行を生成する。</summary>
     private Border BuildGanttAddRow(double totalW)
     {
         var canvas = new Canvas { Width = totalW, Height = RowH };
@@ -1191,7 +1222,7 @@ public partial class TaskListPage : Page, IRefreshable
         return new Border { Height = RowH, Child = canvas, ClipToBounds = true };
     }
 
-    // ガントモード行共通：縦線＋週末ハイライト＋今日線
+    /// <summary>ガントモード行に縦線・週末ハイライト・今日線を描画する。</summary>
     private void AddGanttRowLines(Canvas canvas, double totalW)
     {
         if (!_isGanttMode) return;
@@ -1204,21 +1235,22 @@ public partial class TaskListPage : Page, IRefreshable
             bool isHoliday = JapaneseHolidays.IsHoliday(d);
             if (isWeekend || isHoliday)
             {
-                var shade = new Rectangle { Width = ColW, Height = RowH, Fill = isHoliday ? HolidayBrush_ : WeekendBrush_ };
+                var shade = new Rectangle { Width = ColW, Height = RowH, Fill = isHoliday ? HOLIDAY_BRUSH : WEEKEND_BRUSH };
                 Canvas.SetLeft(shade, x); canvas.Children.Add(shade);
             }
             if (i > 0)
-                canvas.Children.Add(new Line { X1 = x, Y1 = 0, X2 = x, Y2 = RowH, Stroke = GridBrush_, StrokeThickness = 1 });
+                canvas.Children.Add(new Line { X1 = x, Y1 = 0, X2 = x, Y2 = RowH, Stroke = GRID_BRUSH, StrokeThickness = 1 });
         }
         if (todayX >= 0 && todayX <= totalW)
         {
-            var todayLine = new Rectangle { Width = 2, Height = RowH, Fill = TodayBrush_, Opacity = 0.8 };
+            var todayLine = new Rectangle { Width = 2, Height = RowH, Fill = TODAY_BRUSH, Opacity = 0.8 };
             Canvas.SetLeft(todayLine, todayX);
             Panel.SetZIndex(todayLine, 10);
             canvas.Children.Add(todayLine);
         }
     }
 
+    /// <summary>ガントキャンバスに予定バーを描画する。</summary>
     private void DrawBarOnCanvas(Canvas canvas, DateTime? start, DateTime? end, double y, double h, SolidColorBrush brush, string tooltip)
     {
         if (!start.HasValue || !end.HasValue) return;
@@ -1234,6 +1266,7 @@ public partial class TaskListPage : Page, IRefreshable
         canvas.Children.Add(rect);
     }
 
+    /// <summary>ガントキャンバスに実績工数バーを描画する。</summary>
     private void DrawActualWorkOnCanvas(Canvas canvas, string taskId, double y, double h)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -1243,24 +1276,25 @@ public partial class TaskListPage : Page, IRefreshable
             double x = (entry.Date.Date - _viewStart.Date).TotalDays * ColW;
             if (x + ColW < 0 || x > ColW * _viewDays) continue;
             double barH = Math.Max(h * (entry.Hours / 24.0), 2);
-            var rect = new Rectangle { Width = ColW - 2, Height = barH, Fill = ActBrush_, RadiusX = 2, RadiusY = 2 };
+            var rect = new Rectangle { Width = ColW - 2, Height = barH, Fill = ACT_BRUSH, RadiusX = 2, RadiusY = 2 };
             ToolTipService.SetToolTip(rect, $"{entry.Date:M/d}: {entry.Hours:F1}h");
             Canvas.SetLeft(rect, x + 1); Canvas.SetTop(rect, y + (h - barH));
             canvas.Children.Add(rect);
         }
     }
 
+    /// <summary>詳細モードキャンバスの指定列にテキストセルを追加する。</summary>
     private void AddDetailCellOnCanvas(Canvas canvas, int colIndex, string text, double totalW,
         FontFamily? font = null, double fontSize = 11, bool centered = false)
     {
         if (string.IsNullOrEmpty(text)) return;
-        var (cx, cw, _) = DetailColumns[colIndex];
-        bool isLast = colIndex == DetailColumns.Length - 1;
+        var (cx, cw, _) = DETAIL_COLUMNS[colIndex];
+        bool isLast = colIndex == DETAIL_COLUMNS.Length - 1;
         double w = Math.Max(isLast ? totalW - cx - 8 : centered ? cw : cw - 8, 0);
         if (w <= 0) return;
         var tb = new TextBlock
         {
-            Text = text, FontSize = fontSize, Foreground = TextSecBrush,
+            Text = text, FontSize = fontSize, Foreground = TEXT_SEC_BRUSH,
             Width = w, TextTrimming = TextTrimming.CharacterEllipsis
         };
         if (font != null) tb.FontFamily = font;
@@ -1270,6 +1304,7 @@ public partial class TaskListPage : Page, IRefreshable
         canvas.Children.Add(tb);
     }
 
+    /// <summary>ガント行キャンバスのクリックを処理して実績入力または予定設定を行う。</summary>
     private void GanttRowCanvas_Click(TaskItem task, MouseButtonEventArgs e, Canvas canvas)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -1298,6 +1333,7 @@ public partial class TaskListPage : Page, IRefreshable
     // 予定設定モード
     // ══════════════════════════════════════════════════════
 
+    /// <summary>予定設定モードを開始するボタンのクリックを処理する。</summary>
     private void ScheduleTask_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedTask == null)
@@ -1308,6 +1344,7 @@ public partial class TaskListPage : Page, IRefreshable
         ActivateScheduleMode(_selectedTask);
     }
 
+    /// <summary>指定タスクの予定設定モードをアクティブにする。</summary>
     private void ActivateScheduleMode(TaskItem task)
     {
         _isScheduleMode         = true;
@@ -1325,6 +1362,7 @@ public partial class TaskListPage : Page, IRefreshable
         _suppressDateChanged        = false;
     }
 
+    /// <summary>予定設定モード中のガントクリックを処理して開始日・終了日を設定する。</summary>
     private void HandleScheduleClick(TaskItem task, DateTime date)
     {
         if (_scheduleClickCount == 0)
@@ -1357,6 +1395,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>予定設定パネルの日付フィールドを選択タスクの値で更新する。</summary>
     private void UpdateScheduleInputFields(TaskItem task)
     {
         if (ScheduleInputPanel.Visibility != Visibility.Visible) return;
@@ -1369,6 +1408,7 @@ public partial class TaskListPage : Page, IRefreshable
         _suppressDateChanged = false;
     }
 
+    /// <summary>予定日テキストボックスのフォーカス喪失時に日付を解析して保存する。</summary>
     private void PlannedDate_LostFocus(object sender, RoutedEventArgs e)
     {
         if (_suppressDateChanged || _selectedTask == null) return;
@@ -1405,6 +1445,7 @@ public partial class TaskListPage : Page, IRefreshable
     // 右クリックコンテキストメニュー
     // ══════════════════════════════════════════════════════
 
+    /// <summary>タスク行の右クリックコンテキストメニューを生成する。</summary>
     private ContextMenu MakeTaskContextMenu(TaskItem task)
     {
         var menuStyle = (Style)Application.Current.Resources["DarkContextMenu"];
@@ -1424,7 +1465,7 @@ public partial class TaskListPage : Page, IRefreshable
             grid.Children.Add(nameTb);
             var keyTb = new TextBlock
             {
-                Text = shortcut, FontSize = 11, Foreground = TextDimBrush_,
+                Text = shortcut, FontSize = 11, Foreground = TEXT_DIM_BRUSH,
                 VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(20, 0, 0, 0)
             };
             Grid.SetColumn(keyTb, 2);
@@ -1472,6 +1513,7 @@ public partial class TaskListPage : Page, IRefreshable
         return menu;
     }
 
+    /// <summary>実績時間入力ダイアログを表示して入力値を返す。</summary>
     private double? AskActualHours(double current, DateTime date, string taskName)
     {
         var bg  = new SolidColorBrush(Color.FromRgb(32, 32, 32));
@@ -1529,6 +1571,7 @@ public partial class TaskListPage : Page, IRefreshable
         return result;
     }
 
+    /// <summary>バースクロールの横スクロールをヘッダーに同期する。</summary>
     private void BarScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
         => HeaderScroll.ScrollToHorizontalOffset(e.HorizontalOffset);
 
@@ -1536,6 +1579,7 @@ public partial class TaskListPage : Page, IRefreshable
     // View Toggle
     // ══════════════════════════════════════════════════════
 
+    /// <summary>ガント/詳細ビュー切り替えトグルのクリックを処理する。</summary>
     private void ViewToggleBtn_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (_isAnimating) return;
@@ -1579,6 +1623,7 @@ public partial class TaskListPage : Page, IRefreshable
         MainScroll.BeginAnimation(OpacityProperty, fadeOut);
     }
 
+    /// <summary>ガントまたは詳細モードのレイアウトを適用してUIを再構築する。</summary>
     private void ApplyViewMode(bool detail)
     {
         // ナビゲーションはガントモードのみ表示
@@ -1598,11 +1643,14 @@ public partial class TaskListPage : Page, IRefreshable
     // Filter / Navigation
     // ══════════════════════════════════════════════════════
 
+    /// <summary>フィルター変更時にUIを再構築する。</summary>
     private void Filter_Changed(object sender, RoutedEventArgs e) => BuildUI();
 
+    /// <summary>検索バーの表示・非表示をトグルする。</summary>
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
         => SearchBarHelper.Toggle(SearchSection, SearchBox);
 
+    /// <summary>コンボボックス項目の最大テキスト幅を計算して返す。</summary>
     private double GetMaxComboBoxWidth(ComboBox cb)
     {
         var tb = new TextBlock { FontFamily = new FontFamily("Yu Gothic UI"), FontSize = 13 };
@@ -1616,18 +1664,21 @@ public partial class TaskListPage : Page, IRefreshable
         return maxW + 48; // padding(10+10) + borders + arrow
     }
 
+    /// <summary>タスク編集ボタンのクリックを処理する。</summary>
     private void EditTask_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedTask == null) { AppDialog.ShowInfo("タスクを選択してください", "操作", Window.GetWindow(this)); return; }
         OpenEditDialog(_selectedTask);
     }
 
+    /// <summary>コメント表示ボタンのクリックを処理する。</summary>
     private void EditComment_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedTask == null) { AppDialog.ShowInfo("タスクを選択してください", "操作", Window.GetWindow(this)); return; }
         ShowComments(_selectedTask);
     }
 
+    /// <summary>タスク削除ボタンのクリックを処理する。</summary>
     private void DeleteTask_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedTask == null) { AppDialog.ShowInfo("タスクを選択してください", "操作", Window.GetWindow(this)); return; }
@@ -1635,6 +1686,7 @@ public partial class TaskListPage : Page, IRefreshable
         ClearSelection();
     }
 
+    /// <summary>WBS Excel出力ダイアログを表示してエクスポートする。</summary>
     private void ExportWbs_Click(object sender, RoutedEventArgs e)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -1666,6 +1718,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>プロジェクトデータをWBS形式のExcelファイルに出力する。</summary>
     private static void ExportWbsToExcel(ProjectData project, string filePath)
     {
         using var wb = new XLWorkbook();
@@ -1834,38 +1887,45 @@ public partial class TaskListPage : Page, IRefreshable
     // Gantt Controls
     // ══════════════════════════════════════════════════════
 
+    /// <summary>ガント表示を前月へ移動する。</summary>
     private void PrevMonth_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddMonths(-1);
         _viewDays  = DateTime.DaysInMonth(_viewStart.Year, _viewStart.Month) + 14;
         BuildUI();
     }
+    /// <summary>ガント表示を次月へ移動する。</summary>
     private void NextMonth_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddMonths(1);
         _viewDays  = DateTime.DaysInMonth(_viewStart.Year, _viewStart.Month) + 14;
         BuildUI();
     }
+    /// <summary>ガント表示を前週へ移動する。</summary>
     private void PrevWeek_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddDays(-7);
         BuildUI();
     }
+    /// <summary>ガント表示を次週へ移動する。</summary>
     private void NextWeek_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddDays(7);
         BuildUI();
     }
+    /// <summary>ガント表示を前日へ移動する。</summary>
     private void PrevDay_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddDays(-1);
         BuildUI();
     }
+    /// <summary>ガント表示を翌日へ移動する。</summary>
     private void NextDay_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = _viewStart.AddDays(1);
         BuildUI();
     }
+    /// <summary>ガント表示を今日の月に戻してスクロール位置を調整する。</summary>
     private void Today_Click(object sender, RoutedEventArgs e)
     {
         _viewStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -1875,6 +1935,7 @@ public partial class TaskListPage : Page, IRefreshable
         BarScroll.ScrollToHorizontalOffset(Math.Max(todayX - 100, 0));
     }
 
+    /// <summary>月ラベルのキー入力でEnter/Escapeを処理する。</summary>
     private void MonthLabel_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter || e.Key == Key.Return)
@@ -1891,9 +1952,11 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>月ラベルのフォーカス喪失時にナビゲーションを実行する。</summary>
     private void MonthLabel_LostFocus(object sender, RoutedEventArgs e)
         => ParseAndNavigateMonth(MonthLabel.Text);
 
+    /// <summary>テキストを解析して対応する年月にガント表示を移動する。</summary>
     private void ParseAndNavigateMonth(string text)
     {
         text = text.Trim();
@@ -1916,6 +1979,7 @@ public partial class TaskListPage : Page, IRefreshable
     // Task Actions
     // ══════════════════════════════════════════════════════
 
+    /// <summary>カテゴリーツールバーボタンの有効/無効を更新する。</summary>
     private void UpdateCatToolbarState()
     {
         bool hasSel = _selectedCategoryId != null;
@@ -1925,6 +1989,7 @@ public partial class TaskListPage : Page, IRefreshable
 
     // ── カテゴリ操作 ──────────────────────────────────────
 
+    /// <summary>カテゴリー追加ダイアログを表示して追加する。</summary>
     public void AddCategory_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new CategoryDialog(null) { Owner = Window.GetWindow(this) };
@@ -1935,6 +2000,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>カテゴリー編集ダイアログを表示して更新する。</summary>
     private void EditCategory_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedCategoryId == null) return;
@@ -1953,6 +2019,7 @@ public partial class TaskListPage : Page, IRefreshable
         catch (Exception ex) { AppDialog.ShowError($"更新に失敗しました: {ex.Message}", "エラー", Window.GetWindow(this)); }
     }
 
+    /// <summary>カテゴリーを削除する確認ダイアログを表示して削除する。</summary>
     private void DeleteCategory_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedCategoryId == null) return;
@@ -1966,6 +2033,7 @@ public partial class TaskListPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>選択中カテゴリーを指定方向に移動して並び順を更新する。</summary>
     private void MoveCategoryBy(int delta)
     {
         if (_selectedCategoryId == null) return;
@@ -1981,6 +2049,7 @@ public partial class TaskListPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>選択中カテゴリーのフォルダをエクスプローラーで開く。</summary>
     private void OpenCategoryFolder()
     {
         if (_selectedCategoryId == null) return;
@@ -1992,10 +2061,14 @@ public partial class TaskListPage : Page, IRefreshable
             AppDialog.ShowWarning("フォルダが見つかりません", "エラー", Window.GetWindow(this));
     }
 
+    /// <summary>外部からタスク追加ダイアログを起動する。</summary>
     public void TriggerAddDialog()   => AddTask_Click(this, new RoutedEventArgs());
+    /// <summary>外部からCSVエクスポートを起動する。</summary>
     public void TriggerExportCsv()   => ExportCsv_Click(this, new RoutedEventArgs());
+    /// <summary>外部からWBSエクスポートを起動する。</summary>
     public void TriggerExportWbs()   => ExportWbs_Click(this, new RoutedEventArgs());
 
+    /// <summary>タスク追加ダイアログを表示してタスクを追加する。</summary>
     private void AddTask_Click(object sender, RoutedEventArgs e)
     {
         var cats = _vm.ProjectService.CurrentProject?.Categories.ToList();
@@ -2014,6 +2087,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>指定カテゴリーにプリセットしたタスク追加ダイアログを表示する。</summary>
     private void AddTaskInCategory(Category cat)
     {
         var cats = _vm.ProjectService.CurrentProject?.Categories.ToList() ?? new();
@@ -2028,6 +2102,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>タスク編集ダイアログを表示してタスクを更新する。</summary>
     private void OpenEditDialog(TaskItem task)
     {
         var cats = _vm.ProjectService.CurrentProject?.Categories.ToList() ?? new();
@@ -2046,18 +2121,21 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>タスクのコメントダイアログを表示する。</summary>
     private void ShowComments(TaskItem task)
     {
         new CommentDialog(task, _vm.ProjectService) { Owner = Window.GetWindow(this) }.ShowDialog();
         BuildUI();
     }
 
+    /// <summary>タスクフォルダをエクスプローラーで開く。</summary>
     private static void OpenFolder(TaskItem task)
     {
         if (Directory.Exists(task.FolderPath))
             ShellHelper.OpenInExplorer(task.FolderPath);
     }
 
+    /// <summary>確認ダイアログを表示してタスクを削除する。</summary>
     private void DeleteTask(TaskItem task)
     {
         if (!AppDialog.Confirm($"「{task.Name}」を削除しますか？\nタスクフォルダも同時に削除されます。", "タスク削除", Window.GetWindow(this)))
@@ -2066,6 +2144,7 @@ public partial class TaskListPage : Page, IRefreshable
         BuildUI();
     }
 
+    /// <summary>タスク一覧をCSVファイルにエクスポートする。</summary>
     private void ExportCsv_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.SaveFileDialog
@@ -2086,6 +2165,7 @@ public partial class TaskListPage : Page, IRefreshable
     // Drag & Drop (長押し → 並び替え)
     // ══════════════════════════════════════════════════════
 
+    /// <summary>長押しドラッグ開始のタイマーをセットする。</summary>
     private void ArmDrag(TaskItem task, Border border, Point startPosOnPage)
     {
         CancelDragArm();
@@ -2103,12 +2183,14 @@ public partial class TaskListPage : Page, IRefreshable
         _dragArmTimer.Start();
     }
 
+    /// <summary>ドラッグ開始タイマーをキャンセルする。</summary>
     private void CancelDragArm()
     {
         _dragArmTimer?.Stop();
         _dragArmTimer = null;
     }
 
+    /// <summary>ページのマウス移動イベントでドラッグ中の追跡または長押し判定取消を行う。</summary>
     private void Page_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (_isDragging)
@@ -2131,6 +2213,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>マウスボタン解放時にドラッグを確定またはキャンセルする。</summary>
     private void Page_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (_isDragging)
@@ -2144,6 +2227,7 @@ public partial class TaskListPage : Page, IRefreshable
         _dragCandidateBorder = null;
     }
 
+    /// <summary>ドラッグ操作を開始してゴーストUIとドロップインジケーターを生成する。</summary>
     private void BeginDrag()
     {
         if (_dragCandidate == null || _dragCandidateBorder == null) return;
@@ -2155,7 +2239,7 @@ public partial class TaskListPage : Page, IRefreshable
         {
             Width = 320, Height = RowH,
             Background = new SolidColorBrush(Color.FromArgb(235, 47, 47, 47)),
-            BorderBrush = AccentBlueBrush_,
+            BorderBrush = ACCENT_BLUE_BRUSH,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(12, 0, 12, 0),
@@ -2168,7 +2252,7 @@ public partial class TaskListPage : Page, IRefreshable
             Child = new TextBlock
             {
                 Text = _dragCandidate.Name,
-                FontSize = 14, Foreground = TextPrimBrush,
+                FontSize = 14, Foreground = TEXT_PRIM_BRUSH,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis
             }
@@ -2178,7 +2262,7 @@ public partial class TaskListPage : Page, IRefreshable
         _dropIndicator = new Rectangle
         {
             Height = 3, Width = 460,
-            Fill = AccentBlueBrush_,
+            Fill = ACCENT_BLUE_BRUSH,
             RadiusX = 1, RadiusY = 1,
             IsHitTestVisible = false,
             Visibility = Visibility.Collapsed
@@ -2189,6 +2273,7 @@ public partial class TaskListPage : Page, IRefreshable
         UpdateDrag(Mouse.GetPosition(this));
     }
 
+    /// <summary>ドラッグ中にゴーストとドロップインジケーターの位置を更新する。</summary>
     private void UpdateDrag(Point posOnPage)
     {
         if (_dragGhost != null)
@@ -2221,6 +2306,7 @@ public partial class TaskListPage : Page, IRefreshable
         if (_dropIndicator != null) _dropIndicator.Visibility = Visibility.Collapsed;
     }
 
+    /// <summary>ドロップインジケーターをターゲット行の前または後に表示する。</summary>
     private void ShowDropIndicator(Border targetRow, bool before)
     {
         if (_dropIndicator == null) return;
@@ -2239,6 +2325,7 @@ public partial class TaskListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>ドラッグ操作を終了してUIをクリーンアップし、必要に応じて並び替えを確定する。</summary>
     private void EndDrag(bool commit)
     {
         _isDragging = false;
@@ -2264,6 +2351,7 @@ public partial class TaskListPage : Page, IRefreshable
             ReorderTask(src, dst, before);
     }
 
+    /// <summary>タスクをドラッグ&ドロップで並び替えてカテゴリー間移動も処理する。</summary>
     private void ReorderTask(TaskItem src, TaskItem dst, bool before)
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -2307,25 +2395,11 @@ public partial class TaskListPage : Page, IRefreshable
     // Helpers
     // ══════════════════════════════════════════════════════
 
+    /// <summary>16進カラー文字列をWPF Colorに変換する。</summary>
     private static Color ParseColor(string? hex)
     {
         try { return (Color)ColorConverter.ConvertFromString(hex ?? "#2383E2"); }
         catch { return Color.FromRgb(35, 131, 226); }
     }
 
-    private static string GetFileIcon(string path)
-    {
-        return System.IO.Path.GetExtension(path).ToLower() switch
-        {
-            ".txt" or ".md"              => "📄",
-            ".pdf"                       => "📕",
-            ".xlsx" or ".xls" or ".csv"  => "📊",
-            ".docx" or ".doc"            => "📝",
-            ".pptx" or ".ppt"            => "📑",
-            ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" => "🖼️",
-            ".zip" or ".7z" or ".rar"    => "📦",
-            ".exe" or ".bat"             => "⚙️",
-            _                            => "📄"
-        };
-    }
 }

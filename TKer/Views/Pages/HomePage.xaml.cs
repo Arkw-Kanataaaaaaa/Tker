@@ -6,18 +6,21 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using TKer.Helpers;
 using TKer.Models;
 using TKer.ViewModels;
 using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
+/// <summary>プロジェクト概要・アラート・ショートカットなどを集約したホーム画面ページ。</summary>
 public partial class HomePage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
     private readonly DispatcherTimer _clockTimer;
     private DateTime _calMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
 
+    /// <summary>ホームページを初期化し、時計タイマーを起動する。</summary>
     public HomePage(MainViewModel vm)
     {
         _vm = vm;
@@ -35,6 +38,7 @@ public partial class HomePage : Page, IRefreshable
         Loaded   += (_, _) => _clockTimer.Start();
     }
 
+    /// <summary>ホーム画面の全コンポーネントを最新データで更新する。</summary>
     public void Refresh()
     {
         // ── プロジェクト名・日時 ──────────────────────────────
@@ -45,10 +49,10 @@ public partial class HomePage : Page, IRefreshable
         ClockText.Text = DateTime.Now.ToString("HH:mm:ss");
 
         // ── バージョン ───────────────────────────────
-        VersionText.Text = AppVersion.DisplayName;
-        BuildText.Text   = $"Build {AppVersion.BuildDate}";
-        InfoVersion.Text = AppVersion.Current;
-        InfoBuild.Text   = AppVersion.BuildDate;
+        VersionText.Text = AppVersion.DISPLAY_NAME;
+        BuildText.Text   = $"Build {AppVersion.BUILD_DATE}";
+        InfoVersion.Text = AppVersion.CURRENT;
+        InfoBuild.Text   = AppVersion.BUILD_DATE;
 
         // ── アラート ─────────────────────────────────
         var alerts = _vm.AppSettingsService.CollectAlerts();
@@ -98,6 +102,7 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── プロジェクトカードクリック → 切替 ───────────
+    /// <summary>プロジェクトカードクリック時に対象プロジェクトへ切り替える。</summary>
     private void ProjectCard_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         // ボタンへのバブリングは止める
@@ -107,6 +112,7 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── アラートクリック → 該当プロジェクトを開いてタスク一覧 ──
+    /// <summary>アラートクリック時に対象プロジェクトを開いてタスク一覧へ遷移する。</summary>
     private void AlertItem_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (((Border)sender).DataContext is not AlertItem alert) return;
@@ -115,6 +121,7 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── ピン留め ─────────────────────────────────────
+    /// <summary>プロジェクトのピン留め状態を切り替える。</summary>
     private void PinProject_Click(object sender, RoutedEventArgs e)
     {
         if (((Button)sender).Tag is string path)
@@ -125,6 +132,7 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── 一覧から削除 ─────────────────────────────────
+    /// <summary>確認ダイアログ後にプロジェクトを一覧から削除する。</summary>
     private void RemoveProject_Click(object sender, RoutedEventArgs e)
     {
         if (((Button)sender).Tag is not string path) return;
@@ -140,6 +148,7 @@ public partial class HomePage : Page, IRefreshable
         => _vm.NavigateToCommand.Execute("ProjectList");
 
     // ── すべてのアラートを表示 ───────────────────────
+    /// <summary>アラート一覧ダイアログを表示する。</summary>
     private void ShowAllAlerts_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new AlertListDialog(_vm.AppSettingsService, _vm) { Owner = Window.GetWindow(this) };
@@ -148,6 +157,7 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── クイックナビ ─────────────────────────────────
+    /// <summary>クイックナビボタンのTag値が示すビューへ遷移する。</summary>
     private void QuickNav_Click(object sender, RoutedEventArgs e)
     {
         var view = ((Button)sender).Tag as string;
@@ -156,6 +166,7 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── 直近タスク ───────────────────────────────────
+    /// <summary>最近更新されたタスク上位5件を直近タスクリストに表示する。</summary>
     private void BuildRecentTasks()
     {
         var project = _vm.ProjectService.CurrentProject;
@@ -192,6 +203,7 @@ public partial class HomePage : Page, IRefreshable
         => _vm.NavigateToCommand.Execute("ProjectList");
 
     // ── ショートカット ───────────────────────────────
+    /// <summary>登録済みショートカットのボタン一覧を構築する。</summary>
     private void BuildShortcuts()
     {
         ShortcutPanel.Children.Clear();
@@ -234,20 +246,22 @@ public partial class HomePage : Page, IRefreshable
         }
     }
 
+    /// <summary>ホーム画面の各セクションにテーマを適用する。</summary>
     private void ApplySectionThemes()
     {
         var svc = _vm.AppSettingsService;
-        ApplySectionTheme(CardHeader,        svc.GetSectionTheme("Header"));
-        ApplySectionTheme(CardAlert,         svc.GetSectionTheme("Alert"));
-        ApplySectionTheme(RecentTaskSection, svc.GetSectionTheme("RecentTask"));
-        ApplySectionTheme(CardProject,       svc.GetSectionTheme("Project"));
-        ApplySectionTheme(ShortcutCard,      svc.GetSectionTheme("Shortcut"));
-        ApplySectionTheme(CardCalendar,      svc.GetSectionTheme("Calendar"));
-        ApplySectionTheme(CardQuickNav,      svc.GetSectionTheme("QuickNav"));
-        ApplySectionTheme(CardVersion,       svc.GetSectionTheme("Version"));
+        UiThemeHelper.ApplySectionTheme(CardHeader,        svc.GetSectionTheme("Header"));
+        UiThemeHelper.ApplySectionTheme(CardAlert,         svc.GetSectionTheme("Alert"));
+        UiThemeHelper.ApplySectionTheme(RecentTaskSection, svc.GetSectionTheme("RecentTask"));
+        UiThemeHelper.ApplySectionTheme(CardProject,       svc.GetSectionTheme("Project"));
+        UiThemeHelper.ApplySectionTheme(ShortcutCard,      svc.GetSectionTheme("Shortcut"));
+        UiThemeHelper.ApplySectionTheme(CardCalendar,      svc.GetSectionTheme("Calendar"));
+        UiThemeHelper.ApplySectionTheme(CardQuickNav,      svc.GetSectionTheme("QuickNav"));
+        UiThemeHelper.ApplySectionTheme(CardVersion,       svc.GetSectionTheme("Version"));
     }
 
     // ── ホームレイアウト動的適用 ─────────────────────
+    /// <summary>設定に基づいてホームグリッドのレイアウトを動的に構築する。</summary>
     private void ApplyLayout()
     {
         var map = new System.Collections.Generic.Dictionary<string, FrameworkElement>
@@ -301,6 +315,7 @@ public partial class HomePage : Page, IRefreshable
         }
     }
 
+    /// <summary>数値をGridLengthに変換する（0=Auto、負=Star、正=Pixel）。</summary>
     private static GridLength ToGridLength(double v)
     {
         if (v == 0) return GridLength.Auto;
@@ -308,54 +323,7 @@ public partial class HomePage : Page, IRefreshable
         return new GridLength(v, GridUnitType.Pixel);
     }
 
-    private static void ApplySectionTheme(Border card, SectionTheme theme)
-    {
-        // 背景色（透明度込み）
-        if (!string.IsNullOrEmpty(theme.BgColor))
-        {
-            try
-            {
-                var c = (Color)ColorConverter.ConvertFromString(theme.BgColor);
-                c.A = (byte)Math.Clamp((int)(theme.Opacity * 255), 0, 255);
-                card.Background = new SolidColorBrush(c);
-            }
-            catch { }
-        }
-        else if (theme.Opacity < 1.0 && card.Background is SolidColorBrush sb)
-        {
-            var c = sb.Color;
-            c.A = (byte)Math.Clamp((int)(theme.Opacity * 255), 0, 255);
-            card.Background = new SolidColorBrush(c);
-        }
-
-        // 枠線色
-        if (!string.IsNullOrEmpty(theme.BorderColor))
-        {
-            try
-            {
-                var bc = (Color)ColorConverter.ConvertFromString(theme.BorderColor);
-                card.BorderBrush = new SolidColorBrush(bc);
-            }
-            catch { }
-        }
-
-        // 文字色（セクション内 TextPrimaryBrush を上書き）
-        if (!string.IsNullOrEmpty(theme.TextColor))
-        {
-            try
-            {
-                var fg = (Color)ColorConverter.ConvertFromString(theme.TextColor);
-                card.Resources["TextPrimaryBrush"] = new SolidColorBrush(fg);
-            }
-            catch { }
-        }
-        else
-        {
-            // リセット
-            card.Resources.Remove("TextPrimaryBrush");
-        }
-    }
-
+    /// <summary>指定パスのファイル・アプリをシェルで開く。</summary>
     private static void OpenShortcut(string path)
     {
         try
@@ -384,6 +352,7 @@ public partial class HomePage : Page, IRefreshable
         BuildMiniCalendar();
     }
 
+    /// <summary>ミニカレンダーを現在の表示月で再構築する。</summary>
     private void BuildMiniCalendar()
     {
         CalMonthLabel.Text = _calMonth.ToString("yyyy年 M月");

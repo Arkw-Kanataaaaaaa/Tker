@@ -4,8 +4,12 @@ using System.Windows.Media.Animation;
 
 namespace TKer.Helpers;
 
+/// <summary>
+/// 検索バーの表示・非表示アニメーションを管理するヘルパー。
+/// </summary>
 public static class SearchBarHelper
 {
+    /// <summary>検索バーの表示状態を切り替える。</summary>
     public static void Toggle(FrameworkElement section, UIElement? focusTarget = null)
     {
         if (section.Visibility == Visibility.Collapsed)
@@ -14,6 +18,7 @@ public static class SearchBarHelper
             Close(section);
     }
 
+    /// <summary>検索バーをアニメーションで展開して表示する。</summary>
     public static void Open(FrameworkElement section, UIElement? focusTarget = null)
     {
         section.Visibility = Visibility.Visible;
@@ -37,6 +42,7 @@ public static class SearchBarHelper
         focusTarget?.Focus();
     }
 
+    /// <summary>検索バーをアニメーションで折りたたんで非表示にする。</summary>
     public static void Close(FrameworkElement section)
     {
         double currentH = section.ActualHeight > 0 ? section.ActualHeight : 50;

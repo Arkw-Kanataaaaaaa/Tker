@@ -11,11 +11,12 @@ using TKer.Models;
 
 namespace TKer.Services;
 
+/// <summary>プロジェクトデータの読み書き・カテゴリー/タスク管理を担当するサービス。</summary>
 public class ProjectService
 {
-    private const string DataFileName      = "project_data.json";
-    private const string BackupSuffix      = ".bak";
-    private const string CompletedFolderName = "作業完了";
+    private const string DATA_FILE_NAME       = "project_data.json";
+    private const string BACKUP_SUFFIX        = ".bak";
+    private const string COMPLETED_FOLDER_NAME = "作業完了";
 
     public ProjectData? CurrentProject  { get; private set; }
     public string?      ProjectFilePath { get; private set; }
@@ -30,6 +31,7 @@ public class ProjectService
 
     public event EventHandler? ProjectChanged;
 
+    /// <summary>自動保存タイマーを初期化してサービスを生成する。</summary>
     public ProjectService()
     {
         _autoSaveTimer = new DispatcherTimer
@@ -45,11 +47,12 @@ public class ProjectService
     // =====================================================
     // プロジェクト作成
     // =====================================================
+    /// <summary>指定パスに新規プロジェクトを作成してデータを保存する。</summary>
     public void CreateProject(string basePath, string projectName, string description = "")
     {
         var projectPath = Path.Combine(basePath, projectName);
         Directory.CreateDirectory(projectPath);
-        Directory.CreateDirectory(Path.Combine(projectPath, CompletedFolderName));
+        Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER_NAME));
 
         CurrentProject = new ProjectData
         {
@@ -62,7 +65,7 @@ public class ProjectService
             }
         };
 
-        ProjectFilePath = Path.Combine(projectPath, DataFileName);
+        ProjectFilePath = Path.Combine(projectPath, DATA_FILE_NAME);
         SaveProject();
         _autoSaveTimer.Start();
         ProjectChanged?.Invoke(this, EventArgs.Empty);
@@ -71,6 +74,7 @@ public class ProjectService
     // =====================================================
     // プロジェクト読み込み
     // =====================================================
+    /// <summary>指定ファイルパスからプロジェクトデータを読み込む。</summary>
     public bool LoadProject(string filePath)
     {
         try
@@ -102,6 +106,7 @@ public class ProjectService
     // =====================================================
     // プロジェクト保存（バックアップ付き） ⑦
     // =====================================================
+    /// <summary>バックアップを作成してからプロジェクトデータをJSONで保存する。</summary>
     public void SaveProject()
     {
         if (CurrentProject == null || ProjectFilePath == null) return;
@@ -110,7 +115,7 @@ public class ProjectService
         // バックアップ作成
         if (File.Exists(ProjectFilePath))
         {
-            var backup = ProjectFilePath + BackupSuffix;
+            var backup = ProjectFilePath + BACKUP_SUFFIX;
             File.Copy(ProjectFilePath, backup, overwrite: true);
         }
 
@@ -130,6 +135,7 @@ public class ProjectService
     // =====================================================
     // ⑥ プロジェクト移動後のパス再マッピング
     // =====================================================
+    /// <summary>旧ベースパスを新ベースパスに一括置換してプロジェクトを保存する。</summary>
     public void RemapPaths(string oldBase, string newBase)
     {
         if (CurrentProject == null) return;
@@ -169,6 +175,7 @@ public class ProjectService
     // =====================================================
     // ⑥ 競合チェック付きリロード
     // =====================================================
+    /// <summary>ディスク上のファイルが最終保存より新しい場合にリロードする。</summary>
     public bool TryReloadIfNewer()
     {
         if (ProjectFilePath == null || !File.Exists(ProjectFilePath)) return false;
@@ -187,6 +194,7 @@ public class ProjectService
     // =====================================================
     // ⑲ プロジェクト設定更新
     // =====================================================
+    /// <summary>プロジェクト名・説明・バージョン・担当者を更新して保存する。</summary>
     public void UpdateProjectSettings(string name, string description, string version, string manager)
     {
         if (CurrentProject == null) return;
@@ -200,6 +208,7 @@ public class ProjectService
     // =====================================================
     // カテゴリー追加
     // =====================================================
+    /// <summary>新規カテゴリーを追加してフォルダを作成し、プロジェクトを保存する。</summary>
     public Category AddCategory(string name, string description = "", string color = "#3D7EFF")
     {
         if (CurrentProject == null) throw new InvalidOperationException("プロジェクト未ロード");
@@ -308,6 +317,7 @@ public class ProjectService
         SaveAndNotifyProject();
     }
 
+    /// <summary>カテゴリーの内容を更新し、必要に応じてフォルダをリネームする。</summary>
     public void UpdateCategory(Category category, bool renameFolder = false)
     {
         if (CurrentProject == null) return;
@@ -341,6 +351,7 @@ public class ProjectService
         SaveAndNotifyProject();
     }
 
+    /// <summary>カテゴリーと配下のタスクを削除し、オプションでフォルダも削除する。</summary>
     public void DeleteCategory(string categoryId, bool deleteFolder = false)
     {
         if (CurrentProject == null) return;
@@ -363,6 +374,7 @@ public class ProjectService
     // =====================================================
     // タスク追加
     // =====================================================
+    /// <summary>新規タスクを追加してフォルダを作成し、プロジェクトを保存する。</summary>
     public TaskItem AddTask(string categoryId, string name, string nameShort,
         string subCategory = "", string environment = "", string assignee = "",
         string priority = "中", string status = "未着手",
@@ -417,6 +429,7 @@ public class ProjectService
         return task;
     }
 
+    /// <summary>タスクの内容を更新し、省略名変更時はフォルダもリネームする。</summary>
     public void UpdateTask(TaskItem task, bool renameFolderOnShortNameChange = true)
     {
         if (CurrentProject == null) return;
@@ -460,6 +473,7 @@ public class ProjectService
         SaveAndNotifyProject();
     }
 
+    /// <summary>タスクを削除し、オプションでフォルダも削除する。</summary>
     public void DeleteTask(string taskId, bool deleteFolder = false)
     {
         if (CurrentProject == null) return;
@@ -482,6 +496,7 @@ public class ProjectService
         ProjectChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>タスクフォルダを新カテゴリーのフォルダ配下に移動する。</summary>
     public (bool Success, string? Error) TryMoveTaskFolderToCategory(TaskItem task, string newCategoryId)
     {
         if (CurrentProject == null) return (false, "プロジェクト未ロード");
@@ -506,6 +521,7 @@ public class ProjectService
     // =====================================================
     // ⑰ コメント追加
     // =====================================================
+    /// <summary>指定タスクにコメントを追加して保存する。</summary>
     public void AddComment(string taskId, string author, string text)
     {
         if (CurrentProject == null) return;
@@ -519,10 +535,11 @@ public class ProjectService
     // =====================================================
     // 完了フォルダへ移動
     // =====================================================
+    /// <summary>タスクフォルダを作業完了フォルダへ移動してフラグを立てる。</summary>
     private void MoveTaskFolderToComplete(TaskItem task)
     {
         if (!Directory.Exists(task.FolderPath)) return;
-        var completedPath = Path.Combine(CurrentProject!.Settings.ProjectPath, CompletedFolderName);
+        var completedPath = Path.Combine(CurrentProject!.Settings.ProjectPath, COMPLETED_FOLDER_NAME);
         Directory.CreateDirectory(completedPath);
         var destPath = Path.Combine(completedPath, Path.GetFileName(task.FolderPath));
         destPath = EnsureUniqueFolder(destPath);
@@ -534,6 +551,7 @@ public class ProjectService
     // =====================================================
     // ⑯ CSV エクスポート
     // =====================================================
+    /// <summary>タスク一覧をCSVファイルに書き出す。</summary>
     public void ExportToCsv(string filePath, IEnumerable<TaskItem>? tasks = null)
     {
         if (CurrentProject == null) return;
@@ -566,6 +584,7 @@ public class ProjectService
         File.WriteAllLines(filePath, lines, System.Text.Encoding.UTF8);
     }
 
+    /// <summary>CSV出力用に文字列をエスケープする。</summary>
     private static string CsvEscape(string s)
     {
         if (s.Contains(',') || s.Contains('"') || s.Contains('\n'))
@@ -576,18 +595,21 @@ public class ProjectService
     // =====================================================
     // フォルダツリー取得
     // =====================================================
+    /// <summary>プロジェクトフォルダのファイルノードツリーを返す。</summary>
     public FileNode? GetProjectFolderTree()
     {
         if (CurrentProject == null) return null;
         return BuildFileNode(CurrentProject.Settings.ProjectPath, 0, 3);
     }
 
+    /// <summary>タスクフォルダのファイルノードツリーを返す。</summary>
     public FileNode? GetTaskFolderTree(TaskItem task)
     {
         if (!task.FolderCreated || !Directory.Exists(task.FolderPath)) return null;
         return BuildFileNode(task.FolderPath, 0, 2);
     }
 
+    /// <summary>指定パスを起点に再帰的なFileNodeを構築する。</summary>
     private static FileNode BuildFileNode(string path, int depth, int maxDepth)
     {
         var node = new FileNode
@@ -613,6 +635,7 @@ public class ProjectService
     // =====================================================
     // ガントデータ生成  ⑭
     // =====================================================
+    /// <summary>ガントチャート用の行データを生成して返す。</summary>
     public List<GanttRow> GetGanttRows(string? filterCategoryId = null,
                                         string? filterStatus     = null,
                                         bool    hideCompleted    = false)
@@ -664,7 +687,7 @@ public class ProjectService
         return rows;
     }
 
-    // ⑫ ガント用: 全タスクの最小・最大日を取得
+    /// <summary>全タスクの日付から最小・最大日を取得してガント表示範囲を決定する。</summary>
     public (DateTime min, DateTime max) GetTaskDateRange()
     {
         if (CurrentProject == null || !CurrentProject.Tasks.Any())
@@ -688,6 +711,7 @@ public class ProjectService
     // =====================================================
     // カレンダーデータ生成  ⑭
     // =====================================================
+    /// <summary>指定年月のカレンダーセル（42日分）を生成してタスクを割り当てる。</summary>
     public List<CalendarCell> GetCalendarCells(int year, int month, bool hideCompleted = false)
     {
         if (CurrentProject == null) return new();
@@ -723,6 +747,7 @@ public class ProjectService
     // =====================================================
     // Excel インポート
     // =====================================================
+    /// <summary>Excelファイルからカテゴリーとタスクを一括インポートして保存する。</summary>
     public void ImportFromExcel(string excelPath)
     {
         if (CurrentProject == null) return;
@@ -783,6 +808,7 @@ public class ProjectService
     // =====================================================
     // 統計
     // =====================================================
+    /// <summary>全タスクの合計・完了・対応中・未着手の件数を返す。</summary>
     public (int total, int done, int wip, int todo) GetTaskStats()
     {
         if (CurrentProject == null) return (0, 0, 0, 0);
@@ -796,6 +822,7 @@ public class ProjectService
     // =====================================================
 
     // ② MAX ID+1 方式で衝突なし
+    /// <summary>既存カテゴリーIDの最大値+1から新規カテゴリーIDを生成する。</summary>
     private string GenerateCategoryId()
     {
         var max = CurrentProject!.Categories
@@ -804,6 +831,7 @@ public class ProjectService
         return $"CAT{max + 1:D3}";
     }
 
+    /// <summary>既存タスクIDの最大値+1から新規タスクIDを生成する。</summary>
     private string GenerateTaskId()
     {
         var max = CurrentProject!.Tasks
@@ -813,6 +841,7 @@ public class ProjectService
     }
 
     // ⑤ フォルダ衝突回避
+    /// <summary>同名フォルダが存在する場合は末尾に連番を付けて重複しないパスを返す。</summary>
     private static string EnsureUniqueFolder(string path)
     {
         if (!Directory.Exists(path)) return path;
@@ -821,12 +850,14 @@ public class ProjectService
         return $"{path}_{i}";
     }
 
+    /// <summary>未保存フラグを立ててプロジェクトを即時保存する。</summary>
     public void MarkDirtyAndSave()
     {
         _hasUnsavedChanges = true;
         SaveProject(); // 即時保存（自動保存は補完用）
     }
 
+    /// <summary>プロジェクトを保存してProjectChangedイベントを発火する。</summary>
     private void SaveAndNotifyProject()
     {
         MarkDirtyAndSave();
@@ -836,6 +867,7 @@ public class ProjectService
     // =====================================================
     // 表作成ツール CRUD
     // =====================================================
+    /// <summary>新規カスタムテーブルを作成してプロジェクトに追加する。</summary>
     public CustomTable CreateTable(string name)
     {
         var table = new CustomTable { Name = name };
@@ -844,17 +876,20 @@ public class ProjectService
         return table;
     }
 
+    /// <summary>指定IDのカスタムテーブルを削除して保存する。</summary>
     public void DeleteTable(string tableId)
     {
         CurrentProject!.CustomTables.RemoveAll(t => t.Id == tableId);
         MarkDirtyAndSave();
     }
 
+    /// <summary>テーブル定義（カラム構成など）の変更をプロジェクトに保存する。</summary>
     public void SaveTableDefinition(CustomTable table)
     {
         MarkDirtyAndSave();
     }
 
+    /// <summary>テーブルに新規行を追加し、自動連番カラムを採番して保存する。</summary>
     public TableRow AddRow(CustomTable table)
     {
         int nextNum = table.Rows.Count + 1;
@@ -866,6 +901,7 @@ public class ProjectService
         return row;
     }
 
+    /// <summary>指定行IDをテーブルから削除し、自動連番を振り直して保存する。</summary>
     public void DeleteRows(CustomTable table, IEnumerable<string> rowIds)
     {
         var ids = new HashSet<string>(rowIds);
@@ -878,6 +914,7 @@ public class ProjectService
         MarkDirtyAndSave();
     }
 
+    /// <summary>指定行・カラムのセル値を更新して保存する。</summary>
     public void UpdateCell(CustomTable table, string rowId, string columnId, string value)
     {
         var row = table.Rows.FirstOrDefault(r => r.Id == rowId);

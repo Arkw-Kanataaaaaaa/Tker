@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,13 +13,14 @@ namespace TKer.Helpers;
 /// </summary>
 public static class SmoothScroll
 {
-    private const double Friction    = 0.15;  // 1フレームで縮まる割合（小さいほど滑らか）
-    private const double StopThreshold = 0.5; // px 以下で停止
-    private const double WheelScale  = 1.2;   // マウスホイール 1 ノッチあたりのスクロール量係数
-    private const int    FrameMs     = 16;    // ~60fps
+    private const double FRICTION       = 0.15;  // 1フレームで縮まる割合（小さいほど滑らか）
+    private const double STOP_THRESHOLD = 0.5;   // px 以下で停止
+    private const double WHEEL_SCALE    = 1.2;   // マウスホイール 1 ノッチあたりのスクロール量係数
+    private const int    FRAME_MS       = 16;    // ~60fps
 
     private static readonly Dictionary<ScrollViewer, ScrollState> _states = new();
 
+    /// <summary>全 ScrollViewer に対してマウスホイールイベントハンドラーを登録する。</summary>
     public static void Register()
     {
         EventManager.RegisterClassHandler(
@@ -29,6 +30,7 @@ public static class SmoothScroll
             handledEventsToo: true);
     }
 
+    /// <summary>マウスホイールイベントを処理し、慣性スクロール状態を更新する。</summary>
     private static void OnWheel(object sender, MouseWheelEventArgs e)
     {
         if (sender is not ScrollViewer sv) return;
@@ -36,7 +38,7 @@ public static class SmoothScroll
 
         e.Handled = true;
 
-        double delta = -e.Delta * WheelScale;
+        double delta = -e.Delta * WHEEL_SCALE;
 
         if (!_states.TryGetValue(sv, out var state))
         {
@@ -47,23 +49,28 @@ public static class SmoothScroll
         state.AddDelta(delta);
     }
 
+    /// <summary>
+    /// 個々の ScrollViewer に対するスクロール状態と慣性タイマーを保持するクラス。
+    /// </summary>
     private sealed class ScrollState
     {
         private readonly ScrollViewer _sv;
         private readonly DispatcherTimer _timer;
         private double _targetOffset;
 
+        /// <summary>指定 ScrollViewer のスクロール状態を初期化する。</summary>
         public ScrollState(ScrollViewer sv)
         {
             _sv = sv;
             _targetOffset = sv.VerticalOffset;
             _timer = new DispatcherTimer(
-                TimeSpan.FromMilliseconds(FrameMs),
+                TimeSpan.FromMilliseconds(FRAME_MS),
                 DispatcherPriority.Render,
                 Tick,
                 sv.Dispatcher);
         }
 
+        /// <summary>スクロール目標位置にデルタ値を加算してタイマーを起動する。</summary>
         public void AddDelta(double delta)
         {
             _targetOffset = Math.Clamp(
@@ -75,12 +82,13 @@ public static class SmoothScroll
                 _timer.Start();
         }
 
+        /// <summary>フレームごとに呼ばれる指数減衰スクロール処理。</summary>
         private void Tick(object? sender, EventArgs e)
         {
             double current = _sv.VerticalOffset;
             double diff    = _targetOffset - current;
 
-            if (Math.Abs(diff) < StopThreshold)
+            if (Math.Abs(diff) < STOP_THRESHOLD)
             {
                 _sv.ScrollToVerticalOffset(_targetOffset);
                 _timer.Stop();
@@ -89,7 +97,7 @@ public static class SmoothScroll
             }
 
             // 指数減衰（EaseOut 相当）
-            _sv.ScrollToVerticalOffset(current + diff * Friction * (FrameMs / 8.0));
+            _sv.ScrollToVerticalOffset(current + diff * FRICTION * (FRAME_MS / 8.0));
         }
     }
 }

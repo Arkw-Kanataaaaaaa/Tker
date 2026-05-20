@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Channels;
@@ -6,13 +6,19 @@ using System.Threading.Tasks;
 
 namespace TKer.Services;
 
+/// <summary>フォルダ操作の種別を表す列挙型。</summary>
 public enum FolderOpKind { Create, Rename, Move, Delete, Custom }
 
+/// <summary>キューに積む単一のフォルダ操作を表すクラス。</summary>
 public sealed class FolderOperation
 {
+    /// <summary>操作の種別。</summary>
     public FolderOpKind Kind       { get; init; } = FolderOpKind.Custom;
+    /// <summary>操作のラベル（エラー通知で使用）。</summary>
     public string       Label      { get; init; } = "";
+    /// <summary>操作元パス。</summary>
     public string?      SourcePath { get; init; }
+    /// <summary>操作先パス。</summary>
     public string?      DestPath   { get; init; }
     /// <summary>複合操作（Custom種別）。例外は呼び出し元がキャッチする。</summary>
     public Action?      Custom     { get; init; }
@@ -41,6 +47,7 @@ public sealed class FolderOperationQueue : IDisposable
     /// <summary>現在のキュー残件数。</summary>
     public int PendingCount => Volatile.Read(ref _pendingCount);
 
+    /// <summary>バックグラウンドワーカーを起動して初期化する。</summary>
     public FolderOperationQueue() => _worker = Task.Run(RunAsync);
 
     /// <summary>操作をキューに追加する（即座に返る）。</summary>
@@ -51,6 +58,7 @@ public sealed class FolderOperationQueue : IDisposable
         _ch.Writer.TryWrite(op);
     }
 
+    /// <summary>キューからフォルダ操作を順に取り出して実行する非同期ループ。</summary>
     private async Task RunAsync()
     {
         await foreach (var op in _ch.Reader.ReadAllAsync(_cts.Token))
@@ -99,6 +107,7 @@ public sealed class FolderOperationQueue : IDisposable
         }
     }
 
+    /// <summary>キャンセルトークンをキャンセルし、ワーカーの終了を待機してリソースを解放する。</summary>
     public void Dispose()
     {
         _cts.Cancel();

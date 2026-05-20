@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,10 +16,11 @@ public class AppLogger
 {
     // ── シングルトン ─────────────────────────────────────
     private static AppLogger? _instance;
+    /// <summary>シングルトンインスタンスを返す。</summary>
     public  static AppLogger  Instance => _instance ??= new AppLogger();
 
     // ── フィールド ───────────────────────────────────────
-    private static readonly string LogDir =
+    private static readonly string LOG_DIR =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                      "TKer", "logs");
 
@@ -29,7 +30,7 @@ public class AppLogger
 
     // インメモリバッファ（直近 2000 件）
     private readonly List<LogEntry> _entries = new();
-    private const int MaxMemoryEntries = 2000;
+    private const int MAX_MEMORY_ENTRIES = 2000;
 
     private LogRotationSettings _rotation = new();
 
@@ -37,12 +38,14 @@ public class AppLogger
     public event Action<LogEntry>? EntryAdded;
 
     // ── 初期化 ────────────────────────────────────────────
+    /// <summary>ログディレクトリを作成してログローテーションを確認する。</summary>
     private AppLogger()
     {
-        Directory.CreateDirectory(LogDir);
+        Directory.CreateDirectory(LOG_DIR);
         RotateIfNeeded();
     }
 
+    /// <summary>ログローテーション設定を更新して再確認する。</summary>
     public void Configure(LogRotationSettings settings)
     {
         _rotation = settings;
@@ -50,27 +53,34 @@ public class AppLogger
     }
 
     // ── ログ出力 API ──────────────────────────────────────
+    /// <summary>DEBUG レベルのログを出力する。</summary>
     public void Debug(string screen, string func, string msg)
         => Write(AppLogLevel.DEBUG, screen, func, msg);
 
+    /// <summary>INFO レベルのログを出力する。</summary>
     public void Info(string screen, string func, string msg)
         => Write(AppLogLevel.INFO, screen, func, msg);
 
+    /// <summary>WARN レベルのログを出力する。</summary>
     public void Warn(string screen, string func, string msg)
         => Write(AppLogLevel.WARN, screen, func, msg);
 
+    /// <summary>ERROR レベルのログを出力する。例外情報も記録できる。</summary>
     public void Error(string screen, string func, string msg, Exception? ex = null)
         => Write(AppLogLevel.ERROR, screen, func, msg, ex?.ToString());
 
+    /// <summary>FATAL レベルのログを出力する。例外情報も記録できる。</summary>
     public void Fatal(string screen, string func, string msg, Exception? ex = null)
         => Write(AppLogLevel.FATAL, screen, func, msg, ex?.ToString());
 
     // ── 読み取り ─────────────────────────────────────────
+    /// <summary>インメモリの全ログエントリを返す。</summary>
     public IReadOnlyList<LogEntry> GetAll()
     {
         lock (_lock) { return _entries.ToList(); }
     }
 
+    /// <summary>条件でフィルタリングしたログエントリを返す。</summary>
     public IReadOnlyList<LogEntry> Filter(
         string? keyword = null,
         AppLogLevel? minLevel = null,
@@ -92,6 +102,7 @@ public class AppLogger
     }
 
     // ── 内部書き込み ──────────────────────────────────────
+    /// <summary>ログエントリをインメモリバッファとファイルに書き込む。</summary>
     private void Write(AppLogLevel level, string screen, string func,
                        string message, string? stackTrace = null)
     {
@@ -109,7 +120,7 @@ public class AppLogger
         {
             // インメモリ追加
             _entries.Add(entry);
-            if (_entries.Count > MaxMemoryEntries)
+            if (_entries.Count > MAX_MEMORY_ENTRIES)
                 _entries.RemoveAt(0);
 
             // ファイル書き込み
@@ -132,22 +143,24 @@ public class AppLogger
     }
 
     // ── ファイル管理 ─────────────────────────────────────
+    /// <summary>現在の日付に対応するログファイルパスを確保する。</summary>
     private void EnsureCurrentFile()
     {
         var today = DateTime.Today;
         if (_currentLogFile == "" || today != _currentFileDate)
         {
             _currentFileDate = today;
-            _currentLogFile  = Path.Combine(LogDir,
+            _currentLogFile  = Path.Combine(LOG_DIR,
                 $"TKer_{today:yyyyMMdd}.log");
         }
     }
 
+    /// <summary>ローテーション設定に基づいて古いログファイルを整理する。</summary>
     private void RotateIfNeeded()
     {
         if (!_rotation.Enabled) return;
 
-        var logFiles = Directory.GetFiles(LogDir, "TKer_*.log")
+        var logFiles = Directory.GetFiles(LOG_DIR, "TKer_*.log")
                                 .OrderByDescending(f => f)
                                 .ToList();
 
@@ -162,7 +175,7 @@ public class AppLogger
                     ArchiveOrDelete(_currentLogFile);
                     _currentLogFile = "";
                     EnsureCurrentFile();
-                    logFiles = Directory.GetFiles(LogDir, "TKer_*.log")
+                    logFiles = Directory.GetFiles(LOG_DIR, "TKer_*.log")
                                         .OrderByDescending(f => f).ToList();
                 }
             }
@@ -177,6 +190,7 @@ public class AppLogger
         }
     }
 
+    /// <summary>ログファイルをアーカイブまたは削除する。</summary>
     private void ArchiveOrDelete(string filePath)
     {
         try
@@ -196,13 +210,14 @@ public class AppLogger
     }
 
     // ── 過去ログファイルの読み込み ───────────────────────
+    /// <summary>指定日数分の過去ログをファイルから読み込んで返す。</summary>
     public List<LogEntry> LoadHistoricalLogs(int days = 7)
     {
         var result = new List<LogEntry>();
         for (int i = 0; i < days; i++)
         {
             var date = DateTime.Today.AddDays(-i);
-            var file = Path.Combine(LogDir, $"TKer_{date:yyyyMMdd}.log");
+            var file = Path.Combine(LOG_DIR, $"TKer_{date:yyyyMMdd}.log");
             if (!File.Exists(file)) continue;
 
             try
@@ -218,6 +233,7 @@ public class AppLogger
         return result.OrderByDescending(e => e.Timestamp).ToList();
     }
 
+    /// <summary>ログファイルの 1 行をパースして LogEntry に変換する。</summary>
     private static LogEntry? ParseLine(string line)
     {
         if (string.IsNullOrWhiteSpace(line)) return null;

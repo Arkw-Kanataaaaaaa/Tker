@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -24,12 +24,14 @@ public class FolderIntegrityService
     /// <summary>整合性チェック完了時に発火 (問題件数)</summary>
     public event Action<int>? CheckCompleted;
 
+    /// <summary>ProjectService を受け取って初期化する。</summary>
     public FolderIntegrityService(ProjectService projectService)
     {
         _projectService = projectService;
     }
 
     // ── 開始 / 停止 ──────────────────────────────────────
+    /// <summary>バックグラウンドでの整合性チェックを開始する。</summary>
     public void Start()
     {
         if (_backgroundTask != null && !_backgroundTask.IsCompleted) return;
@@ -39,6 +41,7 @@ public class FolderIntegrityService
         _logger.Info("FolderIntegrityService", "Start", "フォルダ整合性チェック開始 (60秒周期)");
     }
 
+    /// <summary>バックグラウンドでの整合性チェックを停止する。</summary>
     public void Stop()
     {
         _cts?.Cancel();
@@ -46,6 +49,7 @@ public class FolderIntegrityService
     }
 
     // ── バックグラウンドループ ────────────────────────────
+    /// <summary>60秒周期で整合性チェックを繰り返す非同期ループ。</summary>
     private async Task RunAsync(CancellationToken ct)
     {
         // 起動直後は少し待つ
@@ -79,6 +83,7 @@ public class FolderIntegrityService
     }
 
     // ── 実際のチェック処理 ───────────────────────────────
+    /// <summary>現在のプロジェクトの全タスク・カテゴリのフォルダ整合性を検査し、問題件数を返す。</summary>
     private int PerformCheck()
     {
         var project = _projectService.CurrentProject;

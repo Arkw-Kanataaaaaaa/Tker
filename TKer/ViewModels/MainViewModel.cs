@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -10,18 +10,29 @@ using TKer.Views.Dialogs;
 
 namespace TKer.ViewModels;
 
+/// <summary>アプリケーション全体のナビゲーションと状態を管理するメイン ViewModel。</summary>
 public partial class MainViewModel : ObservableObject
 {
     // ── サービス ──────────────────────────────────
+    /// <summary>プロジェクトデータの読み書きを担うサービス。</summary>
     public ProjectService         ProjectService         { get; }
+    /// <summary>プロジェクト初期セットアップを担うサービス。</summary>
     public SetupService           SetupService           { get; }
+    /// <summary>成果物管理を担うサービス。</summary>
     public DeliverableService     DeliverableService     { get; }
+    /// <summary>アプリ設定の読み書きを担うサービス。</summary>
     public AppSettingsService     AppSettingsService     { get; }
+    /// <summary>コレクション機能を担うサービス。</summary>
     public CollectionService      CollectionService      { get; }
+    /// <summary>スケジュールイベントの管理を担うサービス。</summary>
     public ScheduleService        ScheduleService        { get; }
+    /// <summary>記事作成機能を担うサービス。</summary>
     public ArticleService         ArticleService         { get; }
+    /// <summary>ファイル変更監視を担うサービス。</summary>
     public FileWatcherService     FileWatcherService     { get; }
+    /// <summary>TODO リストの管理を担うサービス。</summary>
     public TodoService            TodoService            { get; }
+    /// <summary>プロジェクトフォルダの整合性チェックを担うサービス。</summary>
     public FolderIntegrityService FolderIntegrityService { get; }
 
     // ── ナビゲーション ────────────────────────────
@@ -30,6 +41,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = "ホームからプロジェクトを選択してください";
     [ObservableProperty] private bool   _isProjectLoaded = false;
 
+    /// <summary>カレンダー画面でフォーカスする日付。null の場合は今日。</summary>
     public DateTime? CalendarFocusDate { get; set; }
 
     // ── 統計（現在プロジェクト） ─────────────────
@@ -57,9 +69,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool    _hasFileChangeNotification;
 
     // ── バージョン ────────────────────────────────
-    public string AppVersionText => AppVersion.DisplayName;
-    public string BuildDateText  => $"Build {AppVersion.BuildDate}";
+    /// <summary>表示用のアプリバージョン文字列。</summary>
+    public string AppVersionText => AppVersion.DISPLAY_NAME;
+    /// <summary>表示用のビルド日付文字列。</summary>
+    public string BuildDateText  => $"Build {AppVersion.BUILD_DATE}";
 
+    /// <summary>各サービスを初期化し、イベントハンドラーを登録するコンストラクター。</summary>
     public MainViewModel()
     {
         AppSettingsService     = new AppSettingsService();
@@ -181,6 +196,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ── ナビゲーション ────────────────────────────
+    /// <summary>指定したビューに遷移する。プロジェクト未ロード時は一部ビューのみ許可。</summary>
     [RelayCommand]
     public void NavigateTo(string view)
     {
@@ -192,6 +208,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ── 保存 ─────────────────────────────────────
+    /// <summary>現在のプロジェクトをファイルに保存する。</summary>
     [RelayCommand]
     public void Save()
     {
@@ -201,6 +218,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ── プロジェクト切替 ──────────────────────────
+    /// <summary>指定したデータファイルパスのプロジェクトに切り替える。</summary>
     [RelayCommand]
     public void SwitchProject(string dataFilePath)
     {
@@ -219,6 +237,7 @@ public partial class MainViewModel : ObservableObject
 
 
     // ── アラートダイアログ ────────────────────────
+    /// <summary>全プロジェクトのアラート一覧ダイアログを表示する。</summary>
     [RelayCommand]
     public void ShowAlerts()
     {
@@ -228,6 +247,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ── アラート更新 ──────────────────────────────
+    /// <summary>全プロジェクトのアラート件数を再集計して AlertCount を更新する。</summary>
     public void RefreshAlerts()
     {
         var alerts = AppSettingsService.CollectAlerts();
@@ -235,6 +255,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ── 統計更新 ──────────────────────────────────
+    /// <summary>現在のプロジェクトのタスク統計とカテゴリー数を再計算して各プロパティを更新する。</summary>
     private void RefreshStats()
     {
         var (total, done, wip, todo) = ProjectService.GetTaskStats();

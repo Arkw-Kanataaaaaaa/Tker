@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -13,6 +13,7 @@ using TKer.ViewModels;
 namespace TKer.Views.Pages;
 
 
+/// <summary>月別カレンダーと日別イベントを表示するページ。</summary>
 public partial class CalendarPage : Page, IRefreshable
 {
     private readonly MainViewModel  _vm;
@@ -23,6 +24,7 @@ public partial class CalendarPage : Page, IRefreshable
     private DateTime _selectedDate = DateTime.Today;
     private bool     _hideCompleted = false;
 
+    /// <summary>ページを初期化し、スケジュールサービスとイベントを設定する。</summary>
     public CalendarPage(MainViewModel vm)
     {
         _vm  = vm;
@@ -37,6 +39,7 @@ public partial class CalendarPage : Page, IRefreshable
 
     private void OnDataChanged(object? sender, EventArgs e) => Dispatcher.Invoke(RenderCalendar);
 
+    /// <summary>指定した日付へナビゲートし、年月を更新する。</summary>
     public void NavigateTo(DateTime date)
     {
         _selectedDate = date.Date;
@@ -44,6 +47,7 @@ public partial class CalendarPage : Page, IRefreshable
         _month = date.Month;
     }
 
+    /// <summary>テーマを適用してカレンダーと日別イベントを再描画する。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Cal_Header"));
@@ -53,6 +57,7 @@ public partial class CalendarPage : Page, IRefreshable
     }
 
     // ── カレンダー描画 ────────────────────────────────────
+    /// <summary>カレンダーグリッド全体を再描画する。</summary>
     private void RenderCalendar()
     {
         MonthLabel.Text = $"{_year}年 {_month}月";
@@ -101,6 +106,7 @@ public partial class CalendarPage : Page, IRefreshable
         }
     }
 
+    /// <summary>1日分のカレンダーセルを生成して返す。</summary>
     private Border BuildDayCell(DateTime date, bool isCurrent,
         IReadOnlyList<ScheduleEvent> scheduleEvents,
         IReadOnlyList<TaskItem> allTasks,
@@ -283,6 +289,7 @@ public partial class CalendarPage : Page, IRefreshable
     }
 
     // ── 日別詳細パネル ────────────────────────────────────
+    /// <summary>選択日のイベントとタスクを詳細パネルに表示する。</summary>
     private void ShowDayEvents(DateTime date)
     {
         TxtSelectedDate.Text = $"{date:M月d日 (ddd)}";
@@ -322,6 +329,7 @@ public partial class CalendarPage : Page, IRefreshable
         }
     }
 
+    /// <summary>スケジュールイベントのカードUIを生成して返す。</summary>
     private Border BuildEventCard(ScheduleEvent ev)
     {
         Color c;
@@ -407,6 +415,7 @@ public partial class CalendarPage : Page, IRefreshable
         return card;
     }
 
+    /// <summary>プロジェクトタスクのチップUIを生成して返す。</summary>
     private Border BuildTaskChip(TaskItem t)
     {
         return new Border
@@ -444,6 +453,7 @@ public partial class CalendarPage : Page, IRefreshable
 
     private void EditEvent(ScheduleEvent ev) => OpenEventDialog(ev);
 
+    /// <summary>確認ダイアログを表示してイベントを削除する。</summary>
     private void DeleteEvent(ScheduleEvent ev)
     {
         if (MessageBox.Show($"「{ev.Title}」を削除しますか？", "削除確認",
@@ -452,6 +462,7 @@ public partial class CalendarPage : Page, IRefreshable
         ShowDayEvents(_selectedDate);
     }
 
+    /// <summary>スケジュールイベントの追加・編集ダイアログを開く。</summary>
     private void OpenEventDialog(ScheduleEvent? existing)
     {
         var owner = Window.GetWindow(this);
@@ -480,6 +491,7 @@ public partial class CalendarPage : Page, IRefreshable
     }
 
     // ── ヘッダーボタン ────────────────────────────────────
+    /// <summary>完了タスクの表示・非表示を切り替える。</summary>
     private void ToggleCompleted_Click(object sender, RoutedEventArgs e)
     {
         _hideCompleted = !_hideCompleted;
@@ -487,6 +499,7 @@ public partial class CalendarPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>前月へ移動してカレンダーを更新する。</summary>
     private void PrevMonth_Click(object sender, RoutedEventArgs e)
     {
         var d = new DateTime(_year, _month, 1).AddMonths(-1);
@@ -494,6 +507,7 @@ public partial class CalendarPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>翌月へ移動してカレンダーを更新する。</summary>
     private void NextMonth_Click(object sender, RoutedEventArgs e)
     {
         var d = new DateTime(_year, _month, 1).AddMonths(1);
@@ -501,6 +515,7 @@ public partial class CalendarPage : Page, IRefreshable
         Refresh();
     }
 
+    /// <summary>今日の日付へ戻ってカレンダーを更新する。</summary>
     private void Today_Click(object sender, RoutedEventArgs e)
     {
         _selectedDate = DateTime.Today;

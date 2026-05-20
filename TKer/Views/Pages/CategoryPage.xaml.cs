@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using TKer.Helpers;
 using TKer.Models;
 using TKer.ViewModels;
@@ -53,13 +52,9 @@ public partial class CategoryPage : Page, IRefreshable
 
     private void ApplyBackground()
     {
-        try
-        {
-            var color = (Color)ColorConverter.ConvertFromString(_vm.AppSettingsService.CategoryListBgColor);
-            color.A = (byte)(_vm.AppSettingsService.CategoryListBgOpacity * 255);
-            ContentBorder.Background = new SolidColorBrush(color);
-        }
-        catch { ContentBorder.Background = Brushes.Transparent; }
+        UiThemeHelper.ApplyColorBackground(ContentBorder,
+            _vm.AppSettingsService.CategoryListBgColor,
+            _vm.AppSettingsService.CategoryListBgOpacity);
     }
 
     private void ApplyFilter()
@@ -172,39 +167,13 @@ public partial class CategoryPage : Page, IRefreshable
     {
         if (SearchSection.Visibility == Visibility.Collapsed)
         {
-            SearchSection.Visibility = Visibility.Visible;
-            SearchSection.BeginAnimation(HeightProperty, null);
-            SearchSection.Height = double.NaN;
-            SearchSection.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            double targetH = SearchSection.DesiredSize.Height > 0 ? SearchSection.DesiredSize.Height : 50;
-            SearchSection.Height = 0;
-            var anim = new DoubleAnimation(0, targetH, TimeSpan.FromMilliseconds(220))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            anim.Completed += (_, _) =>
-            {
-                SearchSection.BeginAnimation(HeightProperty, null);
-                SearchSection.Height = double.NaN;
-            };
-            SearchSection.BeginAnimation(HeightProperty, anim);
-            SearchBox.Focus();
+            SearchBarHelper.Open(SearchSection, SearchBox);
         }
         else
         {
-            double currentH = SearchSection.ActualHeight > 0 ? SearchSection.ActualHeight : 50;
-            var anim = new DoubleAnimation(currentH, 0, TimeSpan.FromMilliseconds(160))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-            anim.Completed += (_, _) =>
-            {
-                SearchSection.BeginAnimation(HeightProperty, null);
-                SearchSection.Visibility = Visibility.Collapsed;
-                SearchBox.Text = "";
-                ApplyFilter();
-            };
-            SearchSection.BeginAnimation(HeightProperty, anim);
+            SearchBarHelper.Close(SearchSection);
+            SearchBox.Text = "";
+            ApplyFilter();
         }
     }
 

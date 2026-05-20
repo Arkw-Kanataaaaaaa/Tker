@@ -11,6 +11,7 @@ using TKer.ViewModels;
 
 namespace TKer.Views.Pages;
 
+/// <summary>ポモドーロタイマーの操作と統計表示を行うページ。</summary>
 public partial class PomodoroPage : Page, IRefreshable
 {
     // ── Win32 メディア停止 ─────────────────────────────────
@@ -38,6 +39,7 @@ public partial class PomodoroPage : Page, IRefreshable
     private int LongMin  => ParseMin(TxtLongMin.Text,  15);
     private int MaxSessions => ParseMin(TxtSessions.Text, 4);
 
+    /// <summary>ポモドーロページを初期化してタイマーイベントを設定する。</summary>
     public PomodoroPage(MainViewModel vm)
     {
         _vm = vm;
@@ -46,6 +48,7 @@ public partial class PomodoroPage : Page, IRefreshable
         Loaded += (_, _) => Refresh();
     }
 
+    /// <summary>テーマとポモドーロ設定を読み込んで画面を更新する。</summary>
     public void Refresh()
     {
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("Pomo_Header"));
@@ -62,6 +65,7 @@ public partial class PomodoroPage : Page, IRefreshable
     }
 
     // ── タイマー制御 ─────────────────────────────────────
+    /// <summary>タイマーの開始・一時停止を切り替える。</summary>
     private void BtnStartStop_Click(object sender, RoutedEventArgs e)
     {
         if (_isRunning)
@@ -79,6 +83,7 @@ public partial class PomodoroPage : Page, IRefreshable
         }
     }
 
+    /// <summary>タイマーをリセットして作業フェーズの最初に戻す。</summary>
     private void BtnReset_Click(object sender, RoutedEventArgs e)
     {
         _timer.Stop();
@@ -88,6 +93,7 @@ public partial class PomodoroPage : Page, IRefreshable
         ResetTimer();
     }
 
+    /// <summary>現在のフェーズをスキップして次のフェーズに進む。</summary>
     private void BtnSkip_Click(object sender, RoutedEventArgs e)
     {
         _timer.Stop();
@@ -95,6 +101,7 @@ public partial class PomodoroPage : Page, IRefreshable
         AdvanceMode(completed: false);
     }
 
+    /// <summary>毎秒呼ばれて残り時間を減らしUIを更新する。</summary>
     private void Timer_Tick(object? sender, EventArgs e)
     {
         _remaining--;
@@ -107,6 +114,7 @@ public partial class PomodoroPage : Page, IRefreshable
         }
     }
 
+    /// <summary>フェーズ完了時に統計を更新し通知を出す。</summary>
     private void OnPhaseComplete()
     {
         if (_mode == PomodoroMode.Work)
@@ -129,6 +137,7 @@ public partial class PomodoroPage : Page, IRefreshable
         AdvanceMode(completed: true);
     }
 
+    /// <summary>次のポモドーロモード（作業・休憩）に切り替える。</summary>
     private void AdvanceMode(bool completed)
     {
         if (_mode == PomodoroMode.Work)
@@ -149,6 +158,7 @@ public partial class PomodoroPage : Page, IRefreshable
         ResetTimer();
     }
 
+    /// <summary>現在のモードに合わせて残り時間を設定してUIをリセットする。</summary>
     private void ResetTimer()
     {
         _remaining = _mode switch
@@ -166,6 +176,7 @@ public partial class PomodoroPage : Page, IRefreshable
     }
 
     // ── UI 更新 ───────────────────────────────────────────
+    /// <summary>残り時間テキストとプログレス円弧を更新する。</summary>
     private void UpdateDisplay()
     {
         int m = _remaining / 60, s = _remaining % 60;
@@ -174,6 +185,7 @@ public partial class PomodoroPage : Page, IRefreshable
         DrawProgressArc();
     }
 
+    /// <summary>現在のモードに応じたラベルと色をUIに反映する。</summary>
     private void UpdateModeUI()
     {
         (string label, Color color) = _mode switch
@@ -187,6 +199,7 @@ public partial class PomodoroPage : Page, IRefreshable
         ModeBadgeBrush.Color = color;
     }
 
+    /// <summary>完了セッション数をドットインジケーターとして描画する。</summary>
     private void UpdateSessionDots()
     {
         SessionDots.Children.Clear();
@@ -206,6 +219,7 @@ public partial class PomodoroPage : Page, IRefreshable
         }
     }
 
+    /// <summary>経過率に応じたプログレス円弧をキャンバスに描画する。</summary>
     private void DrawProgressArc()
     {
         ProgressCanvas.Children.Clear();
@@ -265,6 +279,7 @@ public partial class PomodoroPage : Page, IRefreshable
     private void BtnSessionsPlus_Click(object s, RoutedEventArgs e)  => Adjust(TxtSessions,  1, 10);
     private void BtnSessionsMinus_Click(object s, RoutedEventArgs e) => Adjust(TxtSessions, -1, 1);
 
+    /// <summary>テキストボックスの数値を増減してクランプする。</summary>
     private void Adjust(TextBox tb, int delta, int max)
     {
         int v = Math.Clamp(ParseMin(tb.Text, 1) + delta, 1, max);
@@ -273,6 +288,7 @@ public partial class PomodoroPage : Page, IRefreshable
 
     private void Settings_Changed(object sender, RoutedEventArgs e) { /* live-update optional */ }
 
+    /// <summary>入力値を検証してポモドーロ設定を保存しタイマーをリセットする。</summary>
     private void BtnApplySettings_Click(object sender, RoutedEventArgs e)
     {
         if (_isRunning)
@@ -297,6 +313,7 @@ public partial class PomodoroPage : Page, IRefreshable
         UpdateSessionDots();
     }
 
+    /// <summary>テキストを分単位の整数に変換し失敗時はフォールバック値を返す。</summary>
     private static int ParseMin(string? txt, int fallback)
         => int.TryParse(txt, out var v) ? Math.Max(1, v) : fallback;
 }

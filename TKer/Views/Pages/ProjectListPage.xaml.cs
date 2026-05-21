@@ -37,6 +37,7 @@ public partial class ProjectListPage : Page, IRefreshable
 
     private readonly MainViewModel _vm;
     private string? _selectedPath;
+    private bool _isFolderMode = false;
 
     // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
     private FileNode? _selectedNode;
@@ -77,9 +78,11 @@ public partial class ProjectListPage : Page, IRefreshable
         ApplyFilter();
         ApplyBackground();
 
-        // TreePanel 表示中なら再読み込み
-        if (TreePanel.Visibility == Visibility.Visible)
-            ShowTreePanel();
+        if (_isFolderMode)
+        {
+            if (_vm.ProjectService.CurrentProject != null)
+                ShowTreePanel();
+        }
     }
 
     /// <summary>コンテンツボーダーの背景テーマを適用する。</summary>
@@ -131,14 +134,61 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
+    // ── モード切替 ────────────────────────────────────────
+    /// <summary>フォルダ表示とプロジェクト詳細表示を切り替える。</summary>
+    private void ToggleViewMode_Click(object sender, RoutedEventArgs e)
+    {
+        _isFolderMode = !_isFolderMode;
+        ApplyViewMode();
+    }
+
+    /// <summary>現在の_isFolderModeに合わせてツールバーと右パネルを切り替える。</summary>
+    private void ApplyViewMode()
+    {
+        if (_isFolderMode)
+        {
+            BtnProjectSection.Visibility   = Visibility.Collapsed;
+            BtnTreeSection.Visibility      = Visibility.Visible;
+            BtnToggleMode.ToolTip          = "プロジェクト詳細表示に切り替え (F5)";
+            IconDetailModeActive.Visibility = Visibility.Collapsed;
+            IconFolderModeActive.Visibility = Visibility.Visible;
+
+            if (_vm.ProjectService.CurrentProject != null)
+                ShowTreePanel();
+            else
+            {
+                EmptyPanelText.Text         = "アクティブなプロジェクトがありません";
+                EmptyPanel.Visibility       = Visibility.Visible;
+                ProjectInfoPanel.Visibility = Visibility.Collapsed;
+                AddProjectPanel.Visibility  = Visibility.Collapsed;
+                TreePanel.Visibility        = Visibility.Collapsed;
+            }
+        }
+        else
+        {
+            BtnProjectSection.Visibility   = Visibility.Visible;
+            BtnTreeSection.Visibility      = Visibility.Collapsed;
+            BtnToggleMode.ToolTip          = "フォルダ表示に切り替え (F5)";
+            IconDetailModeActive.Visibility = Visibility.Visible;
+            IconFolderModeActive.Visibility = Visibility.Collapsed;
+
+            TreePanel.Visibility = Visibility.Collapsed;
+            if (string.IsNullOrEmpty(_selectedPath))
+                ShowEmptyPanel();
+            else
+                ShowInfoPanel();
+        }
+    }
+
     // ── 右パネル制御 ─────────────────────────────────────
     /// <summary>右パネルを空（未選択）状態に切り替える。</summary>
     private void ShowEmptyPanel()
     {
+        EmptyPanelText.Text         = "プロジェクトを選択してください";
         EmptyPanel.Visibility       = Visibility.Visible;
         ProjectInfoPanel.Visibility = Visibility.Collapsed;
+        AddProjectPanel.Visibility  = Visibility.Collapsed;
         TreePanel.Visibility        = Visibility.Collapsed;
-        HideFileToolbar();
     }
 
     /// <summary>右パネルにプロジェクト情報を表示する。</summary>
@@ -146,8 +196,8 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         EmptyPanel.Visibility       = Visibility.Collapsed;
         TreePanel.Visibility        = Visibility.Collapsed;
+        AddProjectPanel.Visibility  = Visibility.Collapsed;
         ProjectInfoPanel.Visibility = Visibility.Visible;
-        HideFileToolbar();
 
         ProjectInfoContent.Children.Clear();
 
@@ -262,8 +312,8 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         EmptyPanel.Visibility       = Visibility.Collapsed;
         ProjectInfoPanel.Visibility = Visibility.Collapsed;
+        AddProjectPanel.Visibility  = Visibility.Collapsed;
         TreePanel.Visibility        = Visibility.Visible;
-        ShowFileToolbar();
 
         var tree = _vm.ProjectService.GetProjectFolderTree();
         if (tree != null)
@@ -271,10 +321,18 @@ public partial class ProjectListPage : Page, IRefreshable
         UpdateFileToolbarState();
     }
 
-    /// <summary>ファイル操作ツールバーを表示する。</summary>
-    private void ShowFileToolbar()  => BtnTreeSection.Visibility = Visibility.Visible;
-    /// <summary>ファイル操作ツールバーを非表示にする。</summary>
-    private void HideFileToolbar()  => BtnTreeSection.Visibility = Visibility.Collapsed;
+    /// <summary>新規プロジェクト作成フォームパネルを表示する。</summary>
+    private void ShowAddProjectPanel()
+    {
+        EmptyPanel.Visibility       = Visibility.Collapsed;
+        ProjectInfoPanel.Visibility = Visibility.Collapsed;
+        TreePanel.Visibility        = Visibility.Collapsed;
+        AddProjectPanel.Visibility  = Visibility.Visible;
+        TxtNewProjName.Clear();
+        TxtNewProjDesc.Clear();
+        TxtNewProjPath.Clear();
+        TxtNewProjName.Focus();
+    }
 
     /// <summary>プロジェクトツールバーボタンの有効/無効を更新する。</summary>
     private void UpdateProjectToolbarState()
@@ -345,14 +403,24 @@ public partial class ProjectListPage : Page, IRefreshable
         }
         else if (Keyboard.Modifiers == ModifierKeys.None)
         {
-            if (e.Key == Key.F2)
+            if (e.Key == Key.F2 && !_isFolderMode)
             {
                 EditSettings_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F5)
+            {
+                ToggleViewMode_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape && SearchSection.Visibility == Visibility.Visible)
             {
                 ToggleSearch_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && AddProjectPanel.Visibility == Visibility.Visible)
+            {
+                CancelAddProject_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
         }
@@ -376,15 +444,10 @@ public partial class ProjectListPage : Page, IRefreshable
         _selectedPath = _selectedPath == path ? null : path;
         ApplyFilter();
 
-        if (string.IsNullOrEmpty(_selectedPath))
-        {
-            ShowEmptyPanel();
-            return;
-        }
+        if (_isFolderMode) return;
 
-        bool isActive = (_selectedPath == _vm.ProjectService.ProjectFilePath);
-        if (isActive)
-            ShowTreePanel();
+        if (string.IsNullOrEmpty(_selectedPath))
+            ShowEmptyPanel();
         else
             ShowInfoPanel();
     }
@@ -399,7 +462,8 @@ public partial class ProjectListPage : Page, IRefreshable
             return;
         }
         _vm.SwitchProjectCommand.Execute(_selectedPath);
-        ShowTreePanel();
+        ApplyFilter();
+        ShowInfoPanel();
     }
 
     /// <summary>選択中プロジェクトのフォルダをエクスプローラーで開く。</summary>
@@ -430,23 +494,65 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
-    /// <summary>新規プロジェクト作成ダイアログを表示してプロジェクトを作成する。</summary>
-    private void NewProject_Click(object sender, RoutedEventArgs e)
-    {
-        var owner = Window.GetWindow(this);
-        var dlg = new NewProjectDialog { Owner = owner };
-        if (dlg.ShowDialog() != true) return;
+    /// <summary>プロジェクト追加フォームパネルをインライン表示する。</summary>
+    private void NewProject_Click(object sender, RoutedEventArgs e) => ShowAddProjectPanel();
 
-        _vm.ProjectService.CreateProject(dlg.SavePath, dlg.ProjectName, dlg.Description);
+    /// <summary>新規プロジェクト作成フォームの保存先フォルダ参照ダイアログを開く。</summary>
+    private void BrowseNewProjPath_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title           = "保存先フォルダを選択（そのままOKを押してください）",
+            ValidateNames   = false,
+            CheckFileExists = false,
+            FileName        = "ここを変更せずOKを押してください",
+            Filter          = "フォルダ|*.none"
+        };
+        if (dlg.ShowDialog() == true)
+            TxtNewProjPath.Text = System.IO.Path.GetDirectoryName(dlg.FileName) ?? "";
+    }
+
+    /// <summary>新規プロジェクト作成フォームの入力値を検証してプロジェクトを作成する。</summary>
+    private void CreateProject_Click(object sender, RoutedEventArgs e)
+    {
+        var name = TxtNewProjName.Text.Trim();
+        var desc = TxtNewProjDesc.Text.Trim();
+        var path = TxtNewProjPath.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            AppDialog.ShowWarning("プロジェクト名を入力してください", "入力エラー", Window.GetWindow(this));
+            TxtNewProjName.Focus();
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            return;
+        }
+
+        _vm.ProjectService.CreateProject(path, name, desc);
 
         var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
-        var templateDlg = new CategoryTemplateDialog(customPresets) { Owner = owner };
+        var templateDlg = new CategoryTemplateDialog(customPresets) { Owner = Window.GetWindow(this) };
         if (templateDlg.ShowDialog() == true)
         {
             foreach (var item in templateDlg.SelectedCategories)
                 _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
         }
+
         Refresh();
+        ShowEmptyPanel();
+    }
+
+    /// <summary>新規プロジェクト作成フォームをキャンセルして元のパネルに戻る。</summary>
+    private void CancelAddProject_Click(object sender, RoutedEventArgs e)
+    {
+        AddProjectPanel.Visibility = Visibility.Collapsed;
+        if (string.IsNullOrEmpty(_selectedPath))
+            ShowEmptyPanel();
+        else
+            ShowInfoPanel();
     }
 
     /// <summary>既存プロジェクトファイルを読み込むダイアログを表示する。</summary>

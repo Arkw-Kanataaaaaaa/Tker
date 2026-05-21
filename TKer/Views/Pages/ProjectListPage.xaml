@@ -351,6 +351,25 @@
                                 </Button>
                             </Grid>
 
+                            <!-- フォルダ管理オプション -->
+                            <Border Background="{StaticResource BgCardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="14,12" Margin="0,0,0,20">
+                                <StackPanel>
+                                    <CheckBox x:Name="ChkUseFolderManagement" IsChecked="True"
+                                              Foreground="{StaticResource TextPrimaryBrush}"
+                                              FontSize="13" FontWeight="SemiBold">
+                                        <TextBlock Text="フォルダ構造をプロジェクトと統一して管理する"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   FontSize="13"/>
+                                    </CheckBox>
+                                    <TextBlock Margin="22,6,0,0" FontSize="11" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDimBrush}">
+                                        オンにすると、カテゴリー・タスクに対応したフォルダ構造をプロジェクトフォルダ内に作成・管理します。&#x0a;オフにすると、フォルダ表示機能が無効になります。
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
                             <!-- ボタン群 -->
                             <StackPanel Orientation="Horizontal">
                                 <Button Content="作成" Style="{StaticResource PrimaryButton}"

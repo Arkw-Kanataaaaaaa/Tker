@@ -38,6 +38,7 @@ public partial class ProjectListPage : Page, IRefreshable
     private readonly MainViewModel _vm;
     private string? _selectedPath;
     private bool _isFolderMode = false;
+    private bool _selectedProjectUsesFolder = true;
 
     // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
     private FileNode? _selectedNode;
@@ -138,6 +139,7 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>フォルダ表示とプロジェクト詳細表示を切り替える。</summary>
     private void ToggleViewMode_Click(object sender, RoutedEventArgs e)
     {
+        if (!_selectedProjectUsesFolder) return;
         _isFolderMode = !_isFolderMode;
         ApplyViewMode();
     }
@@ -145,13 +147,12 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>現在の_isFolderModeに合わせてツールバーと右パネルを切り替える。</summary>
     private void ApplyViewMode()
     {
+        UpdateToggleModeButton();
+
         if (_isFolderMode)
         {
             BtnProjectSection.Visibility   = Visibility.Collapsed;
             BtnTreeSection.Visibility      = Visibility.Visible;
-            BtnToggleMode.ToolTip          = "プロジェクト詳細表示に切り替え (F5)";
-            IconDetailModeActive.Visibility = Visibility.Collapsed;
-            IconFolderModeActive.Visibility = Visibility.Visible;
 
             if (_vm.ProjectService.CurrentProject != null)
                 ShowTreePanel();
@@ -168,9 +169,6 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             BtnProjectSection.Visibility   = Visibility.Visible;
             BtnTreeSection.Visibility      = Visibility.Collapsed;
-            BtnToggleMode.ToolTip          = "フォルダ表示に切り替え (F5)";
-            IconDetailModeActive.Visibility = Visibility.Visible;
-            IconFolderModeActive.Visibility = Visibility.Collapsed;
 
             TreePanel.Visibility = Visibility.Collapsed;
             if (string.IsNullOrEmpty(_selectedPath))
@@ -180,15 +178,55 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
+    /// <summary>選択プロジェクトのフォルダ管理設定に応じてモード切替ボタンの状態を更新する。</summary>
+    private void UpdateToggleModeButton()
+    {
+        bool canToggle = _selectedProjectUsesFolder;
+        BtnToggleMode.IsEnabled = canToggle;
+
+        if (_isFolderMode && canToggle)
+        {
+            BtnToggleMode.ToolTip          = "プロジェクト詳細表示に切り替え (F5)";
+            IconDetailModeActive.Visibility = Visibility.Collapsed;
+            IconFolderModeActive.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            BtnToggleMode.ToolTip          = canToggle
+                ? "フォルダ表示に切り替え (F5)"
+                : "このプロジェクトはフォルダ管理が無効です";
+            IconDetailModeActive.Visibility = Visibility.Visible;
+            IconFolderModeActive.Visibility = Visibility.Collapsed;
+
+            if (!canToggle && _isFolderMode)
+                _isFolderMode = false;
+        }
+    }
+
     // ── 右パネル制御 ─────────────────────────────────────
     /// <summary>右パネルを空（未選択）状態に切り替える。</summary>
     private void ShowEmptyPanel()
     {
+        _selectedProjectUsesFolder  = true;
+        UpdateToggleModeButton();
         EmptyPanelText.Text         = "プロジェクトを選択してください";
         EmptyPanel.Visibility       = Visibility.Visible;
         ProjectInfoPanel.Visibility = Visibility.Collapsed;
         AddProjectPanel.Visibility  = Visibility.Collapsed;
         TreePanel.Visibility        = Visibility.Collapsed;
+    }
+
+    /// <summary>プロジェクトファイルからUseFolderManagementを読み取る。読み取れない場合はtrueを返す。</summary>
+    private static bool LoadUseFolderManagement(string? filePath)
+    {
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return true;
+        try
+        {
+            var json    = File.ReadAllText(filePath);
+            var project = JsonConvert.DeserializeObject<ProjectData>(json);
+            return project?.Settings.UseFolderManagement ?? true;
+        }
+        catch { return true; }
     }
 
     /// <summary>右パネルにプロジェクト情報を表示する。</summary>
@@ -198,6 +236,10 @@ public partial class ProjectListPage : Page, IRefreshable
         TreePanel.Visibility        = Visibility.Collapsed;
         AddProjectPanel.Visibility  = Visibility.Collapsed;
         ProjectInfoPanel.Visibility = Visibility.Visible;
+
+        // 選択プロジェクトのフォルダ管理設定を読み取ってトグルボタンを更新
+        _selectedProjectUsesFolder = LoadUseFolderManagement(_selectedPath);
+        UpdateToggleModeButton();
 
         ProjectInfoContent.Children.Clear();
 
@@ -531,7 +573,8 @@ public partial class ProjectListPage : Page, IRefreshable
             return;
         }
 
-        _vm.ProjectService.CreateProject(path, name, desc);
+        bool useFolder = ChkUseFolderManagement.IsChecked == true;
+        _vm.ProjectService.CreateProject(path, name, desc, useFolder);
 
         var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
         var templateDlg = new CategoryTemplateDialog(customPresets) { Owner = Window.GetWindow(this) };

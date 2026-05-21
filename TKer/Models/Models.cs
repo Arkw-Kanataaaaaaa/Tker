@@ -404,6 +404,8 @@ public class ProjectSettings
     public DateTime CreatedAt  { get; set; } = DateTime.Now;
     /// <summary>プロジェクトデータのバージョン文字列。</summary>
     public string Version      { get; set; } = "1.0.0";
+    /// <summary>フォルダ構造をプロジェクトと統一して管理するかどうか。falseの場合はフォルダ表示が無効になる。</summary>
+    public bool UseFolderManagement { get; set; } = true;
 }
 
 /// <summary>タスクを分類するカテゴリーを表す ObservableObject クラス。</summary>

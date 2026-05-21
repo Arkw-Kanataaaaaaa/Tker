@@ -48,7 +48,7 @@ public class ProjectService
     // プロジェクト作成
     // =====================================================
     /// <summary>指定パスに新規プロジェクトを作成してデータを保存する。</summary>
-    public void CreateProject(string basePath, string projectName, string description = "")
+    public void CreateProject(string basePath, string projectName, string description = "", bool useFolderManagement = true)
     {
         var projectPath = Path.Combine(basePath, projectName);
         Directory.CreateDirectory(projectPath);
@@ -58,10 +58,11 @@ public class ProjectService
         {
             Settings = new ProjectSettings
             {
-                ProjectName = projectName,
-                ProjectPath = projectPath,
-                Description = description,
-                CreatedAt   = DateTime.Now
+                ProjectName          = projectName,
+                ProjectPath          = projectPath,
+                Description          = description,
+                CreatedAt            = DateTime.Now,
+                UseFolderManagement  = useFolderManagement
             }
         };
 

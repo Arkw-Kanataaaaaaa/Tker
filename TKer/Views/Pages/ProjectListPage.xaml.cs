@@ -39,6 +39,8 @@ public partial class ProjectListPage : Page, IRefreshable
     private string? _selectedPath;
     private bool _isFolderMode = false;
     private bool _selectedProjectUsesFolder = true;
+    private bool _isToggleAnimating = false;
+    private readonly SolidColorBrush _toggleBg = new(Color.FromRgb(35, 131, 226));
 
     // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
     private FileNode? _selectedNode;
@@ -51,6 +53,8 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         _vm = vm;
         InitializeComponent();
+
+        ViewToggleSwitch.Background = _toggleBg;
 
         Loaded += (_, _) =>
         {
@@ -136,12 +140,41 @@ public partial class ProjectListPage : Page, IRefreshable
     }
 
     // ── モード切替 ────────────────────────────────────────
+    /// <summary>トグルスイッチのクリックでフォルダ／詳細表示を切り替える。</summary>
+    private void ToggleViewMode_Click(object sender, MouseButtonEventArgs e) => ToggleViewMode();
+
     /// <summary>フォルダ表示とプロジェクト詳細表示を切り替える。</summary>
-    private void ToggleViewMode_Click(object sender, RoutedEventArgs e)
+    private void ToggleViewMode()
     {
-        if (!_selectedProjectUsesFolder) return;
+        if (!_selectedProjectUsesFolder || _isToggleAnimating) return;
         _isFolderMode = !_isFolderMode;
+        AnimateToggleSwitch();
         ApplyViewMode();
+    }
+
+    /// <summary>トグルスイッチのつまみと背景色をアニメーションで現在のモードに合わせる。</summary>
+    private void AnimateToggleSwitch()
+    {
+        _isToggleAnimating = true;
+
+        var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+        {
+            To             = _isFolderMode ? new Thickness(2, 0, 0, 0) : new Thickness(22, 0, 0, 0),
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+            }
+        };
+        thumbAnim.Completed += (_, _) => _isToggleAnimating = false;
+        ToggleThumb.BeginAnimation(MarginProperty, thumbAnim);
+
+        var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+        {
+            To       = _isFolderMode ? Color.FromRgb(11, 110, 153) : Color.FromRgb(35, 131, 226),
+            Duration = TimeSpan.FromMilliseconds(200)
+        };
+        _toggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
     }
 
     /// <summary>現在の_isFolderModeに合わせてツールバーと右パネルを切り替える。</summary>
@@ -178,28 +211,27 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
-    /// <summary>選択プロジェクトのフォルダ管理設定に応じてモード切替ボタンの状態を更新する。</summary>
+    /// <summary>選択プロジェクトのフォルダ管理設定に応じてモード切替トグルの状態を更新する。</summary>
     private void UpdateToggleModeButton()
     {
         bool canToggle = _selectedProjectUsesFolder;
-        BtnToggleMode.IsEnabled = canToggle;
 
-        if (_isFolderMode && canToggle)
-        {
-            BtnToggleMode.ToolTip          = "プロジェクト詳細表示に切り替え (F5)";
-            IconDetailModeActive.Visibility = Visibility.Collapsed;
-            IconFolderModeActive.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            BtnToggleMode.ToolTip          = canToggle
-                ? "フォルダ表示に切り替え (F5)"
-                : "このプロジェクトはフォルダ管理が無効です";
-            IconDetailModeActive.Visibility = Visibility.Visible;
-            IconFolderModeActive.Visibility = Visibility.Collapsed;
+        if (!canToggle && _isFolderMode)
+            _isFolderMode = false;
 
-            if (!canToggle && _isFolderMode)
-                _isFolderMode = false;
+        ViewToggleSwitch.IsEnabled = canToggle;
+        ViewToggleSwitch.Opacity   = canToggle ? 1.0 : 0.4;
+        ViewToggleSwitch.ToolTip   = canToggle
+            ? "フォルダ表示／プロジェクト詳細表示を切り替え (F5)"
+            : "このプロジェクトはフォルダ管理が無効です";
+
+        // アニメーション中でなければつまみ位置と背景色を即時反映する
+        if (!_isToggleAnimating)
+        {
+            ToggleThumb.BeginAnimation(MarginProperty, null);
+            ToggleThumb.Margin = _isFolderMode ? new Thickness(2, 0, 0, 0) : new Thickness(22, 0, 0, 0);
+            _toggleBg.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            _toggleBg.Color = _isFolderMode ? Color.FromRgb(11, 110, 153) : Color.FromRgb(35, 131, 226);
         }
     }
 
@@ -452,7 +484,7 @@ public partial class ProjectListPage : Page, IRefreshable
             }
             else if (e.Key == Key.F5)
             {
-                ToggleViewMode_Click(this, new RoutedEventArgs());
+                ToggleViewMode();
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape && SearchSection.Visibility == Visibility.Visible)

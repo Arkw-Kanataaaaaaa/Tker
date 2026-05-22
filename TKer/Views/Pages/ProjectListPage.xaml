@@ -31,6 +31,22 @@
         <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12" Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel>
+                <!-- フォルダ/詳細 トグル（タスク管理画面と同じ右寄せ位置） -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="フォルダ" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <Border x:Name="ViewToggleSwitch" Width="44" Height="24" CornerRadius="12"
+                            Cursor="Hand" MouseLeftButtonUp="ToggleViewMode_Click"
+                            ToolTip="フォルダ表示／プロジェクト詳細表示を切り替え (F5)">
+                        <Grid>
+                            <Border x:Name="ToggleThumb" Width="20" Height="20" CornerRadius="10"
+                                    Background="White" HorizontalAlignment="Left"
+                                    Margin="2,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="詳細" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="プロジェクト管理"
                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
@@ -67,25 +83,6 @@
             <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
                 <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
-
-                    <!-- モード切替ボタン -->
-                    <Button x:Name="BtnToggleMode"
-                            ToolTip="フォルダ表示に切り替え (F5)"
-                            Style="{StaticResource VToolbarBtn}"
-                            Click="ToggleViewMode_Click">
-                        <Grid>
-                            <Path x:Name="IconDetailModeActive"
-                                  Data="{StaticResource Bi.FolderFill}"
-                                  Style="{StaticResource BiIconLg}"
-                                  Visibility="Visible"/>
-                            <Path x:Name="IconFolderModeActive"
-                                  Data="{StaticResource Bi.GearFill}"
-                                  Style="{StaticResource BiIconLg}"
-                                  Visibility="Collapsed"/>
-                        </Grid>
-                    </Button>
-
-                    <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
 
                     <!-- プロジェクト操作ボタン群（Project Detail mode） -->
                     <StackPanel x:Name="BtnProjectSection">

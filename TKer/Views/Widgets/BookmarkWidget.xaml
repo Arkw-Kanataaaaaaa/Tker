@@ -140,6 +140,13 @@
                                Foreground="#9AA0B5" FontWeight="SemiBold"/>
                 </Button>
 
+                <!-- ══ 位置固定（ピン留め）トグル ══ -->
+                <!-- 固定中は 30 秒ごとの端への自動スナップを無効化する -->
+                <Button x:Name="BtnPin" Style="{StaticResource ToolBtn}"
+                        Click="BtnPin_Click" ToolTip="位置を固定する" Margin="0,2,0,0">
+                    <TextBlock x:Name="TxtPin" Text="📌" FontSize="13" Foreground="#6A7085"/>
+                </Button>
+
                 <!-- ウィジェット非表示ボタン -->
                 <Button x:Name="BtnClose" Style="{StaticResource ToolBtn}"
                         Click="BtnCloseWidget_Click" ToolTip="ウィジェットを隠す" Margin="0,2,0,0">

@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using TKer.Models;
 using TKer.Services;
 
@@ -15,6 +17,7 @@ public partial class BookmarkWidget : Window
     // ── 定数 ──────────────────────────────────────────
     private const double PANEL_WIDTH = 280.0;
     private const double TAB_WIDTH   = 52.0;
+    private static readonly TimeSpan SNAP_INTERVAL = TimeSpan.FromSeconds(30);
 
     // ── 依存 ──────────────────────────────────────────
     private readonly WidgetServiceProvider _svc;
@@ -24,6 +27,11 @@ public partial class BookmarkWidget : Window
     private bool _forceClose   = false;
     private bool _isPanelOpen  = false;
     private bool _suppressSave = false;
+    private bool _isPinned     = false;
+    private bool _isDragging   = false;
+
+    // 端への自動スナップ用タイマー（30 秒間隔）
+    private readonly DispatcherTimer _snapTimer;
 
     // ── コンストラクタ ────────────────────────────────
     /// <summary>サービスプロバイダーを受け取り、ウィジェットの位置を復元して初期化する。</summary>
@@ -33,10 +41,18 @@ public partial class BookmarkWidget : Window
         _todoSvc = svc.TodoService;
 
         InitializeComponent();
+
+        _isPinned = _svc.AppSettingsService.BookmarkWidgetSettings.IsPinned;
         RestorePosition();
+
+        // 30 秒ごとに最寄りの端へ自動スナップ
+        _snapTimer = new DispatcherTimer { Interval = SNAP_INTERVAL };
+        _snapTimer.Tick += (_, _) => SnapToNearestEdge();
+        _snapTimer.Start();
 
         Loaded += (_, _) =>
         {
+            UpdatePinVisual();
             // 初回表示時にパネルコンテンツを準備
             if (_isPanelOpen) BuildPanelContent();
         };
@@ -51,7 +67,10 @@ public partial class BookmarkWidget : Window
         e.Handled = true; // TabBorder.Tab_MouseLeftButtonDown への伝播を止める
 
         if (e.ButtonState != MouseButtonState.Pressed) return;
-        DragMove(); // ← ユーザーがマウスを放すまでブロック
+
+        _isDragging = true;
+        try { DragMove(); } // ← ユーザーがマウスを放すまでブロック
+        finally { _isDragging = false; }
 
         // DragMove 完了 → 新しい位置を保存
         SavePosition();
@@ -476,6 +495,76 @@ public partial class BookmarkWidget : Window
     }
 
     // ────────────────────────────────────────────────
+    // 端への自動スナップ / ピン留め
+    // ────────────────────────────────────────────────
+
+    /// <summary>
+    /// 最寄りの画面端（左右）へタブをスライド移動する。
+    /// 固定中・ドラッグ中・パネル展開中・非表示中はスキップする。
+    /// </summary>
+    private void SnapToNearestEdge()
+    {
+        if (_isPinned || _isDragging || _isPanelOpen || !IsVisible) return;
+
+        var screen = SystemParameters.WorkArea;
+        // パネルが閉じているとき Window.Left == タブの画面 Left
+        double tabScreenLeft = Left;
+
+        double distLeft  = tabScreenLeft - screen.Left;
+        double distRight = screen.Right - (tabScreenLeft + TAB_WIDTH);
+        double targetLeft = distLeft <= distRight
+            ? screen.Left                 // 左端へ
+            : screen.Right - TAB_WIDTH;   // 右端へ
+
+        // 既に端にある場合は何もしない
+        if (Math.Abs(targetLeft - tabScreenLeft) < 0.5) return;
+
+        AnimateLeftTo(targetLeft);
+    }
+
+    /// <summary>ウィンドウの Left をアニメーションで目標値までスライドさせ、完了後に位置を保存する。</summary>
+    private void AnimateLeftTo(double targetLeft)
+    {
+        var anim = new DoubleAnimation
+        {
+            To             = targetLeft,
+            Duration       = TimeSpan.FromMilliseconds(280),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
+            FillBehavior   = FillBehavior.Stop
+        };
+        anim.Completed += (_, _) =>
+        {
+            BeginAnimation(LeftProperty, null);
+            Left = targetLeft;
+            SavePosition();
+        };
+        BeginAnimation(LeftProperty, anim);
+    }
+
+    /// <summary>ピン留めの ON/OFF を切り替え、設定に保存して見た目を更新する。</summary>
+    private void BtnPin_Click(object s, RoutedEventArgs e)
+    {
+        _isPinned = !_isPinned;
+
+        var bs = _svc.AppSettingsService.BookmarkWidgetSettings;
+        bs.IsPinned = _isPinned;
+        _svc.AppSettingsService.SaveBookmarkSettings(bs);
+
+        UpdatePinVisual();
+    }
+
+    /// <summary>ピン留めボタンの色とツールチップを現在の固定状態に合わせて更新する。</summary>
+    private void UpdatePinVisual()
+    {
+        if (TxtPin == null) return;
+        TxtPin.Foreground = new SolidColorBrush(_isPinned
+            ? Color.FromRgb(0xFF, 0xD5, 0x4F)   // 固定中: アンバー
+            : Color.FromRgb(0x6A, 0x70, 0x85)); // 解除: グレー
+        if (BtnPin != null)
+            BtnPin.ToolTip = _isPinned ? "位置を固定中（クリックで解除）" : "位置を固定する";
+    }
+
+    // ────────────────────────────────────────────────
     // ウィンドウイベント
     // ────────────────────────────────────────────────
     /// <summary>ウィンドウを閉じる操作をHideに差し替えて非表示状態を保存する。</summary>
@@ -492,6 +581,7 @@ public partial class BookmarkWidget : Window
     public void ForceClose()
     {
         _forceClose = true;
+        _snapTimer?.Stop();
         Close();
     }
 

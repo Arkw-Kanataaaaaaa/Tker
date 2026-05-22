@@ -140,6 +140,8 @@ public class BookmarkWidgetSettings
     public double TabTop    { get; set; } = double.NaN;
     /// <summary>ウィジェットを表示するかどうか。</summary>
     public bool   IsVisible { get; set; } = true;
+    /// <summary>位置を固定するかどうか。true の場合は端への自動スナップを行わない。</summary>
+    public bool   IsPinned  { get; set; } = false;
 }
 
 // ══════════════════════════════════════════════

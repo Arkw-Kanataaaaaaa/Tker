@@ -4,34 +4,6 @@
       Background="Transparent">
 
     <Page.Resources>
-        <Style x:Key="VToolbarBtn" TargetType="Button">
-            <Setter Property="Background"      Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor"          Value="Hand"/>
-            <Setter Property="Width"           Value="56"/>
-            <Setter Property="Padding"         Value="0,11"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background"
-                                        Value="{StaticResource BgHoverBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background"
-                                        Value="{StaticResource BorderBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <!-- アイテム形式トグル用 RadioButton -->
         <Style x:Key="ItemFormatRadio" TargetType="RadioButton">
             <Setter Property="Cursor" Value="Hand"/>
@@ -74,13 +46,13 @@
             </Grid.RowDefinitions>
 
             <!-- ═══ ページヘッダー ═══ -->
-            <Border Grid.Row="0"
+            <Border x:Name="PageHeader" Grid.Row="0"
                     Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="0,0,0,1" Padding="20,12">
+                    BorderThickness="0,0,0,1" Padding="24,12">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="📦" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                    <TextBlock Text="コレクション" FontSize="18" FontWeight="Bold"
+                    <TextBlock Text="コレクション"
+                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -89,56 +61,38 @@
             <!-- ═══ メインコンテンツ ═══ -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="56"/>
-                    <ColumnDefinition Width="1"/>
+                    <ColumnDefinition Width="52"/>
                     <ColumnDefinition Width="230"/>
                     <ColumnDefinition Width="1"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- ─── 縦ツールバー ─── -->
-                <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}">
-                    <StackPanel VerticalAlignment="Top">
+                <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                    <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
                         <Button Style="{StaticResource VToolbarBtn}"
                                 ToolTip="新規コレクション" Click="NewCollection_Click">
-                            <StackPanel>
-                                <TextBlock Text="➕" FontSize="16" HorizontalAlignment="Center"/>
-                                <TextBlock Text="新規" FontSize="10" HorizontalAlignment="Center"
-                                           Foreground="{StaticResource TextDimBrush}" Margin="0,3,0,0"/>
-                            </StackPanel>
+                            <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
                         </Button>
                         <Button x:Name="BtnToolbarEdit" Style="{StaticResource VToolbarBtn}"
                                 ToolTip="選択したコレクションを編集" Click="EditCollection_Click">
-                            <StackPanel>
-                                <TextBlock Text="✏️" FontSize="16" HorizontalAlignment="Center"/>
-                                <TextBlock Text="編集" FontSize="10" HorizontalAlignment="Center"
-                                           Foreground="{StaticResource TextDimBrush}" Margin="0,3,0,0"/>
-                            </StackPanel>
+                            <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
                         </Button>
                         <Button x:Name="BtnToolbarDelete" Style="{StaticResource VToolbarBtn}"
                                 ToolTip="選択したコレクションを削除" Click="DeleteCollection_Click">
-                            <StackPanel>
-                                <TextBlock Text="🗑️" FontSize="16" HorizontalAlignment="Center"/>
-                                <TextBlock Text="削除" FontSize="10" HorizontalAlignment="Center"
-                                           Foreground="{StaticResource TextDimBrush}" Margin="0,3,0,0"/>
-                            </StackPanel>
+                            <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                         </Button>
-                        <Border Height="1" Margin="8,6" Background="{StaticResource BorderBrush}"/>
+                        <Separator Style="{StaticResource {x:Static MenuItem.SeparatorStyleKey}}" Margin="6,4"/>
                         <Button x:Name="BtnToolbarSearch" Style="{StaticResource VToolbarBtn}"
                                 ToolTip="検索バーを表示/非表示" Click="ToggleSearch_Click">
-                            <StackPanel>
-                                <TextBlock Text="🔍" FontSize="16" HorizontalAlignment="Center"/>
-                                <TextBlock Text="検索" FontSize="10" HorizontalAlignment="Center"
-                                           Foreground="{StaticResource TextDimBrush}" Margin="0,3,0,0"/>
-                            </StackPanel>
+                            <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconLg}"/>
                         </Button>
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="1" Background="{StaticResource BorderBrush}"/>
-
                 <!-- ─── コレクション一覧 ─── -->
-                <Border Grid.Column="2" Background="{StaticResource BgSecondaryBrush}">
+                <Border Grid.Column="1" Background="{StaticResource BgSecondaryBrush}">
                     <DockPanel>
                         <Border x:Name="SearchPanel" DockPanel.Dock="Top"
                                 Visibility="Collapsed"
@@ -167,10 +121,10 @@
                     </DockPanel>
                 </Border>
 
-                <Border Grid.Column="3" Background="{StaticResource BorderBrush}"/>
+                <Border Grid.Column="2" Background="{StaticResource BorderBrush}"/>
 
                 <!-- ─── 右パネル（3状態切り替え） ─── -->
-                <Grid Grid.Column="4">
+                <Grid Grid.Column="3">
 
                     <!-- ① 空状態 -->
                     <StackPanel x:Name="EmptyStatePanel"

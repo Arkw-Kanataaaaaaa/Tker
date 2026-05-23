@@ -406,6 +406,12 @@ public class ProjectSettings
     public string Version      { get; set; } = "1.0.0";
     /// <summary>フォルダ構造をプロジェクトと統一して管理するかどうか。falseの場合はフォルダ表示が無効になる。</summary>
     public bool UseFolderManagement { get; set; } = true;
+    /// <summary>表紙画像のBase64エンコード文字列。空文字の場合は未設定。</summary>
+    public string CoverImageData { get; set; } = string.Empty;
+    /// <summary>プロジェクト開始予定日。</summary>
+    public DateTime? ProjectStartDate { get; set; }
+    /// <summary>プロジェクト終了予定日。</summary>
+    public DateTime? ProjectEndDate { get; set; }
 }
 
 /// <summary>タスクを分類するカテゴリーを表す ObservableObject クラス。</summary>

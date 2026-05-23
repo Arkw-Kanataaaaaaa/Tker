@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Newtonsoft.Json;
 using TKer.Helpers;
 using TKer.Models;
@@ -41,6 +42,7 @@ public partial class ProjectListPage : Page, IRefreshable
     private bool _selectedProjectUsesFolder = true;
     private bool _isToggleAnimating = false;
     private readonly SolidColorBrush _toggleBg = new(Color.FromRgb(35, 131, 226));
+    private string _coverImageData = string.Empty;
 
     // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
     private FileNode? _selectedNode;
@@ -278,6 +280,42 @@ public partial class ProjectListPage : Page, IRefreshable
         var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == _selectedPath);
         if (entry == null) return;
 
+        // タスク統計・設定を一度だけ読む
+        ProjectData? projectData = null;
+        try
+        {
+            if (File.Exists(_selectedPath))
+            {
+                var rawJson = File.ReadAllText(_selectedPath!);
+                projectData = JsonConvert.DeserializeObject<ProjectData>(rawJson);
+            }
+        }
+        catch { /* 読み込み失敗は無視 */ }
+
+        // 表紙画像
+        if (!string.IsNullOrEmpty(projectData?.Settings.CoverImageData))
+        {
+            try
+            {
+                var bytes = Convert.FromBase64String(projectData.Settings.CoverImageData);
+                var bmp   = new BitmapImage();
+                bmp.BeginInit();
+                bmp.StreamSource = new MemoryStream(bytes);
+                bmp.CacheOption  = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+
+                ProjectInfoContent.Children.Add(new Border
+                {
+                    Height        = 180,
+                    CornerRadius  = new CornerRadius(8),
+                    ClipToBounds  = true,
+                    Margin        = new Thickness(0, 0, 0, 16),
+                    Child         = new Image { Source = bmp, Stretch = Stretch.UniformToFill }
+                });
+            }
+            catch { /* 画像デコード失敗は無視 */ }
+        }
+
         // プロジェクト名
         ProjectInfoContent.Children.Add(new TextBlock
         {
@@ -288,6 +326,20 @@ public partial class ProjectListPage : Page, IRefreshable
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 8)
         });
+
+        // 期間
+        if (projectData?.Settings.ProjectStartDate != null || projectData?.Settings.ProjectEndDate != null)
+        {
+            var start = projectData?.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "─";
+            var end   = projectData?.Settings.ProjectEndDate?.ToString("yyyy/MM/dd")   ?? "─";
+            ProjectInfoContent.Children.Add(new TextBlock
+            {
+                Text       = $"📅 {start}  〜  {end}",
+                FontSize   = 12,
+                Foreground = (Brush)FindResource("TextSecondaryBrush"),
+                Margin     = new Thickness(0, 0, 0, 10)
+            });
+        }
 
         // 説明
         if (!string.IsNullOrWhiteSpace(entry.Description))
@@ -307,32 +359,23 @@ public partial class ProjectListPage : Page, IRefreshable
         AddInfoRowToPanel(ProjectInfoContent, "最終オープン", entry.LastOpened.ToString("yyyy/MM/dd HH:mm"));
 
         // タスク統計
-        try
+        if (projectData != null)
         {
-            if (File.Exists(_selectedPath))
-            {
-                var json = File.ReadAllText(_selectedPath!);
-                var project = JsonConvert.DeserializeObject<ProjectData>(json);
-                if (project != null)
-                {
-                    var tasks = project.Tasks;
-                    int total   = tasks.Count;
-                    int done    = tasks.Count(t => t.Status == "完了");
-                    int wip     = tasks.Count(t => t.Status == "進行中");
-                    int todo    = tasks.Count(t => t.Status == "未着手");
-                    int overdue = tasks.Count(t => t.IsOverdue);
+            var tasks   = projectData.Tasks;
+            int total   = tasks.Count;
+            int done    = tasks.Count(t => t.Status == "完了");
+            int wip     = tasks.Count(t => t.Status == "進行中");
+            int todo    = tasks.Count(t => t.Status == "未着手");
+            int overdue = tasks.Count(t => t.IsOverdue);
 
-                    AddSectionDividerToPanel(ProjectInfoContent, "タスク統計");
-                    AddInfoRowToPanel(ProjectInfoContent, "合計",   $"{total} 件");
-                    AddInfoRowToPanel(ProjectInfoContent, "完了",   $"{done} 件");
-                    AddInfoRowToPanel(ProjectInfoContent, "進行中", $"{wip} 件");
-                    AddInfoRowToPanel(ProjectInfoContent, "未着手", $"{todo} 件");
-                    if (overdue > 0)
-                        AddInfoRowToPanel(ProjectInfoContent, "期限超過", $"⚠ {overdue} 件");
-                }
-            }
+            AddSectionDividerToPanel(ProjectInfoContent, "タスク統計");
+            AddInfoRowToPanel(ProjectInfoContent, "合計",   $"{total} 件");
+            AddInfoRowToPanel(ProjectInfoContent, "完了",   $"{done} 件");
+            AddInfoRowToPanel(ProjectInfoContent, "進行中", $"{wip} 件");
+            AddInfoRowToPanel(ProjectInfoContent, "未着手", $"{todo} 件");
+            if (overdue > 0)
+                AddInfoRowToPanel(ProjectInfoContent, "期限超過", $"⚠ {overdue} 件");
         }
-        catch { /* 読み込み失敗は無視 */ }
 
         // ボタン群
         AddSectionDividerToPanel(ProjectInfoContent, "操作");
@@ -405,7 +448,20 @@ public partial class ProjectListPage : Page, IRefreshable
         TxtNewProjName.Clear();
         TxtNewProjDesc.Clear();
         TxtNewProjPath.Clear();
+        TxtNewProjStartDate.Clear();
+        TxtNewProjEndDate.Clear();
+        ClearCoverImageField();
         TxtNewProjName.Focus();
+    }
+
+    /// <summary>表紙画像フィールドをリセットする。</summary>
+    private void ClearCoverImageField()
+    {
+        _coverImageData                  = string.Empty;
+        CoverImagePreview.Source         = null;
+        CoverImagePreview.Visibility     = Visibility.Collapsed;
+        CoverImagePlaceholder.Visibility = Visibility.Visible;
+        BtnClearCoverImage.Visibility    = Visibility.Collapsed;
     }
 
     /// <summary>プロジェクトツールバーボタンの有効/無効を更新する。</summary>
@@ -586,6 +642,40 @@ public partial class ProjectListPage : Page, IRefreshable
             TxtNewProjPath.Text = System.IO.Path.GetDirectoryName(dlg.FileName) ?? "";
     }
 
+    /// <summary>表紙画像ファイルを選択して読み込みプレビュー表示する。</summary>
+    private void BrowseCoverImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "表紙画像を選択",
+            Filter = "画像ファイル|*.jpg;*.jpeg;*.png;*.bmp;*.gif|すべてのファイル|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            var bytes = File.ReadAllBytes(dlg.FileName);
+            _coverImageData = Convert.ToBase64String(bytes);
+
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource  = new MemoryStream(bytes);
+            bmp.CacheOption   = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+
+            CoverImagePreview.Source         = bmp;
+            CoverImagePreview.Visibility     = Visibility.Visible;
+            CoverImagePlaceholder.Visibility = Visibility.Collapsed;
+            BtnClearCoverImage.Visibility    = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            AppDialog.ShowError($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
+        }
+    }
+
+    /// <summary>選択中の表紙画像をクリアする。</summary>
+    private void ClearCoverImage_Click(object sender, RoutedEventArgs e) => ClearCoverImageField();
+
     /// <summary>新規プロジェクト作成フォームの入力値を検証してプロジェクトを作成する。</summary>
     private void CreateProject_Click(object sender, RoutedEventArgs e)
     {
@@ -606,7 +696,12 @@ public partial class ProjectListPage : Page, IRefreshable
         }
 
         bool useFolder = ChkUseFolderManagement.IsChecked == true;
-        _vm.ProjectService.CreateProject(path, name, desc, useFolder);
+
+        DateTime? startDate = null, endDate = null;
+        if (DateTime.TryParse(TxtNewProjStartDate.Text.Trim(), out var sd)) startDate = sd;
+        if (DateTime.TryParse(TxtNewProjEndDate.Text.Trim(), out var ed)) endDate = ed;
+
+        _vm.ProjectService.CreateProject(path, name, desc, useFolder, _coverImageData, startDate, endDate);
 
         var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
         var templateDlg = new CategoryTemplateDialog(customPresets) { Owner = Window.GetWindow(this) };

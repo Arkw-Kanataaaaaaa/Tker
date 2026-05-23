@@ -48,7 +48,7 @@
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="プロジェクト管理"
+                    <TextBlock Text="プロジェクト"
                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>

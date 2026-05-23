@@ -336,7 +336,7 @@
                                 <Button Style="{StaticResource SecondaryButton}" Padding="10,5"
                                         Click="BrowseCoverImage_Click">
                                     <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource Bi.Image}" Style="{StaticResource BiIconSm}"
+                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
                                               Margin="0,0,4,0"/>
                                         <TextBlock Text="画像を選択" VerticalAlignment="Center"/>
                                     </StackPanel>

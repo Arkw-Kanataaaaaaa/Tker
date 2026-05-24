@@ -43,6 +43,9 @@ public partial class ProjectListPage : Page, IRefreshable
     private bool _isToggleAnimating = false;
     private readonly SolidColorBrush _toggleBg = new(Color.FromRgb(35, 131, 226));
     private string _coverImageData = string.Empty;
+    private bool _isFolderManagementEnabled = true;
+    private bool _isFolderMgmtToggleAnimating = false;
+    private readonly SolidColorBrush _folderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
 
     // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
     private FileNode? _selectedNode;
@@ -57,6 +60,7 @@ public partial class ProjectListPage : Page, IRefreshable
         InitializeComponent();
 
         ViewToggleSwitch.Background = _toggleBg;
+        FolderMgmtToggleSwitch.Background = _folderMgmtToggleBg;
 
         Loaded += (_, _) =>
         {
@@ -177,6 +181,42 @@ public partial class ProjectListPage : Page, IRefreshable
             Duration = TimeSpan.FromMilliseconds(200)
         };
         _toggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
+    }
+
+    /// <summary>フォルダ管理トグルのクリックで有効/無効を切り替える。</summary>
+    private void ToggleFolderManagement_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_isFolderMgmtToggleAnimating) return;
+        _isFolderManagementEnabled = !_isFolderManagementEnabled;
+        AnimateFolderMgmtToggle();
+        FolderPathSection.Visibility = _isFolderManagementEnabled ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isFolderManagementEnabled)
+            TxtNewProjPath.Clear();
+    }
+
+    /// <summary>フォルダ管理トグルのつまみと背景色をアニメーションで更新する。</summary>
+    private void AnimateFolderMgmtToggle()
+    {
+        _isFolderMgmtToggleAnimating = true;
+
+        var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+        {
+            To             = _isFolderManagementEnabled ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0),
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+            }
+        };
+        thumbAnim.Completed += (_, _) => _isFolderMgmtToggleAnimating = false;
+        FolderMgmtThumb.BeginAnimation(MarginProperty, thumbAnim);
+
+        var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+        {
+            To       = _isFolderManagementEnabled ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80),
+            Duration = TimeSpan.FromMilliseconds(200)
+        };
+        _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
     }
 
     /// <summary>現在の_isFolderModeに合わせてツールバーと右パネルを切り替える。</summary>
@@ -451,6 +491,16 @@ public partial class ProjectListPage : Page, IRefreshable
         TxtNewProjStartDate.Clear();
         TxtNewProjEndDate.Clear();
         ClearCoverImageField();
+
+        // フォルダ管理トグルをON状態にリセット
+        _isFolderManagementEnabled = true;
+        _isFolderMgmtToggleAnimating = false;
+        FolderMgmtThumb.BeginAnimation(MarginProperty, null);
+        FolderMgmtThumb.Margin = new Thickness(22, 0, 0, 0);
+        _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, null);
+        _folderMgmtToggleBg.Color = Color.FromRgb(35, 131, 226);
+        FolderPathSection.Visibility = Visibility.Visible;
+
         TxtNewProjName.Focus();
     }
 
@@ -689,13 +739,13 @@ public partial class ProjectListPage : Page, IRefreshable
             TxtNewProjName.Focus();
             return;
         }
-        if (string.IsNullOrWhiteSpace(path))
+        if (_isFolderManagementEnabled && string.IsNullOrWhiteSpace(path))
         {
             AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
             return;
         }
 
-        bool useFolder = ChkUseFolderManagement.IsChecked == true;
+        bool useFolder = _isFolderManagementEnabled;
 
         DateTime? startDate = null, endDate = null;
         if (DateTime.TryParse(TxtNewProjStartDate.Text.Trim(), out var sd)) startDate = sd;

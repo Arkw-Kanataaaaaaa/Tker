@@ -360,25 +360,53 @@
                             <TextBox x:Name="TxtNewProjDesc" Style="{StaticResource DarkTextBox}"
                                      Margin="0,0,0,16"/>
 
-                            <!-- 保存先フォルダ -->
-                            <TextBlock Text="保存先フォルダ *" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <Grid Margin="0,0,0,24">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtNewProjPath" Style="{StaticResource DarkTextBox}"
-                                         IsReadOnly="True" Margin="0,0,6,0"/>
-                                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" Click="BrowseNewProjPath_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
-                                              Margin="0,0,4,0"/>
-                                        <TextBlock Text="参照" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
+                            <!-- フォルダ管理オプション -->
+                            <Border Background="{StaticResource BgCardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="14,12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <Border x:Name="FolderMgmtToggleSwitch" DockPanel.Dock="Right"
+                                                Width="44" Height="24" CornerRadius="12"
+                                                Cursor="Hand" MouseLeftButtonUp="ToggleFolderManagement_Click">
+                                            <Grid>
+                                                <Border x:Name="FolderMgmtThumb" Width="20" Height="20" CornerRadius="10"
+                                                        Background="White" HorizontalAlignment="Left"
+                                                        Margin="22,0,0,0" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <TextBlock Text="フォルダ管理" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                    </DockPanel>
+                                    <TextBlock Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDimBrush}">
+                                        オンにすると、カテゴリー・タスクに対応したフォルダ構造をプロジェクトフォルダ内に作成・管理します。&#x0a;オフにすると、フォルダ表示機能が無効になります。
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 保存先フォルダ（フォルダ管理ONの場合のみ表示） -->
+                            <StackPanel x:Name="FolderPathSection" Margin="0,0,0,12">
+                                <TextBlock Text="保存先フォルダ *" FontSize="12"
+                                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtNewProjPath" Style="{StaticResource DarkTextBox}"
+                                             IsReadOnly="True" Margin="0,0,6,0"/>
+                                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                                            Padding="10,5" Click="BrowseNewProjPath_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
+                                                  Margin="0,0,4,0"/>
+                                            <TextBlock Text="参照" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
 
                             <!-- プロジェクト期間 -->
                             <TextBlock Text="プロジェクト期間（任意）" FontSize="12"
@@ -397,25 +425,6 @@
                                 <TextBox x:Name="TxtNewProjEndDate" Grid.Column="2"
                                          Style="{StaticResource DarkTextBox}" Tag="yyyy/MM/dd"/>
                             </Grid>
-
-                            <!-- フォルダ管理オプション -->
-                            <Border Background="{StaticResource BgCardBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    CornerRadius="6" Padding="14,12" Margin="0,0,0,20">
-                                <StackPanel>
-                                    <CheckBox x:Name="ChkUseFolderManagement" IsChecked="True"
-                                              Foreground="{StaticResource TextPrimaryBrush}"
-                                              FontSize="13" FontWeight="SemiBold">
-                                        <TextBlock Text="フォルダ構造をプロジェクトと統一して管理する"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                                   FontSize="13"/>
-                                    </CheckBox>
-                                    <TextBlock Margin="22,6,0,0" FontSize="11" TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDimBrush}">
-                                        オンにすると、カテゴリー・タスクに対応したフォルダ構造をプロジェクトフォルダ内に作成・管理します。&#x0a;オフにすると、フォルダ表示機能が無効になります。
-                                    </TextBlock>
-                                </StackPanel>
-                            </Border>
 
                             <!-- ボタン群 -->
                             <StackPanel Orientation="Horizontal">

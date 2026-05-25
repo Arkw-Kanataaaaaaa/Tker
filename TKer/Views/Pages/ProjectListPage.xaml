@@ -4,22 +4,6 @@
       Background="Transparent">
 
     <Grid>
-        <Grid.Resources>
-            <!-- ツリーアイテム用コンテキストメニュー -->
-            <ContextMenu x:Key="TreeItemContextMenu" Opened="TreeContextMenu_Opened">
-                <MenuItem Tag="CtxOpen"      Header="📂 開く"          Click="FileOp_Open_Click"/>
-                <Separator/>
-                <MenuItem Tag="CtxNewFolder" Header="📁 新規フォルダ"  Click="FileOp_NewFolder_Click"/>
-                <MenuItem Tag="CtxNewFile"   Header="📄 新規ファイル"  Click="FileOp_NewFile_Click"/>
-                <Separator/>
-                <MenuItem Tag="CtxRename"    Header="✏ 名前変更"       Click="FileOp_Rename_Click"/>
-                <MenuItem Tag="CtxCopyPath"  Header="🔗 パスをコピー"  Click="FileOp_CopyPath_Click"/>
-                <Separator/>
-                <MenuItem Tag="CtxDelete"    Header="🗑 削除"           Click="FileOp_Delete_Click"
-                          Foreground="#FFCC44"/>
-            </ContextMenu>
-        </Grid.Resources>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -107,59 +91,10 @@
                                 Click="ToggleSearch_Click">
                             <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconLg}"/>
                         </Button>
-                    </StackPanel>
-
-                    <!-- ファイル操作ボタン群（Folder mode） -->
-                    <StackPanel x:Name="BtnTreeSection" Visibility="Collapsed">
-                        <Button x:Name="BtnOpen" ToolTip="開く" Style="{StaticResource VToolbarBtn}"
-                                Click="FileOp_Open_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.BoxArrowUp}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button x:Name="BtnNewFolder" ToolTip="新規フォルダ" Style="{StaticResource VToolbarBtn}"
-                                Click="FileOp_NewFolder_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button x:Name="BtnNewFile" ToolTip="新規ファイル" Style="{StaticResource VToolbarBtn}"
-                                Click="FileOp_NewFile_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.FileEarmarkText}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-
                         <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
-
-                        <Button x:Name="BtnRename" ToolTip="名前変更 (F2)" Style="{StaticResource VToolbarBtn}"
-                                Click="FileOp_Rename_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button x:Name="BtnCopyPath" ToolTip="パスをコピー" Style="{StaticResource VToolbarBtn}"
-                                Click="FileOp_CopyPath_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.Link45deg}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button x:Name="BtnDelete" ToolTip="削除" Style="{StaticResource VToolbarBtn}"
-                                Click="FileOp_Delete_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.Trash3}" Style="{StaticResource BiIconLg}"
-                                  Fill="#FFCC44"/>
-                        </Button>
-
-                        <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
-
-                        <Button ToolTip="更新" Style="{StaticResource VToolbarBtn}"
-                                Click="RefreshTree_Click">
-                            <Path Data="{StaticResource Bi.ArrowClockwise}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
                         <Button ToolTip="フォルダ整理" Style="{StaticResource VToolbarBtn}"
                                 Click="Organize_Click">
                             <Path Data="{StaticResource Bi.WrenchFill}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button ToolTip="エクスプローラーで開く" Style="{StaticResource VToolbarBtn}"
-                                Click="OpenExplorer_Click">
-                            <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-
-                        <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
-
-                        <Button x:Name="BtnColumnConfig" ToolTip="列設定（詳細パネルの列表示を設定）"
-                                Style="{StaticResource VToolbarBtn}" Click="BtnColumnConfig_Click">
-                            <Path Data="{StaticResource Bi.GearFill}" Style="{StaticResource BiIconLg}"/>
                         </Button>
                     </StackPanel>
                 </StackPanel>
@@ -377,21 +312,6 @@
                                         Click="CloseDetailPanel_Click" ToolTip="閉じる">
                                     <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                                 </Button>
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                            VerticalAlignment="Center" Margin="0,0,8,0">
-                                    <TextBlock Text="フォルダ" FontSize="11" VerticalAlignment="Center"
-                                               Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                    <Border x:Name="ViewToggleSwitch" Width="44" Height="24" CornerRadius="12"
-                                            Cursor="Hand" MouseLeftButtonUp="ToggleViewMode_Click">
-                                        <Grid>
-                                            <Border x:Name="ToggleThumb" Width="20" Height="20" CornerRadius="10"
-                                                    Background="White" HorizontalAlignment="Left"
-                                                    Margin="2,0,0,0" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </Border>
-                                    <TextBlock Text="詳細" FontSize="11" VerticalAlignment="Center"
-                                               Margin="6,0,0,0" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                </StackPanel>
                                 <TextBlock x:Name="DetailPanelTitle"
                                            FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="15"
                                            Foreground="{StaticResource TextPrimaryBrush}"
@@ -399,59 +319,11 @@
                             </DockPanel>
                         </Border>
                         <!-- プロジェクト詳細コンテンツ -->
-                        <Border Grid.Row="1" x:Name="ProjectInfoPanel" Visibility="Visible">
+                        <Border Grid.Row="1" x:Name="ProjectInfoPanel">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                                 <StackPanel x:Name="ProjectInfoContent"/>
                             </ScrollViewer>
                         </Border>
-                        <!-- フォルダツリーコンテンツ -->
-                        <Grid Grid.Row="1" x:Name="TreePanel" Visibility="Collapsed" Margin="12,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="240" MinWidth="120" MaxWidth="400"/>
-                                <ColumnDefinition Width="4"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Background="{StaticResource BgCardBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
-                                <ScrollViewer Padding="6" VerticalScrollBarVisibility="Auto">
-                                    <TreeView x:Name="FolderTree" Background="Transparent" BorderThickness="0"
-                                              Foreground="{StaticResource TextPrimaryBrush}"
-                                              SelectedItemChanged="FolderTree_SelectedItemChanged">
-                                        <TreeView.ItemContainerStyle>
-                                            <Style TargetType="TreeViewItem">
-                                                <Setter Property="Background" Value="Transparent"/>
-                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                                <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
-                                                <Setter Property="ContextMenu" Value="{StaticResource TreeItemContextMenu}"/>
-                                            </Style>
-                                        </TreeView.ItemContainerStyle>
-                                        <TreeView.ItemTemplate>
-                                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                                <StackPanel Orientation="Horizontal" Margin="2,2">
-                                                    <TextBlock Text="{Binding Icon}" Margin="0,0,6,0"/>
-                                                    <TextBlock Text="{Binding Name}" FontSize="13"/>
-                                                </StackPanel>
-                                            </HierarchicalDataTemplate>
-                                        </TreeView.ItemTemplate>
-                                    </TreeView>
-                                </ScrollViewer>
-                            </Border>
-                            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch"
-                                          Background="{StaticResource BorderBrush}"
-                                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
-                                          Cursor="SizeWE"/>
-                            <Border Grid.Column="2" Background="{StaticResource BgCardBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Disabled" Padding="16">
-                                    <StackPanel x:Name="DetailPanel">
-                                        <TextBlock Text="フォルダまたはファイルを選択してください"
-                                                   Foreground="{StaticResource TextDimBrush}" FontSize="14"
-                                                   HorizontalAlignment="Center" Margin="0,60,0,0"/>
-                                    </StackPanel>
-                                </ScrollViewer>
-                            </Border>
-                        </Grid>
                     </Grid>
                 </Border>
             </Grid>

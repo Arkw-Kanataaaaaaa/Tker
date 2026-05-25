@@ -477,6 +477,174 @@
                     </ScrollViewer>
                 </Border>
             </Grid>
+
+            <!-- プロジェクト編集ドロワー（右からスライドイン オーバーレイ） -->
+            <Grid x:Name="EditProjectOverlay" Grid.ColumnSpan="2" Visibility="Collapsed"
+                  Panel.ZIndex="21">
+                <Border Background="#66000000" MouseLeftButtonUp="CancelEditProject_Click"/>
+                <Border x:Name="EditProjectPanel" Width="500" HorizontalAlignment="Right"
+                        Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="EditPanelTransform" X="500"/>
+                    </Border.RenderTransform>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="24,20,24,24">
+
+                            <!-- ヘッダー行 -->
+                            <DockPanel Margin="0,0,0,20">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        ToolTip="閉じる" Click="CancelEditProject_Click">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock Text="プロジェクトを編集"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <!-- 表紙画像 -->
+                            <TextBlock Text="表紙画像（任意）" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <Border Height="160" CornerRadius="6"
+                                    Background="{StaticResource BgCardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    Margin="0,0,0,8" ClipToBounds="True">
+                                <Grid>
+                                    <TextBlock x:Name="EditCoverImagePlaceholder"
+                                               Text="クリックまたは下のボタンで画像を選択"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextDimBrush}" FontSize="12"/>
+                                    <Image x:Name="EditCoverImagePreview" Stretch="UniformToFill"
+                                           Visibility="Collapsed"/>
+                                </Grid>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                <Button Style="{StaticResource SecondaryButton}" Padding="10,5"
+                                        Click="BrowseEditCoverImage_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
+                                              Margin="0,0,4,0"/>
+                                        <TextBlock Text="画像を選択" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="BtnClearEditCoverImage" Style="{StaticResource SecondaryButton}"
+                                        Padding="10,5" Margin="8,0,0,0"
+                                        Click="ClearEditCoverImage_Click" Visibility="Collapsed">
+                                    <TextBlock Text="クリア"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- プロジェクト名 -->
+                            <TextBlock Text="プロジェクト名 *" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtEditProjName" Style="{StaticResource DarkTextBox}"
+                                     Margin="0,0,0,16"/>
+
+                            <!-- 説明 -->
+                            <TextBlock Text="説明（任意）" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtEditProjDesc" Style="{StaticResource DarkTextBox}"
+                                     Margin="0,0,0,16"/>
+
+                            <!-- フォルダ管理オプション -->
+                            <Border Background="{StaticResource BgCardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6" Padding="14,12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <Border x:Name="EditFolderMgmtToggleSwitch" DockPanel.Dock="Right"
+                                                Width="44" Height="24" CornerRadius="12"
+                                                Cursor="Hand" MouseLeftButtonUp="ToggleEditFolderManagement_Click">
+                                            <Grid>
+                                                <Border x:Name="EditFolderMgmtThumb" Width="20" Height="20" CornerRadius="10"
+                                                        Background="White" HorizontalAlignment="Left"
+                                                        Margin="22,0,0,0" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <TextBlock Text="フォルダ管理" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   FontSize="13" FontWeight="SemiBold"/>
+                                    </DockPanel>
+                                    <TextBlock Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDimBrush}">
+                                        オンにすると、カテゴリー・タスクに対応したフォルダ構造をプロジェクトフォルダ内に作成・管理します。&#x0a;オフにすると、フォルダ表示機能が無効になります。
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 保存先フォルダ（フォルダ管理ONの場合のみ表示） -->
+                            <StackPanel x:Name="EditFolderPathSection" Margin="0,0,0,12">
+                                <TextBlock Text="保存先フォルダ" FontSize="12"
+                                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtEditProjPath" Style="{StaticResource DarkTextBox}"
+                                             IsReadOnly="True" Margin="0,0,6,0"/>
+                                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                                            Padding="10,5" Click="BrowseEditProjPath_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
+                                                  Margin="0,0,4,0"/>
+                                            <TextBlock Text="参照" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- プロジェクト期間 -->
+                            <TextBlock Text="プロジェクト期間（任意）" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TxtEditProjStartDate" Style="{StaticResource DarkTextBox}"
+                                         Tag="yyyy/MM/dd"/>
+                                <TextBlock Grid.Column="1" Text="〜" FontSize="13"
+                                           VerticalAlignment="Center" Margin="10,0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBox x:Name="TxtEditProjEndDate" Grid.Column="2"
+                                         Style="{StaticResource DarkTextBox}" Tag="yyyy/MM/dd"/>
+                            </Grid>
+
+                            <!-- バージョン / PM -->
+                            <Grid Margin="0,0,0,24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="バージョン" FontSize="12"
+                                               Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtEditProjVersion" Style="{StaticResource DarkTextBox}"
+                                             Tag="1.0.0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="PM / 管理者" FontSize="12"
+                                               Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtEditProjManager" Style="{StaticResource DarkTextBox}"
+                                             Tag="担当者名"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- ボタン群 -->
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="保存" Style="{StaticResource PrimaryButton}"
+                                        Padding="24,8" Margin="0,0,8,0" Click="SaveEditProject_Click"/>
+                                <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
+                                        Padding="14,8" Click="CancelEditProject_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
         </Grid>
 
         <!-- 削除進捗エリア -->

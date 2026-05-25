@@ -46,6 +46,12 @@ public partial class ProjectListPage : Page, IRefreshable
     private bool _isFolderManagementEnabled = true;
     private bool _isFolderMgmtToggleAnimating = false;
     private readonly SolidColorBrush _folderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
+    private string _editCoverImageData = string.Empty;
+    private bool _isEditFolderManagementEnabled = true;
+    private bool _isEditFolderMgmtToggleAnimating = false;
+    private readonly SolidColorBrush _editFolderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
+    private string? _editingProjectPath;
+    private ProjectData? _editingProjectData;
     private bool _isGridMode = true;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
@@ -55,7 +61,8 @@ public partial class ProjectListPage : Page, IRefreshable
         _vm = vm;
         InitializeComponent();
 
-        FolderMgmtToggleSwitch.Background = _folderMgmtToggleBg;
+        FolderMgmtToggleSwitch.Background     = _folderMgmtToggleBg;
+        EditFolderMgmtToggleSwitch.Background = _editFolderMgmtToggleBg;
 
         Loaded += (_, _) =>
         {
@@ -775,7 +782,7 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
-    /// <summary>プロジェクト設定編集ダイアログを表示して設定を保存する。</summary>
+    /// <summary>プロジェクト編集ドロワーを表示する。</summary>
     private void EditSettings_Click(object sender, RoutedEventArgs e)
     {
         var path = _selectedPath;
@@ -787,52 +794,226 @@ public partial class ProjectListPage : Page, IRefreshable
 
         ProjectData? project;
         if (path == _vm.ProjectService.ProjectFilePath)
-        {
             project = _vm.ProjectService.CurrentProject;
-        }
         else
         {
-            try
-            {
-                var json = File.ReadAllText(path);
-                project = JsonConvert.DeserializeObject<ProjectData>(json);
-            }
+            try   { project = JsonConvert.DeserializeObject<ProjectData>(File.ReadAllText(path)); }
             catch { project = null; }
         }
 
         if (project == null)
         { AppDialog.ShowError("プロジェクトを開けませんでした", "エラー", Window.GetWindow(this)); return; }
 
-        var dlg = new TKer.Views.Dialogs.ProjectSettingsDialog(project)
-        {
-            Owner = Window.GetWindow(this)
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            project.Settings.ProjectName = dlg.ProjectName;
-            project.Settings.Description = dlg.Description;
-            project.ProjectVersion       = dlg.Version;
-            project.Manager              = dlg.Manager;
+        ShowEditProjectPanel(project, path);
+    }
 
-            if (path == _vm.ProjectService.ProjectFilePath)
+    private void ShowEditProjectPanel(ProjectData project, string path)
+    {
+        _editingProjectPath = path;
+        _editingProjectData = project;
+
+        // フィールドを既存値で初期化
+        TxtEditProjName.Text    = project.Settings.ProjectName;
+        TxtEditProjDesc.Text    = project.Settings.Description;
+        TxtEditProjPath.Text    = project.Settings.ProjectPath ?? "";
+        TxtEditProjStartDate.Text = project.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "";
+        TxtEditProjEndDate.Text   = project.Settings.ProjectEndDate?.ToString("yyyy/MM/dd") ?? "";
+        TxtEditProjVersion.Text   = project.ProjectVersion;
+        TxtEditProjManager.Text   = project.Manager;
+
+        // 表紙画像
+        _editCoverImageData = project.Settings.CoverImageData ?? "";
+        if (!string.IsNullOrEmpty(_editCoverImageData))
+        {
+            try
             {
-                _vm.ProjectService.SaveProject();
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.StreamSource = new System.IO.MemoryStream(Convert.FromBase64String(_editCoverImageData));
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                EditCoverImagePreview.Source          = bmp;
+                EditCoverImagePreview.Visibility      = Visibility.Visible;
+                EditCoverImagePlaceholder.Visibility  = Visibility.Collapsed;
+                BtnClearEditCoverImage.Visibility     = Visibility.Visible;
             }
-            else
-            {
-                try
-                {
-                    var json = JsonConvert.SerializeObject(project, Formatting.Indented);
-                    File.WriteAllText(path, json);
-                    _vm.AppSettingsService.RegisterProject(path, dlg.ProjectName,
-                        project.Settings.ProjectPath, dlg.ProjectName);
-                    _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
-                }
-                catch { }
-            }
-            Refresh();
+            catch { ClearEditCoverImageField(); }
+        }
+        else
+        {
+            ClearEditCoverImageField();
+        }
+
+        // フォルダ管理トグル
+        _isEditFolderManagementEnabled   = project.Settings.UseFolderManagement;
+        _isEditFolderMgmtToggleAnimating = false;
+        EditFolderMgmtThumb.BeginAnimation(MarginProperty, null);
+        EditFolderMgmtThumb.Margin = _isEditFolderManagementEnabled
+            ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0);
+        _editFolderMgmtToggleBg.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, null);
+        _editFolderMgmtToggleBg.Color = _isEditFolderManagementEnabled
+            ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80);
+        EditFolderPathSection.Visibility = _isEditFolderManagementEnabled
+            ? Visibility.Visible : Visibility.Collapsed;
+
+        // ドロワーをスライドイン
+        EditProjectOverlay.Visibility = Visibility.Visible;
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From           = 500, To = 0,
+            Duration       = TimeSpan.FromMilliseconds(260),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+        };
+        EditPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        TxtEditProjName.Focus();
+    }
+
+    private void HideEditProjectPanel()
+    {
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From           = 0, To = 500,
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn }
+        };
+        anim.Completed += (_, _) => EditProjectOverlay.Visibility = Visibility.Collapsed;
+        EditPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+    }
+
+    private void ClearEditCoverImageField()
+    {
+        _editCoverImageData                     = string.Empty;
+        EditCoverImagePreview.Source            = null;
+        EditCoverImagePreview.Visibility        = Visibility.Collapsed;
+        EditCoverImagePlaceholder.Visibility    = Visibility.Visible;
+        BtnClearEditCoverImage.Visibility       = Visibility.Collapsed;
+    }
+
+    private void BrowseEditCoverImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "表紙画像を選択",
+            Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|すべてのファイル (*.*)|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            var bytes = File.ReadAllBytes(dlg.FileName);
+            _editCoverImageData = Convert.ToBase64String(bytes);
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = new System.IO.MemoryStream(bytes);
+            bmp.CacheOption  = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            EditCoverImagePreview.Source         = bmp;
+            EditCoverImagePreview.Visibility     = Visibility.Visible;
+            EditCoverImagePlaceholder.Visibility = Visibility.Collapsed;
+            BtnClearEditCoverImage.Visibility    = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            AppDialog.ShowError($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
         }
     }
+
+    private void ClearEditCoverImage_Click(object sender, RoutedEventArgs e) => ClearEditCoverImageField();
+
+    private void BrowseEditProjPath_Click(object sender, RoutedEventArgs e)
+    {
+        using var dlg = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description         = "保存先フォルダを選択してください",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = true
+        };
+        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            TxtEditProjPath.Text = dlg.SelectedPath;
+    }
+
+    private void ToggleEditFolderManagement_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_isEditFolderMgmtToggleAnimating) return;
+        _isEditFolderManagementEnabled = !_isEditFolderManagementEnabled;
+        AnimateEditFolderMgmtToggle();
+        EditFolderPathSection.Visibility = _isEditFolderManagementEnabled
+            ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isEditFolderManagementEnabled)
+            TxtEditProjPath.Clear();
+    }
+
+    private void AnimateEditFolderMgmtToggle()
+    {
+        _isEditFolderMgmtToggleAnimating = true;
+
+        var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+        {
+            To = _isEditFolderManagementEnabled ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0),
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+        };
+        thumbAnim.Completed += (_, _) => _isEditFolderMgmtToggleAnimating = false;
+        EditFolderMgmtThumb.BeginAnimation(MarginProperty, thumbAnim);
+
+        var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+        {
+            To       = _isEditFolderManagementEnabled ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80),
+            Duration = TimeSpan.FromMilliseconds(200)
+        };
+        _editFolderMgmtToggleBg.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, colorAnim);
+    }
+
+    private void SaveEditProject_Click(object sender, RoutedEventArgs e)
+    {
+        var project = _editingProjectData;
+        var path    = _editingProjectPath;
+        if (project == null || string.IsNullOrEmpty(path)) return;
+
+        var name = TxtEditProjName.Text.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            AppDialog.ShowWarning("プロジェクト名を入力してください", "入力エラー", Window.GetWindow(this));
+            TxtEditProjName.Focus();
+            return;
+        }
+
+        project.Settings.ProjectName        = name;
+        project.Settings.Description        = TxtEditProjDesc.Text.Trim();
+        project.Settings.UseFolderManagement = _isEditFolderManagementEnabled;
+        project.Settings.ProjectPath        = TxtEditProjPath.Text.Trim();
+        project.Settings.CoverImageData     = _editCoverImageData;
+        project.ProjectVersion              = TxtEditProjVersion.Text.Trim();
+        project.Manager                     = TxtEditProjManager.Text.Trim();
+
+        if (DateTime.TryParse(TxtEditProjStartDate.Text.Trim(), out var sd)) project.Settings.ProjectStartDate = sd;
+        else project.Settings.ProjectStartDate = null;
+        if (DateTime.TryParse(TxtEditProjEndDate.Text.Trim(), out var ed)) project.Settings.ProjectEndDate = ed;
+        else project.Settings.ProjectEndDate = null;
+
+        if (path == _vm.ProjectService.ProjectFilePath)
+        {
+            _vm.ProjectService.SaveProject();
+        }
+        else
+        {
+            try
+            {
+                File.WriteAllText(path, JsonConvert.SerializeObject(project, Formatting.Indented));
+                _vm.AppSettingsService.RegisterProject(path, name, project.Settings.ProjectPath, name);
+                _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
+            }
+            catch { }
+        }
+
+        _coverBitmapCache.Clear();
+        Refresh();
+        HideEditProjectPanel();
+    }
+
+    private void CancelEditProject_Click(object sender, RoutedEventArgs e) => HideEditProjectPanel();
 
     // ── 削除 ──────────────────────────────────────────────
     /// <summary>選択中プロジェクトの削除ダイアログを表示する。</summary>

@@ -31,21 +31,16 @@
         <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12" Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel>
-                <!-- フォルダ/詳細 トグル（タスク管理画面と同じ右寄せ位置） -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="フォルダ" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"
-                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                    <Border x:Name="ViewToggleSwitch" Width="44" Height="24" CornerRadius="12"
-                            Cursor="Hand" MouseLeftButtonUp="ToggleViewMode_Click"
-                            ToolTip="フォルダ表示／プロジェクト詳細表示を切り替え (F5)">
-                        <Grid>
-                            <Border x:Name="ToggleThumb" Width="20" Height="20" CornerRadius="10"
-                                    Background="White" HorizontalAlignment="Left"
-                                    Margin="2,0,0,0" VerticalAlignment="Center"/>
-                        </Grid>
+                <!-- グリッド/リスト切替ボタン -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
+                    <Border x:Name="BtnViewGrid" Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                            MouseLeftButtonUp="SetGridView_Click" ToolTip="グリッド表示" Margin="0,0,4,0">
+                        <Path Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconSm}"/>
                     </Border>
-                    <TextBlock Text="詳細" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0"
-                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <Border x:Name="BtnViewList" Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                            MouseLeftButtonUp="SetListView_Click" ToolTip="リスト表示">
+                        <Path Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconSm}"/>
+                    </Border>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="プロジェクト"
@@ -70,12 +65,10 @@
             </DockPanel>
         </Border>
 
-        <!-- メインコンテンツ: 縦型ツールバー + プロジェクトリスト + 右パネル -->
+        <!-- メインコンテンツ: 縦型ツールバー + プロジェクトコンテンツ -->
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="52"/>
-                <ColumnDefinition Width="260" MinWidth="160"/>
-                <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -172,9 +165,9 @@
                 </StackPanel>
             </Border>
 
-            <!-- プロジェクトリスト (Col 1) -->
+            <!-- プロジェクトコンテンツ (Col 1) -->
             <Border x:Name="ContentBorder" Grid.Column="1">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,8,8,8">
                     <StackPanel>
                         <Border x:Name="NoProjectBanner" Visibility="Collapsed"
                                 Background="{StaticResource BgCardBrush}"
@@ -191,185 +184,280 @@
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <ItemsControl x:Name="ProjectItemsControl">
+
+                        <!-- グリッド表示 -->
+                        <ItemsControl x:Name="ProjectGridControl">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" Margin="4,4,4,4"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,0,8" CornerRadius="8" Padding="12,10"
-                                            BorderThickness="1"
-                                            Cursor="Hand"
+                                    <Border Width="170" Height="220" CornerRadius="12" Margin="6"
+                                            ClipToBounds="True" Cursor="Hand"
                                             MouseLeftButtonUp="ProjectCard_Click">
                                         <Border.Style>
                                             <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
-                                                <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+                                                <Setter Property="Opacity" Value="1"/>
                                                 <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrightBrush}"/>
-                                                    </Trigger>
                                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
-                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
+                                                        <Setter Property="Opacity" Value="1"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
                                         <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="*"/>
-                                                <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-
-                                            <!-- 名前・パス -->
-                                            <StackPanel Grid.Row="0" VerticalAlignment="Center">
-                                                <DockPanel>
-                                                    <Path Data="{StaticResource Bi.StarFill}" Style="{StaticResource BiIconSm}"
-                                                          Fill="{StaticResource AccentYellowBrush}"
-                                                          Margin="0,0,6,0" VerticalAlignment="Center"
-                                                          Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}"/>
-                                                    <Path Data="{StaticResource Bi.PinAngleFill}" Style="{StaticResource BiIconSm}"
-                                                          Fill="{StaticResource AccentCyanBrush}"
-                                                          Margin="0,0,6,0" VerticalAlignment="Center"
-                                                          Visibility="{Binding Entry.IsPinned, Converter={StaticResource BoolVis}}"/>
-                                                    <TextBlock Text="{Binding Entry.ProjectName}"
-                                                               FontFamily="Yu Gothic UI" FontWeight="Bold"
-                                                               FontSize="13"
-                                                               Foreground="{StaticResource TextPrimaryBrush}"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                </DockPanel>
-                                                <TextBlock Text="{Binding Entry.Description}"
-                                                           FontSize="11" Margin="0,2,0,0"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
-
-                                            <!-- 進捗バー -->
-                                            <Grid Grid.Row="1" Height="4" Margin="0,6,0,0">
-                                                <Border CornerRadius="2"
-                                                        Background="{StaticResource BorderBrush}"/>
-                                                <Border CornerRadius="2"
-                                                        Background="{StaticResource AccentGreenBrush}"
-                                                        HorizontalAlignment="Left"
-                                                        Width="{Binding ProgressRate,
-                                                            Converter={StaticResource PercentToWidthConverter},
-                                                            ConverterParameter=236}"/>
-                                            </Grid>
-
-                                            <!-- アクション行 -->
-                                            <DockPanel Grid.Row="2" Margin="0,4,0,0">
-                                                <Button ToolTip="ピン留め"
-                                                        Style="{StaticResource SecondaryButton}"
-                                                        DockPanel.Dock="Right"
-                                                        Padding="5,3"
-                                                        Tag="{Binding Entry.DataFilePath}"
-                                                        Click="PinProject_Click">
-                                                    <Path Data="{StaticResource Bi.PinAngleFill}" Style="{StaticResource BiIconSm}"
-                                                          Fill="{StaticResource AccentCyanBrush}"/>
-                                                </Button>
-                                                <TextBlock Text="{Binding ProgressLabel}"
-                                                           FontFamily="Consolas" FontSize="11"
-                                                           FontWeight="Bold"
-                                                           Foreground="{StaticResource AccentGreenBrush}"
-                                                           VerticalAlignment="Center"/>
-                                            </DockPanel>
+                                            <!-- 背景（カバー画像なし時） -->
+                                            <Border Background="{StaticResource BgCardBrush}" CornerRadius="12"/>
+                                            <!-- カバー画像 -->
+                                            <Image Source="{Binding CoverBitmap}" Stretch="UniformToFill"/>
+                                            <!-- カバー画像なし時のプレースホルダーアイコン -->
+                                            <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Visibility="{Binding HasNoCover, Converter={StaticResource BoolVis}}"/>
+                                            <!-- 選択枠 -->
+                                            <Border CornerRadius="12" BorderThickness="3" Background="Transparent"
+                                                    BorderBrush="{StaticResource AccentCyanBrush}"
+                                                    Visibility="{Binding IsSelected, Converter={StaticResource BoolVis}}"/>
+                                            <!-- アクティブ星マーク -->
+                                            <Border VerticalAlignment="Top" HorizontalAlignment="Left" Padding="8,8,0,0">
+                                                <Path Data="{StaticResource Bi.StarFill}" Style="{StaticResource BiIconSm}"
+                                                      Fill="{StaticResource AccentYellowBrush}"
+                                                      Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}"/>
+                                            </Border>
+                                            <!-- プロジェクト名オーバーレイ（下部） -->
+                                            <Border VerticalAlignment="Bottom" Background="#AA000000"
+                                                    Padding="10,6,10,10">
+                                                <TextBlock Text="{Binding Entry.ProjectName}"
+                                                           Foreground="#E8FFFFFF" FontWeight="Bold" FontSize="13"
+                                                           FontFamily="Yu Gothic UI" TextTrimming="CharacterEllipsis"/>
+                                            </Border>
+                                            <!-- ホバー時の進捗オーバーレイ（中央） -->
+                                            <Border Background="#AA000000" CornerRadius="12" Padding="10">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Value="True">
+                                                                <DataTrigger.Binding>
+                                                                    <Binding Path="IsMouseOver"
+                                                                             RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type Border}, AncestorLevel=1}"/>
+                                                                </DataTrigger.Binding>
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                    <TextBlock Text="{Binding ProgressLabel}"
+                                                               FontFamily="Consolas" FontSize="28" FontWeight="Bold"
+                                                               Foreground="White" HorizontalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding HoverDetail}"
+                                                               FontSize="11" Foreground="#CCFFFFFF"
+                                                               HorizontalAlignment="Center" TextAlignment="Center"
+                                                               Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                            </Border>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- リスト表示 -->
+                        <StackPanel x:Name="ProjectListSection" Visibility="Collapsed">
+                            <!-- ヘッダー行 -->
+                            <Border Padding="16,8,16,8"
+                                    Background="{StaticResource BgSecondaryBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="130"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="プロジェクト名" Grid.Column="0"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextDimBrush}"/>
+                                    <TextBlock Text="進捗" Grid.Column="1"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="最終更新" Grid.Column="2"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right"/>
+                                </Grid>
+                            </Border>
+                            <!-- リスト行 -->
+                            <ItemsControl x:Name="ProjectListItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="16,10,16,10" Cursor="Hand"
+                                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                                MouseLeftButtonUp="ProjectCard_Click">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="130"/>
+                                                </Grid.ColumnDefinitions>
+                                                <!-- 名前列 -->
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource Bi.StarFill}" Style="{StaticResource BiIconSm}"
+                                                          Fill="{StaticResource AccentYellowBrush}" Margin="0,0,6,0"
+                                                          VerticalAlignment="Center"
+                                                          Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}"/>
+                                                    <TextBlock Text="{Binding Entry.ProjectName}"
+                                                               FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="13"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <!-- 進捗列 -->
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <Grid Width="60" Height="4" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                        <Border CornerRadius="2" Background="{StaticResource BorderBrush}"/>
+                                                        <Border CornerRadius="2" Background="{StaticResource AccentGreenBrush}"
+                                                                HorizontalAlignment="Left"
+                                                                Width="{Binding ProgressRate,
+                                                                    Converter={StaticResource PercentToWidthConverter},
+                                                                    ConverterParameter=60}"/>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding ProgressLabel}"
+                                                               FontFamily="Consolas" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{StaticResource AccentGreenBrush}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <!-- 最終更新列 -->
+                                                <TextBlock Grid.Column="2" Text="{Binding LastOpenedLabel}"
+                                                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
 
-            <!-- リサイズスプリッター (Col 2) -->
-            <GridSplitter Grid.Column="2"
-                          Width="5" HorizontalAlignment="Stretch"
-                          Background="{StaticResource BorderBrush}"
-                          ResizeBehavior="PreviousAndNext"
-                          ResizeDirection="Columns"
-                          Cursor="SizeWE"/>
-
-            <!-- 右パネル (Col 3) -->
-            <Grid Grid.Column="3">
-
-                <!-- EmptyPanel: 何も選択されていない -->
-                <Border x:Name="EmptyPanel" Visibility="Visible">
-                    <TextBlock x:Name="EmptyPanelText"
-                               Text="プロジェクトを選択してください"
-                               FontSize="14" Foreground="{StaticResource TextDimBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- プロジェクト詳細ドロワー -->
+            <Grid x:Name="ProjectDetailOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" Panel.ZIndex="10">
+                <Border Background="#66000000" MouseLeftButtonUp="CloseDetailPanel_Click"/>
+                <Border x:Name="ProjectDetailPanel" Width="520" HorizontalAlignment="Right"
+                        Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="DetailPanelTransform" X="520"/>
+                    </Border.RenderTransform>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <!-- ドロワーヘッダー -->
+                        <Border Grid.Row="0" Padding="16,12"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        Click="CloseDetailPanel_Click" ToolTip="閉じる">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                            VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <TextBlock Text="フォルダ" FontSize="11" VerticalAlignment="Center"
+                                               Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <Border x:Name="ViewToggleSwitch" Width="44" Height="24" CornerRadius="12"
+                                            Cursor="Hand" MouseLeftButtonUp="ToggleViewMode_Click">
+                                        <Grid>
+                                            <Border x:Name="ToggleThumb" Width="20" Height="20" CornerRadius="10"
+                                                    Background="White" HorizontalAlignment="Left"
+                                                    Margin="2,0,0,0" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                    <TextBlock Text="詳細" FontSize="11" VerticalAlignment="Center"
+                                               Margin="6,0,0,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                                <TextBlock x:Name="DetailPanelTitle"
+                                           FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="15"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                        <!-- プロジェクト詳細コンテンツ -->
+                        <Border Grid.Row="1" x:Name="ProjectInfoPanel" Visibility="Visible">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                                <StackPanel x:Name="ProjectInfoContent"/>
+                            </ScrollViewer>
+                        </Border>
+                        <!-- フォルダツリーコンテンツ -->
+                        <Grid Grid.Row="1" x:Name="TreePanel" Visibility="Collapsed" Margin="12,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="240" MinWidth="120" MaxWidth="400"/>
+                                <ColumnDefinition Width="4"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Background="{StaticResource BgCardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <ScrollViewer Padding="6" VerticalScrollBarVisibility="Auto">
+                                    <TreeView x:Name="FolderTree" Background="Transparent" BorderThickness="0"
+                                              Foreground="{StaticResource TextPrimaryBrush}"
+                                              SelectedItemChanged="FolderTree_SelectedItemChanged">
+                                        <TreeView.ItemContainerStyle>
+                                            <Style TargetType="TreeViewItem">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                                <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                                                <Setter Property="ContextMenu" Value="{StaticResource TreeItemContextMenu}"/>
+                                            </Style>
+                                        </TreeView.ItemContainerStyle>
+                                        <TreeView.ItemTemplate>
+                                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                                <StackPanel Orientation="Horizontal" Margin="2,2">
+                                                    <TextBlock Text="{Binding Icon}" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="{Binding Name}" FontSize="13"/>
+                                                </StackPanel>
+                                            </HierarchicalDataTemplate>
+                                        </TreeView.ItemTemplate>
+                                    </TreeView>
+                                </ScrollViewer>
+                            </Border>
+                            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch"
+                                          Background="{StaticResource BorderBrush}"
+                                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                                          Cursor="SizeWE"/>
+                            <Border Grid.Column="2" Background="{StaticResource BgCardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled" Padding="16">
+                                    <StackPanel x:Name="DetailPanel">
+                                        <TextBlock Text="フォルダまたはファイルを選択してください"
+                                                   Foreground="{StaticResource TextDimBrush}" FontSize="14"
+                                                   HorizontalAlignment="Center" Margin="0,60,0,0"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </Grid>
                 </Border>
-
-                <!-- ProjectInfoPanel: プロジェクト選択中（Project Detailモード） -->
-                <Border x:Name="ProjectInfoPanel" Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                        <StackPanel x:Name="ProjectInfoContent"/>
-                    </ScrollViewer>
-                </Border>
-
-                <!-- AddProjectPanel: 右サイドドロワーとしてオーバーレイ側で定義済み -->
-
-                <!-- TreePanel: フォルダモード（アクティブプロジェクト） -->
-                <Grid x:Name="TreePanel" Visibility="Collapsed" Margin="16,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="300" MinWidth="150" MaxWidth="600"/>
-                        <ColumnDefinition Width="4"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- フォルダツリー -->
-                    <Border Grid.Column="0" Background="{StaticResource BgCardBrush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
-                        <ScrollViewer Padding="8" VerticalScrollBarVisibility="Auto">
-                            <TreeView x:Name="FolderTree" Background="Transparent" BorderThickness="0"
-                                      Foreground="{StaticResource TextPrimaryBrush}"
-                                      SelectedItemChanged="FolderTree_SelectedItemChanged">
-                                <TreeView.ItemContainerStyle>
-                                    <Style TargetType="TreeViewItem">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
-                                        <Setter Property="ContextMenu" Value="{StaticResource TreeItemContextMenu}"/>
-                                    </Style>
-                                </TreeView.ItemContainerStyle>
-                                <TreeView.ItemTemplate>
-                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                        <StackPanel Orientation="Horizontal" Margin="2,2">
-                                            <TextBlock Text="{Binding Icon}" Margin="0,0,6,0"/>
-                                            <TextBlock Text="{Binding Name}" FontSize="13"/>
-                                        </StackPanel>
-                                    </HierarchicalDataTemplate>
-                                </TreeView.ItemTemplate>
-                            </TreeView>
-                        </ScrollViewer>
-                    </Border>
-
-                    <!-- リサイズグリップ -->
-                    <GridSplitter Grid.Column="1"
-                                  Width="4" HorizontalAlignment="Stretch"
-                                  Background="{StaticResource BorderBrush}"
-                                  ResizeBehavior="PreviousAndNext"
-                                  ResizeDirection="Columns"
-                                  Cursor="SizeWE"/>
-
-                    <!-- 詳細パネル -->
-                    <Border Grid.Column="2" Background="{StaticResource BgCardBrush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                      Padding="20">
-                            <StackPanel x:Name="DetailPanel">
-                                <TextBlock Text="フォルダまたはファイルを選択してください"
-                                           Foreground="{StaticResource TextDimBrush}" FontSize="14"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Margin="0,60,0,0"/>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Border>
-                </Grid>
             </Grid>
 
             <!-- 新規プロジェクト追加ドロワー（右からスライドイン オーバーレイ） -->
-            <Grid x:Name="AddProjectOverlay" Grid.ColumnSpan="4" Visibility="Collapsed"
+            <Grid x:Name="AddProjectOverlay" Grid.ColumnSpan="2" Visibility="Collapsed"
                   Panel.ZIndex="20">
                 <!-- 暗幕：クリックで閉じる -->
                 <Border Background="#66000000" MouseLeftButtonUp="CancelAddProject_Click"/>

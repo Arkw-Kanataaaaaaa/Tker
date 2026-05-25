@@ -34,6 +34,10 @@ public partial class ProjectListPage : Page, IRefreshable
         public DateTime CreatedAt        { get; init; }
         public bool IsActive             { get; init; }
         public bool IsSelected           { get; init; }
+        public BitmapImage? CoverBitmap  { get; init; }
+        public bool HasNoCover           => CoverBitmap == null;
+        public string HoverDetail        { get; init; } = "";
+        public string LastOpenedLabel    { get; init; } = "";
     }
 
     private readonly MainViewModel _vm;
@@ -46,6 +50,8 @@ public partial class ProjectListPage : Page, IRefreshable
     private bool _isFolderManagementEnabled = true;
     private bool _isFolderMgmtToggleAnimating = false;
     private readonly SolidColorBrush _folderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
+    private bool _isGridMode = true;
+    private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
     // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
     private FileNode? _selectedNode;
@@ -64,6 +70,7 @@ public partial class ProjectListPage : Page, IRefreshable
 
         Loaded += (_, _) =>
         {
+            UpdateDisplayModeButtons();
             if (Window.GetWindow(this) is { } win)
             {
                 win.KeyDown -= Window_KeyDown;
@@ -122,27 +129,97 @@ public partial class ProjectListPage : Page, IRefreshable
 
         if (summaries.Count == 0)
         {
-            NoProjectBanner.Visibility      = Visibility.Visible;
-            ProjectItemsControl.ItemsSource = null;
+            NoProjectBanner.Visibility = Visibility.Visible;
+            ProjectGridControl.ItemsSource = null;
+            ProjectListItemsControl.ItemsSource = null;
         }
         else
         {
-            NoProjectBanner.Visibility      = Visibility.Collapsed;
-            ProjectItemsControl.ItemsSource = summaries.Select(s => new ProjectCardItem
+            NoProjectBanner.Visibility = Visibility.Collapsed;
+            var items = summaries.Select(s => new ProjectCardItem
             {
-                Entry         = s.Entry,
-                TotalTasks    = s.TotalTasks,
-                DoneTasks     = s.DoneTasks,
-                WipTasks      = s.WipTasks,
-                OverdueTasks  = s.OverdueTasks,
-                ProgressRate  = s.ProgressRate,
-                ProgressLabel = s.ProgressLabel,
-                HasAlert      = s.HasAlert,
-                CreatedAt     = s.CreatedAt,
-                IsActive      = s.Entry.DataFilePath == activeFilePath,
-                IsSelected    = s.Entry.DataFilePath == _selectedPath
+                Entry           = s.Entry,
+                TotalTasks      = s.TotalTasks,
+                DoneTasks       = s.DoneTasks,
+                WipTasks        = s.WipTasks,
+                OverdueTasks    = s.OverdueTasks,
+                ProgressRate    = s.ProgressRate,
+                ProgressLabel   = s.ProgressLabel,
+                HasAlert        = s.HasAlert,
+                CreatedAt       = s.CreatedAt,
+                IsActive        = s.Entry.DataFilePath == activeFilePath,
+                IsSelected      = s.Entry.DataFilePath == _selectedPath,
+                CoverBitmap     = TryGetCoverBitmap(s.Entry.DataFilePath),
+                HoverDetail     = BuildHoverDetail(s),
+                LastOpenedLabel = s.Entry.LastOpened.ToString("yyyy/MM/dd"),
             }).ToList();
+            ProjectGridControl.ItemsSource = items;
+            ProjectListItemsControl.ItemsSource = items;
         }
+    }
+
+    // ── カバー画像キャッシュ ──────────────────────────────
+    /// <summary>プロジェクトファイルのカバー画像をキャッシュしながら取得する。</summary>
+    private BitmapImage? TryGetCoverBitmap(string? jsonPath)
+    {
+        if (string.IsNullOrEmpty(jsonPath)) return null;
+        if (_coverBitmapCache.TryGetValue(jsonPath, out var cached)) return cached;
+        try
+        {
+            if (!File.Exists(jsonPath)) { _coverBitmapCache[jsonPath] = null; return null; }
+            var json = File.ReadAllText(jsonPath);
+            var pd = JsonConvert.DeserializeObject<ProjectData>(json);
+            if (string.IsNullOrEmpty(pd?.Settings.CoverImageData))
+            { _coverBitmapCache[jsonPath] = null; return null; }
+            var bytes = Convert.FromBase64String(pd.Settings.CoverImageData);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = new MemoryStream(bytes);
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            _coverBitmapCache[jsonPath] = bmp;
+            return bmp;
+        }
+        catch { _coverBitmapCache[jsonPath] = null; return null; }
+    }
+
+    /// <summary>ホバー時に表示するプロジェクト進捗の詳細テキストを生成する。</summary>
+    private static string BuildHoverDetail(ProjectSummary s)
+    {
+        var lines = new List<string>();
+        lines.Add($"完了 {s.DoneTasks} / {s.TotalTasks} タスク");
+        if (s.WipTasks > 0)      lines.Add($"進行中 {s.WipTasks} 件");
+        if (s.OverdueTasks > 0)  lines.Add($"⚠ 期限超過 {s.OverdueTasks} 件");
+        return string.Join("\n", lines);
+    }
+
+    // ── グリッド/リスト表示モード切替 ──────────────────────
+    /// <summary>グリッド表示に切り替える。</summary>
+    private void SetGridView_Click(object sender, MouseButtonEventArgs e)
+    {
+        _isGridMode = true;
+        ProjectGridControl.Visibility = Visibility.Visible;
+        ProjectListSection.Visibility = Visibility.Collapsed;
+        UpdateDisplayModeButtons();
+    }
+
+    /// <summary>リスト表示に切り替える。</summary>
+    private void SetListView_Click(object sender, MouseButtonEventArgs e)
+    {
+        _isGridMode = false;
+        ProjectGridControl.Visibility = Visibility.Collapsed;
+        ProjectListSection.Visibility = Visibility.Visible;
+        UpdateDisplayModeButtons();
+    }
+
+    /// <summary>グリッド/リスト切替ボタンの背景色を現在のモードに合わせて更新する。</summary>
+    private void UpdateDisplayModeButtons()
+    {
+        var activeBg   = (Brush)FindResource("BgCardBrush");
+        var inactiveBg = (Brush)FindResource("BgSecondaryBrush");
+        BtnViewGrid.Background = _isGridMode ? activeBg : inactiveBg;
+        BtnViewList.Background = _isGridMode ? inactiveBg : activeBg;
     }
 
     // ── モード切替 ────────────────────────────────────────
@@ -219,33 +296,29 @@ public partial class ProjectListPage : Page, IRefreshable
         _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
     }
 
-    /// <summary>現在の_isFolderModeに合わせてツールバーと右パネルを切り替える。</summary>
+    /// <summary>現在の_isFolderModeに合わせてツールバーとドロワーを切り替える。</summary>
     private void ApplyViewMode()
     {
         UpdateToggleModeButton();
 
         if (_isFolderMode)
         {
-            BtnProjectSection.Visibility   = Visibility.Collapsed;
-            BtnTreeSection.Visibility      = Visibility.Visible;
+            BtnProjectSection.Visibility = Visibility.Collapsed;
+            BtnTreeSection.Visibility    = Visibility.Visible;
 
             if (_vm.ProjectService.CurrentProject != null)
                 ShowTreePanel();
             else
             {
-                AddProjectOverlay.Visibility = Visibility.Collapsed;
-                EmptyPanelText.Text          = "アクティブなプロジェクトがありません";
-                EmptyPanel.Visibility        = Visibility.Visible;
-                ProjectInfoPanel.Visibility  = Visibility.Collapsed;
-                TreePanel.Visibility         = Visibility.Collapsed;
+                AddProjectOverlay.Visibility        = Visibility.Collapsed;
+                ProjectDetailOverlay.Visibility     = Visibility.Collapsed;
             }
         }
         else
         {
-            BtnProjectSection.Visibility   = Visibility.Visible;
-            BtnTreeSection.Visibility      = Visibility.Collapsed;
+            BtnProjectSection.Visibility = Visibility.Visible;
+            BtnTreeSection.Visibility    = Visibility.Collapsed;
 
-            TreePanel.Visibility = Visibility.Collapsed;
             if (string.IsNullOrEmpty(_selectedPath))
                 ShowEmptyPanel();
             else
@@ -278,16 +351,12 @@ public partial class ProjectListPage : Page, IRefreshable
     }
 
     // ── 右パネル制御 ─────────────────────────────────────
-    /// <summary>右パネルを空（未選択）状態に切り替える。</summary>
+    /// <summary>ドロワーを閉じて未選択状態にする。</summary>
     private void ShowEmptyPanel()
     {
-        AddProjectOverlay.Visibility = Visibility.Collapsed;
-        _selectedProjectUsesFolder   = true;
+        _selectedProjectUsesFolder      = true;
         UpdateToggleModeButton();
-        EmptyPanelText.Text          = "プロジェクトを選択してください";
-        EmptyPanel.Visibility        = Visibility.Visible;
-        ProjectInfoPanel.Visibility  = Visibility.Collapsed;
-        TreePanel.Visibility         = Visibility.Collapsed;
+        ProjectDetailOverlay.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>プロジェクトファイルからUseFolderManagementを読み取る。読み取れない場合はtrueを返す。</summary>
@@ -303,13 +372,14 @@ public partial class ProjectListPage : Page, IRefreshable
         catch { return true; }
     }
 
-    /// <summary>右パネルにプロジェクト情報を表示する。</summary>
+    /// <summary>プロジェクト詳細ドロワーを開いてプロジェクト情報を表示する。</summary>
     private void ShowInfoPanel()
     {
-        AddProjectOverlay.Visibility = Visibility.Collapsed;
-        EmptyPanel.Visibility        = Visibility.Collapsed;
-        TreePanel.Visibility         = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility  = Visibility.Visible;
+        ProjectInfoPanel.Visibility = Visibility.Visible;
+        TreePanel.Visibility        = Visibility.Collapsed;
+
+        var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == _selectedPath);
+        DetailPanelTitle.Text = entry?.ProjectName ?? "";
 
         // 選択プロジェクトのフォルダ管理設定を読み取ってトグルボタンを更新
         _selectedProjectUsesFolder = LoadUseFolderManagement(_selectedPath);
@@ -317,8 +387,7 @@ public partial class ProjectListPage : Page, IRefreshable
 
         ProjectInfoContent.Children.Clear();
 
-        var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == _selectedPath);
-        if (entry == null) return;
+        if (entry == null) { OpenDetailDrawer(); return; }
 
         // タスク統計・設定を一度だけ読む
         ProjectData? projectData = null;
@@ -462,20 +531,61 @@ public partial class ProjectListPage : Page, IRefreshable
         btnPanel.Children.Add(btnDelete);
 
         ProjectInfoContent.Children.Add(btnPanel);
+
+        OpenDetailDrawer();
     }
 
-    /// <summary>右パネルにフォルダツリーを表示する。</summary>
+    /// <summary>プロジェクト詳細ドロワーを開いてフォルダツリーを表示する。</summary>
     private void ShowTreePanel()
     {
-        AddProjectOverlay.Visibility = Visibility.Collapsed;
-        EmptyPanel.Visibility        = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility  = Visibility.Collapsed;
-        TreePanel.Visibility         = Visibility.Visible;
-
+        ProjectInfoPanel.Visibility = Visibility.Collapsed;
+        TreePanel.Visibility        = Visibility.Visible;
+        OpenDetailDrawer();
         var tree = _vm.ProjectService.GetProjectFolderTree();
         if (tree != null)
             FolderTree.ItemsSource = new[] { tree };
         UpdateFileToolbarState();
+    }
+
+    /// <summary>プロジェクト詳細ドロワーをスライドインで表示する。既に表示中の場合は何もしない。</summary>
+    private void OpenDetailDrawer()
+    {
+        if (ProjectDetailOverlay.Visibility == Visibility.Visible) return;
+        ProjectDetailOverlay.Visibility = Visibility.Visible;
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = 520, To = 0,
+            Duration = TimeSpan.FromMilliseconds(260),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+            }
+        };
+        DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+    }
+
+    /// <summary>プロジェクト詳細ドロワーのクローズボタンのハンドラ。</summary>
+    private void CloseDetailPanel_Click(object sender, RoutedEventArgs e) => CloseDetailDrawer();
+
+    /// <summary>プロジェクト詳細ドロワーをスライドアウトして閉じる。</summary>
+    private void CloseDetailDrawer()
+    {
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = 0, To = 520,
+            Duration = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn
+            }
+        };
+        anim.Completed += (_, _) =>
+        {
+            ProjectDetailOverlay.Visibility = Visibility.Collapsed;
+            _selectedPath = null;
+            ApplyFilter();
+        };
+        DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
     }
 
     /// <summary>新規プロジェクト作成フォームをドロワーとしてスライドイン表示する。</summary>
@@ -630,6 +740,11 @@ public partial class ProjectListPage : Page, IRefreshable
                 CancelAddProject_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
+            else if (e.Key == Key.Escape && ProjectDetailOverlay.Visibility == Visibility.Visible)
+            {
+                CloseDetailDrawer();
+                e.Handled = true;
+            }
         }
     }
 
@@ -646,17 +761,24 @@ public partial class ProjectListPage : Page, IRefreshable
     private void ProjectCard_Click(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is Button) return;
-        if (((Border)sender).DataContext is not ProjectCardItem data) return;
+
+        FrameworkElement fe = (FrameworkElement)sender;
+        if (fe.DataContext is not ProjectCardItem data) return;
         string path = data.Entry.DataFilePath ?? "";
-        _selectedPath = _selectedPath == path ? null : path;
+
+        if (_selectedPath == path)
+        {
+            // 同じカードをクリック → 選択解除
+            _selectedPath = null;
+            ApplyFilter();
+            ShowEmptyPanel();
+            return;
+        }
+        _selectedPath = path;
         ApplyFilter();
 
         if (_isFolderMode) return;
-
-        if (string.IsNullOrEmpty(_selectedPath))
-            ShowEmptyPanel();
-        else
-            ShowInfoPanel();
+        ShowInfoPanel();
     }
 
     // ── ツールバー: プロジェクト管理 ─────────────────────
@@ -788,7 +910,8 @@ public partial class ProjectListPage : Page, IRefreshable
                 _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
         }
 
-        Refresh();
+        _coverBitmapCache.Clear();
+        ApplyFilter();
         HideAddProjectPanel();
     }
 
@@ -966,6 +1089,7 @@ public partial class ProjectListPage : Page, IRefreshable
             _selectedPath = null;
             ShowEmptyPanel();
         }
+        _coverBitmapCache.Clear();
         Refresh();
 
         if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
@@ -1015,17 +1139,6 @@ public partial class ProjectListPage : Page, IRefreshable
         finally
         {
             DeletionArea.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    // ── ピン留め ──────────────────────────────────────────
-    /// <summary>プロジェクトのピン留めをトグルする。</summary>
-    private void PinProject_Click(object sender, RoutedEventArgs e)
-    {
-        if (((Button)sender).Tag is string path)
-        {
-            _vm.AppSettingsService.TogglePin(path);
-            Refresh();
         }
     }
 

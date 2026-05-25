@@ -307,14 +307,94 @@
                     </ScrollViewer>
                 </Border>
 
-                <!-- AddProjectPanel: 新規プロジェクト作成フォーム -->
-                <Border x:Name="AddProjectPanel" Visibility="Collapsed">
+                <!-- AddProjectPanel: 右サイドドロワーとしてオーバーレイ側で定義済み -->
+
+                <!-- TreePanel: フォルダモード（アクティブプロジェクト） -->
+                <Grid x:Name="TreePanel" Visibility="Collapsed" Margin="16,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" MinWidth="150" MaxWidth="600"/>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- フォルダツリー -->
+                    <Border Grid.Column="0" Background="{StaticResource BgCardBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+                        <ScrollViewer Padding="8" VerticalScrollBarVisibility="Auto">
+                            <TreeView x:Name="FolderTree" Background="Transparent" BorderThickness="0"
+                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                      SelectedItemChanged="FolderTree_SelectedItemChanged">
+                                <TreeView.ItemContainerStyle>
+                                    <Style TargetType="TreeViewItem">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                                        <Setter Property="ContextMenu" Value="{StaticResource TreeItemContextMenu}"/>
+                                    </Style>
+                                </TreeView.ItemContainerStyle>
+                                <TreeView.ItemTemplate>
+                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal" Margin="2,2">
+                                            <TextBlock Text="{Binding Icon}" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="13"/>
+                                        </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- リサイズグリップ -->
+                    <GridSplitter Grid.Column="1"
+                                  Width="4" HorizontalAlignment="Stretch"
+                                  Background="{StaticResource BorderBrush}"
+                                  ResizeBehavior="PreviousAndNext"
+                                  ResizeDirection="Columns"
+                                  Cursor="SizeWE"/>
+
+                    <!-- 詳細パネル -->
+                    <Border Grid.Column="2" Background="{StaticResource BgCardBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Padding="20">
+                            <StackPanel x:Name="DetailPanel">
+                                <TextBlock Text="フォルダまたはファイルを選択してください"
+                                           Foreground="{StaticResource TextDimBrush}" FontSize="14"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Margin="0,60,0,0"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- 新規プロジェクト追加ドロワー（右からスライドイン オーバーレイ） -->
+            <Grid x:Name="AddProjectOverlay" Grid.ColumnSpan="4" Visibility="Collapsed"
+                  Panel.ZIndex="20">
+                <!-- 暗幕：クリックで閉じる -->
+                <Border Background="#66000000" MouseLeftButtonUp="CancelAddProject_Click"/>
+
+                <!-- スライドパネル本体 -->
+                <Border x:Name="AddProjectPanel" Width="500" HorizontalAlignment="Right"
+                        Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="AddPanelTransform" X="500"/>
+                    </Border.RenderTransform>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="24,20,24,20" MaxWidth="520">
-                            <TextBlock Text="新規プロジェクトの作成"
-                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       Margin="0,0,0,20"/>
+                        <StackPanel Margin="24,20,24,24">
+
+                            <!-- ヘッダー行 -->
+                            <DockPanel Margin="0,0,0,20">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        ToolTip="閉じる" Click="CancelAddProject_Click">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock Text="新規プロジェクトの作成"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </DockPanel>
 
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"
@@ -411,7 +491,7 @@
                             <!-- プロジェクト期間 -->
                             <TextBlock Text="プロジェクト期間（任意）" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <Grid Margin="0,0,0,20">
+                            <Grid Margin="0,0,0,24">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -436,64 +516,6 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
-
-                <!-- TreePanel: フォルダモード（アクティブプロジェクト） -->
-                <Grid x:Name="TreePanel" Visibility="Collapsed" Margin="16,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="300" MinWidth="150" MaxWidth="600"/>
-                        <ColumnDefinition Width="4"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- フォルダツリー -->
-                    <Border Grid.Column="0" Background="{StaticResource BgCardBrush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
-                        <ScrollViewer Padding="8" VerticalScrollBarVisibility="Auto">
-                            <TreeView x:Name="FolderTree" Background="Transparent" BorderThickness="0"
-                                      Foreground="{StaticResource TextPrimaryBrush}"
-                                      SelectedItemChanged="FolderTree_SelectedItemChanged">
-                                <TreeView.ItemContainerStyle>
-                                    <Style TargetType="TreeViewItem">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
-                                        <Setter Property="ContextMenu" Value="{StaticResource TreeItemContextMenu}"/>
-                                    </Style>
-                                </TreeView.ItemContainerStyle>
-                                <TreeView.ItemTemplate>
-                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                        <StackPanel Orientation="Horizontal" Margin="2,2">
-                                            <TextBlock Text="{Binding Icon}" Margin="0,0,6,0"/>
-                                            <TextBlock Text="{Binding Name}" FontSize="13"/>
-                                        </StackPanel>
-                                    </HierarchicalDataTemplate>
-                                </TreeView.ItemTemplate>
-                            </TreeView>
-                        </ScrollViewer>
-                    </Border>
-
-                    <!-- リサイズグリップ -->
-                    <GridSplitter Grid.Column="1"
-                                  Width="4" HorizontalAlignment="Stretch"
-                                  Background="{StaticResource BorderBrush}"
-                                  ResizeBehavior="PreviousAndNext"
-                                  ResizeDirection="Columns"
-                                  Cursor="SizeWE"/>
-
-                    <!-- 詳細パネル -->
-                    <Border Grid.Column="2" Background="{StaticResource BgCardBrush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                      Padding="20">
-                            <StackPanel x:Name="DetailPanel">
-                                <TextBlock Text="フォルダまたはファイルを選択してください"
-                                           Foreground="{StaticResource TextDimBrush}" FontSize="14"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Margin="0,60,0,0"/>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Border>
-                </Grid>
             </Grid>
         </Grid>
 

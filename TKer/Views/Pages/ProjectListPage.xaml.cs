@@ -233,11 +233,11 @@ public partial class ProjectListPage : Page, IRefreshable
                 ShowTreePanel();
             else
             {
-                EmptyPanelText.Text         = "アクティブなプロジェクトがありません";
-                EmptyPanel.Visibility       = Visibility.Visible;
-                ProjectInfoPanel.Visibility = Visibility.Collapsed;
-                AddProjectPanel.Visibility  = Visibility.Collapsed;
-                TreePanel.Visibility        = Visibility.Collapsed;
+                AddProjectOverlay.Visibility = Visibility.Collapsed;
+                EmptyPanelText.Text          = "アクティブなプロジェクトがありません";
+                EmptyPanel.Visibility        = Visibility.Visible;
+                ProjectInfoPanel.Visibility  = Visibility.Collapsed;
+                TreePanel.Visibility         = Visibility.Collapsed;
             }
         }
         else
@@ -281,13 +281,13 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>右パネルを空（未選択）状態に切り替える。</summary>
     private void ShowEmptyPanel()
     {
-        _selectedProjectUsesFolder  = true;
+        AddProjectOverlay.Visibility = Visibility.Collapsed;
+        _selectedProjectUsesFolder   = true;
         UpdateToggleModeButton();
-        EmptyPanelText.Text         = "プロジェクトを選択してください";
-        EmptyPanel.Visibility       = Visibility.Visible;
-        ProjectInfoPanel.Visibility = Visibility.Collapsed;
-        AddProjectPanel.Visibility  = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Collapsed;
+        EmptyPanelText.Text          = "プロジェクトを選択してください";
+        EmptyPanel.Visibility        = Visibility.Visible;
+        ProjectInfoPanel.Visibility  = Visibility.Collapsed;
+        TreePanel.Visibility         = Visibility.Collapsed;
     }
 
     /// <summary>プロジェクトファイルからUseFolderManagementを読み取る。読み取れない場合はtrueを返す。</summary>
@@ -306,10 +306,10 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>右パネルにプロジェクト情報を表示する。</summary>
     private void ShowInfoPanel()
     {
-        EmptyPanel.Visibility       = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Collapsed;
-        AddProjectPanel.Visibility  = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility = Visibility.Visible;
+        AddProjectOverlay.Visibility = Visibility.Collapsed;
+        EmptyPanel.Visibility        = Visibility.Collapsed;
+        TreePanel.Visibility         = Visibility.Collapsed;
+        ProjectInfoPanel.Visibility  = Visibility.Visible;
 
         // 選択プロジェクトのフォルダ管理設定を読み取ってトグルボタンを更新
         _selectedProjectUsesFolder = LoadUseFolderManagement(_selectedPath);
@@ -467,10 +467,10 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>右パネルにフォルダツリーを表示する。</summary>
     private void ShowTreePanel()
     {
-        EmptyPanel.Visibility       = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility = Visibility.Collapsed;
-        AddProjectPanel.Visibility  = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Visible;
+        AddProjectOverlay.Visibility = Visibility.Collapsed;
+        EmptyPanel.Visibility        = Visibility.Collapsed;
+        ProjectInfoPanel.Visibility  = Visibility.Collapsed;
+        TreePanel.Visibility         = Visibility.Visible;
 
         var tree = _vm.ProjectService.GetProjectFolderTree();
         if (tree != null)
@@ -478,13 +478,9 @@ public partial class ProjectListPage : Page, IRefreshable
         UpdateFileToolbarState();
     }
 
-    /// <summary>新規プロジェクト作成フォームパネルを表示する。</summary>
+    /// <summary>新規プロジェクト作成フォームをドロワーとしてスライドイン表示する。</summary>
     private void ShowAddProjectPanel()
     {
-        EmptyPanel.Visibility       = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Collapsed;
-        AddProjectPanel.Visibility  = Visibility.Visible;
         TxtNewProjName.Clear();
         TxtNewProjDesc.Clear();
         TxtNewProjPath.Clear();
@@ -493,15 +489,46 @@ public partial class ProjectListPage : Page, IRefreshable
         ClearCoverImageField();
 
         // フォルダ管理トグルをON状態にリセット
-        _isFolderManagementEnabled = true;
+        _isFolderManagementEnabled   = true;
         _isFolderMgmtToggleAnimating = false;
         FolderMgmtThumb.BeginAnimation(MarginProperty, null);
         FolderMgmtThumb.Margin = new Thickness(22, 0, 0, 0);
         _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, null);
-        _folderMgmtToggleBg.Color = Color.FromRgb(35, 131, 226);
+        _folderMgmtToggleBg.Color    = Color.FromRgb(35, 131, 226);
         FolderPathSection.Visibility = Visibility.Visible;
 
+        // オーバーレイを表示してスライドイン
+        AddProjectOverlay.Visibility = Visibility.Visible;
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From           = 500,
+            To             = 0,
+            Duration       = TimeSpan.FromMilliseconds(260),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+            }
+        };
+        AddPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+
         TxtNewProjName.Focus();
+    }
+
+    /// <summary>新規プロジェクト作成ドロワーをスライドアウトして閉じる。</summary>
+    private void HideAddProjectPanel()
+    {
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From           = 0,
+            To             = 500,
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn
+            }
+        };
+        anim.Completed += (_, _) => AddProjectOverlay.Visibility = Visibility.Collapsed;
+        AddPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
     }
 
     /// <summary>表紙画像フィールドをリセットする。</summary>
@@ -598,7 +625,7 @@ public partial class ProjectListPage : Page, IRefreshable
                 ToggleSearch_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
-            else if (e.Key == Key.Escape && AddProjectPanel.Visibility == Visibility.Visible)
+            else if (e.Key == Key.Escape && AddProjectOverlay.Visibility == Visibility.Visible)
             {
                 CancelAddProject_Click(this, new RoutedEventArgs());
                 e.Handled = true;
@@ -762,18 +789,12 @@ public partial class ProjectListPage : Page, IRefreshable
         }
 
         Refresh();
-        ShowEmptyPanel();
+        HideAddProjectPanel();
     }
 
-    /// <summary>新規プロジェクト作成フォームをキャンセルして元のパネルに戻る。</summary>
+    /// <summary>新規プロジェクト作成ドロワーをキャンセルして閉じる。</summary>
     private void CancelAddProject_Click(object sender, RoutedEventArgs e)
-    {
-        AddProjectPanel.Visibility = Visibility.Collapsed;
-        if (string.IsNullOrEmpty(_selectedPath))
-            ShowEmptyPanel();
-        else
-            ShowInfoPanel();
-    }
+        => HideAddProjectPanel();
 
     /// <summary>既存プロジェクトファイルを読み込むダイアログを表示する。</summary>
     private void LoadProject_Click(object sender, RoutedEventArgs e)

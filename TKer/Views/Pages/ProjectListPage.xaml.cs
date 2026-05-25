@@ -1189,4 +1189,37 @@ public partial class ProjectListPage : Page, IRefreshable
         win.ShowDialog();
     }
 
+    private void AddSectionDividerToPanel(StackPanel panel, string title)
+    {
+        panel.Children.Add(new TextBlock
+        {
+            Text = title, FontSize = 11, FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("AccentCyanBrush"),
+            Margin = new Thickness(0, 14, 0, 6),
+        });
+        panel.Children.Add(new Border
+        {
+            Height = 1, Background = (Brush)FindResource("BorderBrush"),
+            Margin = new Thickness(0, 0, 0, 8),
+        });
+    }
+
+    private void AddInfoRowToPanel(StackPanel panel, string label, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        var row = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        row.Children.Add(new TextBlock
+        {
+            Text = label, FontSize = 11,
+            Foreground = (Brush)FindResource("TextDimBrush"),
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = value, FontSize = 12,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            TextWrapping = TextWrapping.Wrap,
+        });
+        panel.Children.Add(row);
+    }
+
 }

@@ -213,6 +213,14 @@ public partial class CollectionPage : Page, IRefreshable
             ApplyFilter();
             OpenDetailDrawer();
         };
+        card.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount == 2)
+            {
+                _vm.SelectedCollection = col;
+                _vm.NavigateToCommand.Execute("CollectionItems");
+            }
+        };
 
         return card;
     }
@@ -293,6 +301,14 @@ public partial class CollectionPage : Page, IRefreshable
             _selectedId = col.Id;
             ApplyFilter();
             OpenDetailDrawer();
+        };
+        row.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount == 2)
+            {
+                _vm.SelectedCollection = col;
+                _vm.NavigateToCommand.Execute("CollectionItems");
+            }
         };
 
         return row;

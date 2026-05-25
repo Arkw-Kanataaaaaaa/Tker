@@ -205,6 +205,7 @@ public partial class MainWindow : Window
         "ProjectList"         => new ProjectListPage(_vm),
         "AppSettings"         => new AppSettingsPage(_vm),
         "Collection"          => new CollectionPage(_vm),
+        "CollectionItems"     => new CollectionItemsPage(_vm),
         "UiCustomize"         => new UiCustomizePage(_vm),
         "Pomodoro"            => new PomodoroPage(_vm),
         "Article"             => new ArticlePage(_vm),

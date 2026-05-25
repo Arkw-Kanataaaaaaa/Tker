@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using TKer.Models;
 using TKer.Services;
 using TKer.ViewModels;
@@ -20,8 +22,10 @@ public partial class CollectionPage : Page, IRefreshable
     private bool    _isGridMode = true;
     private bool    _searchVisible;
 
-    private readonly List<CollectionField> _formFields = new();
-    private string? _editingId;
+    private readonly List<CollectionField>          _formFields       = new();
+    private string?                                 _editingId;
+    private string                                  _coverImageData   = string.Empty;
+    private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
     /// <summary>コレクションページを初期化してデータを表示する。</summary>
     public CollectionPage(MainViewModel vm)
@@ -119,15 +123,25 @@ public partial class CollectionPage : Page, IRefreshable
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var iconTb = new TextBlock
+        var coverBmp = TryGetCoverBitmap(col);
+        if (coverBmp != null)
         {
-            Text                = col.Icon ?? "📁",
-            FontSize            = 52,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment   = VerticalAlignment.Center,
-        };
-        Grid.SetRow(iconTb, 0);
-        grid.Children.Add(iconTb);
+            var img = new Image { Source = coverBmp, Stretch = Stretch.UniformToFill };
+            Grid.SetRow(img, 0);
+            grid.Children.Add(img);
+        }
+        else
+        {
+            var iconTb = new TextBlock
+            {
+                Text                = col.Icon ?? "📁",
+                FontSize            = 52,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment   = VerticalAlignment.Center,
+            };
+            Grid.SetRow(iconTb, 0);
+            grid.Children.Add(iconTb);
+        }
 
         var nameStrip = new Border
         {
@@ -469,6 +483,27 @@ public partial class CollectionPage : Page, IRefreshable
 
         TxtNewFieldName.Text = "";
         CbFieldType.SelectedIndex = 0;
+
+        ClearCoverImageField();
+        if (!string.IsNullOrEmpty(existing?.CoverImageData))
+        {
+            try
+            {
+                var bytes = Convert.FromBase64String(existing.CoverImageData);
+                _coverImageData = existing.CoverImageData;
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.StreamSource = new MemoryStream(bytes);
+                bmp.CacheOption  = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                CoverImagePreview.Source         = bmp;
+                CoverImagePreview.Visibility     = Visibility.Visible;
+                CoverImagePlaceholder.Visibility = Visibility.Collapsed;
+                BtnClearCoverImage.Visibility    = Visibility.Visible;
+            }
+            catch { }
+        }
+
         RefreshFormFieldList();
         OpenFormDrawer();
     }
@@ -587,28 +622,32 @@ public partial class CollectionPage : Page, IRefreshable
         {
             var col = new Collection
             {
-                Name        = TxtFormName.Text.Trim(),
-                Icon        = "📁",
-                Description = TxtFormDesc.Text.Trim(),
-                FolderPath  = TxtFormFolder.Text.Trim(),
-                ItemFormat  = itemFormat,
-                Fields      = _formFields.ToList(),
+                Name          = TxtFormName.Text.Trim(),
+                Icon          = "📁",
+                Description   = TxtFormDesc.Text.Trim(),
+                FolderPath    = TxtFormFolder.Text.Trim(),
+                ItemFormat    = itemFormat,
+                Fields        = _formFields.ToList(),
+                CoverImageData = _coverImageData,
             };
             _svc.Add(col);
             _selectedId = col.Id;
+            _coverBitmapCache.Remove(col.Id);
         }
         else
         {
             var existing = _svc.Collections.FirstOrDefault(c => c.Id == _editingId);
             if (existing == null) return;
-            existing.Name        = TxtFormName.Text.Trim();
-            existing.Description = TxtFormDesc.Text.Trim();
-            existing.FolderPath  = TxtFormFolder.Text.Trim();
-            existing.ItemFormat  = itemFormat;
-            existing.Fields      = _formFields.ToList();
-            existing.UpdatedAt   = DateTime.Now;
+            existing.Name          = TxtFormName.Text.Trim();
+            existing.Description   = TxtFormDesc.Text.Trim();
+            existing.FolderPath    = TxtFormFolder.Text.Trim();
+            existing.ItemFormat    = itemFormat;
+            existing.Fields        = _formFields.ToList();
+            existing.CoverImageData = _coverImageData;
+            existing.UpdatedAt     = DateTime.Now;
             _svc.Update(existing);
             _selectedId = _editingId;
+            _coverBitmapCache.Remove(_editingId);
         }
 
         _editingId = null;
@@ -629,6 +668,17 @@ public partial class CollectionPage : Page, IRefreshable
     private void BuildDetailContent(Collection col)
     {
         DetailContentPanel.Children.Clear();
+
+        var coverBmp = TryGetCoverBitmap(col);
+        if (coverBmp != null)
+            DetailContentPanel.Children.Add(new Border
+            {
+                Height       = 160,
+                CornerRadius = new CornerRadius(8),
+                ClipToBounds = true,
+                Margin       = new Thickness(0, 0, 0, 16),
+                Child        = new Image { Source = coverBmp, Stretch = Stretch.UniformToFill },
+            });
 
         var infoCard = new Border
         {
@@ -763,6 +813,69 @@ public partial class CollectionPage : Page, IRefreshable
                 Child           = g,
             });
         }
+    }
+
+    // ── 表紙画像 ────────────────────────────────────────────
+
+    private void ClearCoverImageField()
+    {
+        _coverImageData                  = string.Empty;
+        CoverImagePreview.Source         = null;
+        CoverImagePreview.Visibility     = Visibility.Collapsed;
+        CoverImagePlaceholder.Visibility = Visibility.Visible;
+        BtnClearCoverImage.Visibility    = Visibility.Collapsed;
+    }
+
+    private void BrowseCoverImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "表紙画像を選択",
+            Filter = "画像ファイル|*.jpg;*.jpeg;*.png;*.bmp;*.gif|すべてのファイル|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            var bytes = File.ReadAllBytes(dlg.FileName);
+            _coverImageData = Convert.ToBase64String(bytes);
+
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = new MemoryStream(bytes);
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+
+            CoverImagePreview.Source         = bmp;
+            CoverImagePreview.Visibility     = Visibility.Visible;
+            CoverImagePlaceholder.Visibility = Visibility.Collapsed;
+            BtnClearCoverImage.Visibility    = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー");
+        }
+    }
+
+    private void ClearCoverImage_Click(object sender, RoutedEventArgs e) => ClearCoverImageField();
+
+    private BitmapImage? TryGetCoverBitmap(Collection col)
+    {
+        if (_coverBitmapCache.TryGetValue(col.Id, out var cached)) return cached;
+        if (string.IsNullOrEmpty(col.CoverImageData))
+        { _coverBitmapCache[col.Id] = null; return null; }
+        try
+        {
+            var bytes = Convert.FromBase64String(col.CoverImageData);
+            var bmp   = new BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = new MemoryStream(bytes);
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            _coverBitmapCache[col.Id] = bmp;
+            return bmp;
+        }
+        catch { _coverBitmapCache[col.Id] = null; return null; }
     }
 
     // ── ユーティリティ ──────────────────────────────────────

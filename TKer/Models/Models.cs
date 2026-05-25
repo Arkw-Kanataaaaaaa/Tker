@@ -906,6 +906,8 @@ public class Collection
     public List<CollectionField> Fields { get; set; } = new();
     /// <summary>コレクションに含まれるアイテムの一覧。</summary>
     public List<CollectionItem>  Items  { get; set; } = new();
+    /// <summary>表紙画像（Base64エンコード）。</summary>
+    public string CoverImageData { get; set; } = string.Empty;
     /// <summary>コレクションの作成日時。</summary>
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     /// <summary>コレクションの最終更新日時。</summary>

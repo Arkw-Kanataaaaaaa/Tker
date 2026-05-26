@@ -12,6 +12,8 @@ public class AppSettings
     public string AppVersion { get; set; } = "1.0.0";
     /// <summary>最近開いたプロジェクトの一覧。</summary>
     public List<ProjectEntry> RecentProjects { get; set; } = new();
+    /// <summary>登録済みコレクションのファイルパス一覧。</summary>
+    public List<string> CollectionFilePaths { get; set; } = new();
     /// <summary>最後に開いたプロジェクトファイルのパス。</summary>
     public string? LastOpenedProjectPath { get; set; }
     /// <summary>最後にアプリを起動した日時。</summary>

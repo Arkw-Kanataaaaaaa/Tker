@@ -8,71 +8,96 @@ using TKer.Models;
 namespace TKer.Services;
 
 /// <summary>
-/// コレクションデータを ドキュメント\TKer_CL\コレクション名_collection.json で管理するサービス。
+/// コレクションデータを ドキュメント\TKer_CL\コレクション名_collection.json で管理し、
+/// ファイルパスは settings.json の CollectionFilePaths で追跡するサービス。
 /// </summary>
 public class CollectionService
 {
     private static readonly string DIR =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TKer_CL");
 
-    private List<Collection> _collections;
+    private readonly AppSettingsService _appSettings;
+    private List<Collection>            _collections;
 
-    /// <summary>ディレクトリをスキャンしてコレクションを読み込んで初期化する。</summary>
-    public CollectionService() => _collections = LoadAll();
+    /// <summary>AppSettingsService を受け取り、登録済みパスからコレクションを読み込む。</summary>
+    public CollectionService(AppSettingsService appSettings)
+    {
+        _appSettings = appSettings;
+        _collections = LoadAll();
+    }
 
     /// <summary>現在のコレクション一覧を返す。</summary>
     public IReadOnlyList<Collection> Collections => _collections;
 
     // ── CRUD ─────────────────────────────────────────────
 
-    /// <summary>新しいコレクションを追加してファイルに保存する。</summary>
+    /// <summary>新しいコレクションを追加してファイルと settings に登録する。</summary>
     public void Add(Collection c)
     {
         _collections.Add(c);
-        Persist(c);
+        var path = Persist(c);
+        _appSettings.AddCollectionFilePath(path);
     }
 
-    /// <summary>既存のコレクションを更新してファイルに保存する。</summary>
+    /// <summary>既存のコレクションを更新してファイルを書き直す。名前変更時は旧ファイルを削除する。</summary>
     public void Update(Collection c)
     {
         var idx = _collections.FindIndex(x => x.Id == c.Id);
         if (idx < 0) return;
 
-        var old = _collections[idx];
+        var old     = _collections[idx];
+        var oldPath = GetFilePath(old);
+
         if (old.Name != c.Name)
-            TryDeleteFile(GetFilePath(old));
+        {
+            _appSettings.RemoveCollectionFilePath(oldPath);
+            TryDeleteFile(oldPath);
+        }
 
         _collections[idx] = c;
-        Persist(c);
+        var newPath = Persist(c);
+        _appSettings.AddCollectionFilePath(newPath);
     }
 
-    /// <summary>指定 ID のコレクションを削除してファイルを消去する。</summary>
+    /// <summary>指定 ID のコレクションを削除してファイルと settings から除去する。</summary>
     public void Delete(string id)
     {
         var col = _collections.FirstOrDefault(x => x.Id == id);
-        if (col != null) TryDeleteFile(GetFilePath(col));
+        if (col != null)
+        {
+            var path = GetFilePath(col);
+            _appSettings.RemoveCollectionFilePath(path);
+            TryDeleteFile(path);
+        }
         _collections.RemoveAll(x => x.Id == id);
     }
 
     // ── 内部ヘルパー ─────────────────────────────────────
 
-    private static List<Collection> LoadAll()
+    private List<Collection> LoadAll()
     {
-        var result = new List<Collection>();
-        try
+        try { Directory.CreateDirectory(DIR); } catch { }
+
+        var result     = new List<Collection>();
+        var validPaths = new List<string>();
+
+        foreach (var path in _appSettings.CollectionFilePaths)
         {
-            Directory.CreateDirectory(DIR);
-            foreach (var file in Directory.GetFiles(DIR, "*_collection.json"))
+            if (!File.Exists(path)) continue;
+            try
             {
-                try
-                {
-                    var col = JsonConvert.DeserializeObject<Collection>(File.ReadAllText(file));
-                    if (col != null) result.Add(col);
-                }
-                catch { }
+                var col = JsonConvert.DeserializeObject<Collection>(File.ReadAllText(path));
+                if (col != null) { result.Add(col); validPaths.Add(path); }
+            }
+            catch
+            {
+                validPaths.Add(path);
             }
         }
-        catch { }
+
+        if (validPaths.Count != _appSettings.CollectionFilePaths.Count)
+            _appSettings.SyncCollectionFilePaths(validPaths);
+
         return result;
     }
 
@@ -84,15 +109,16 @@ public class CollectionService
         return Path.Combine(DIR, $"{safeName}_collection.json");
     }
 
-    private static void Persist(Collection c)
+    private static string Persist(Collection c)
     {
         try
         {
             Directory.CreateDirectory(DIR);
-            File.WriteAllText(GetFilePath(c),
-                JsonConvert.SerializeObject(c, Formatting.Indented));
+            var path = GetFilePath(c);
+            File.WriteAllText(path, JsonConvert.SerializeObject(c, Formatting.Indented));
+            return path;
         }
-        catch { }
+        catch { return GetFilePath(c); }
     }
 
     private static void TryDeleteFile(string path)

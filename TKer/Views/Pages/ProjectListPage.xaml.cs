@@ -832,6 +832,8 @@ public partial class ProjectListPage : Page, IRefreshable
             TxtNewProjPath.Text = System.IO.Path.GetDirectoryName(dlg.FileName) ?? "";
     }
 
+    private static readonly string[] _imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
+
     /// <summary>表紙画像ファイルを選択して読み込みプレビュー表示する。</summary>
     private void BrowseCoverImage_Click(object sender, RoutedEventArgs e)
     {
@@ -841,26 +843,97 @@ public partial class ProjectListPage : Page, IRefreshable
             Filter = "画像ファイル|*.jpg;*.jpeg;*.png;*.bmp;*.gif|すべてのファイル|*.*"
         };
         if (dlg.ShowDialog() != true) return;
+        LoadCoverImage(dlg.FileName, isEdit: false);
+    }
+
+    /// <summary>指定ファイルを表紙画像として読み込みプレビューに反映する。</summary>
+    private void LoadCoverImage(string filePath, bool isEdit)
+    {
         try
         {
-            var bytes = File.ReadAllBytes(dlg.FileName);
-            _coverImageData = Convert.ToBase64String(bytes);
-
+            var bytes = File.ReadAllBytes(filePath);
             var bmp = new BitmapImage();
             bmp.BeginInit();
-            bmp.StreamSource  = new MemoryStream(bytes);
-            bmp.CacheOption   = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = new MemoryStream(bytes);
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
             bmp.EndInit();
 
-            CoverImagePreview.Source         = bmp;
-            CoverImagePreview.Visibility     = Visibility.Visible;
-            CoverImagePlaceholder.Visibility = Visibility.Collapsed;
-            BtnClearCoverImage.Visibility    = Visibility.Visible;
+            if (isEdit)
+            {
+                _editCoverImageData                  = Convert.ToBase64String(bytes);
+                EditCoverImagePreview.Source         = bmp;
+                EditCoverImagePreview.Visibility     = Visibility.Visible;
+                EditCoverImagePlaceholder.Visibility = Visibility.Collapsed;
+                BtnClearEditCoverImage.Visibility    = Visibility.Visible;
+            }
+            else
+            {
+                _coverImageData                  = Convert.ToBase64String(bytes);
+                CoverImagePreview.Source         = bmp;
+                CoverImagePreview.Visibility     = Visibility.Visible;
+                CoverImagePlaceholder.Visibility = Visibility.Collapsed;
+                BtnClearCoverImage.Visibility    = Visibility.Visible;
+            }
         }
         catch (Exception ex)
         {
             AppDialog.ShowError($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
         }
+    }
+
+    // ── 表紙画像 ドラッグ＆ドロップ ──────────────────────
+    private void CoverImage_DragEnter(object sender, DragEventArgs e)
+    {
+        if (sender is Border b && e.Data.GetDataPresent(DataFormats.FileDrop))
+            b.BorderBrush = (Brush)FindResource("AccentCyanBrush");
+    }
+
+    private void CoverImage_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void CoverImage_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is Border b)
+            b.BorderBrush = (Brush)FindResource("BorderBrush");
+    }
+
+    private void CoverImage_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is Border b) b.BorderBrush = (Brush)FindResource("BorderBrush");
+        if (TryGetDroppedImagePath(e, out string path))
+            LoadCoverImage(path, isEdit: false);
+    }
+
+    private void EditCoverImage_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is Border b) b.BorderBrush = (Brush)FindResource("BorderBrush");
+        if (TryGetDroppedImagePath(e, out string path))
+            LoadCoverImage(path, isEdit: true);
+    }
+
+    /// <summary>ドロップされたファイルが画像なら取得する。非画像なら警告を表示して false を返す。</summary>
+    private bool TryGetDroppedImagePath(DragEventArgs e, out string path)
+    {
+        path = string.Empty;
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return false;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return false;
+
+        string file = files[0];
+        string ext  = Path.GetExtension(file).ToLowerInvariant();
+        if (!_imageExtensions.Contains(ext))
+        {
+            AppDialog.ShowWarning(
+                $"画像ファイル（{string.Join(", ", _imageExtensions)}）をドロップしてください。\n" +
+                $"対応していないファイル: {Path.GetFileName(file)}",
+                "対応していないファイル形式", Window.GetWindow(this));
+            return false;
+        }
+        path = file;
+        return true;
     }
 
     /// <summary>選択中の表紙画像をクリアする。</summary>
@@ -1024,24 +1097,7 @@ public partial class ProjectListPage : Page, IRefreshable
             Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|すべてのファイル (*.*)|*.*"
         };
         if (dlg.ShowDialog() != true) return;
-        try
-        {
-            var bytes = File.ReadAllBytes(dlg.FileName);
-            _editCoverImageData = Convert.ToBase64String(bytes);
-            var bmp = new System.Windows.Media.Imaging.BitmapImage();
-            bmp.BeginInit();
-            bmp.StreamSource = new System.IO.MemoryStream(bytes);
-            bmp.CacheOption  = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bmp.EndInit();
-            EditCoverImagePreview.Source         = bmp;
-            EditCoverImagePreview.Visibility     = Visibility.Visible;
-            EditCoverImagePlaceholder.Visibility = Visibility.Collapsed;
-            BtnClearEditCoverImage.Visibility    = Visibility.Visible;
-        }
-        catch (Exception ex)
-        {
-            AppDialog.ShowError($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
-        }
+        LoadCoverImage(dlg.FileName, isEdit: true);
     }
 
     private void ClearEditCoverImage_Click(object sender, RoutedEventArgs e) => ClearEditCoverImageField();

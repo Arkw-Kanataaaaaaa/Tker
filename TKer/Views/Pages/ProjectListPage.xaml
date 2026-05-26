@@ -374,14 +374,17 @@
                             <Border x:Name="CoverImagePreviewBorder" Height="160" CornerRadius="6"
                                     Background="{StaticResource BgCardBrush}"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    Margin="0,0,0,8" ClipToBounds="True">
+                                    Margin="0,0,0,8" ClipToBounds="True"
+                                    AllowDrop="True"
+                                    DragEnter="CoverImage_DragEnter" DragOver="CoverImage_DragOver"
+                                    DragLeave="CoverImage_DragLeave" Drop="CoverImage_Drop">
                                 <Grid>
                                     <TextBlock x:Name="CoverImagePlaceholder"
-                                               Text="クリックまたは下のボタンで画像を選択"
+                                               Text="ドラッグ＆ドロップ、または下のボタンで画像を選択"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextDimBrush}" FontSize="12"/>
                                     <Image x:Name="CoverImagePreview" Stretch="UniformToFill"
-                                           Visibility="Collapsed"/>
+                                           Visibility="Collapsed" IsHitTestVisible="False"/>
                                 </Grid>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
@@ -512,17 +515,20 @@
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <Border Height="160" CornerRadius="6"
+                            <Border x:Name="EditCoverImagePreviewBorder" Height="160" CornerRadius="6"
                                     Background="{StaticResource BgCardBrush}"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    Margin="0,0,0,8" ClipToBounds="True">
+                                    Margin="0,0,0,8" ClipToBounds="True"
+                                    AllowDrop="True"
+                                    DragEnter="CoverImage_DragEnter" DragOver="CoverImage_DragOver"
+                                    DragLeave="CoverImage_DragLeave" Drop="EditCoverImage_Drop">
                                 <Grid>
                                     <TextBlock x:Name="EditCoverImagePlaceholder"
-                                               Text="クリックまたは下のボタンで画像を選択"
+                                               Text="ドラッグ＆ドロップ、または下のボタンで画像を選択"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextDimBrush}" FontSize="12"/>
                                     <Image x:Name="EditCoverImagePreview" Stretch="UniformToFill"
-                                           Visibility="Collapsed"/>
+                                           Visibility="Collapsed" IsHitTestVisible="False"/>
                                 </Grid>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,20">

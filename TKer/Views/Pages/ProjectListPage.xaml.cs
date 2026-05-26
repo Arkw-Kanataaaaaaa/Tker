@@ -291,26 +291,15 @@ public partial class ProjectListPage : Page, IRefreshable
 
                 ProjectInfoContent.Children.Add(new Border
                 {
-                    Height        = 180,
                     CornerRadius  = new CornerRadius(8),
                     ClipToBounds  = true,
                     Margin        = new Thickness(0, 0, 0, 16),
-                    Child         = new Image { Source = bmp, Stretch = Stretch.UniformToFill }
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Child         = new Image { Source = bmp, Stretch = Stretch.Uniform }
                 });
             }
             catch { /* 画像デコード失敗は無視 */ }
         }
-
-        // プロジェクト名
-        ProjectInfoContent.Children.Add(new TextBlock
-        {
-            Text = entry.ProjectName,
-            FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 20,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 8)
-        });
 
         // 期間
         if (projectData?.Settings.ProjectStartDate != null || projectData?.Settings.ProjectEndDate != null)

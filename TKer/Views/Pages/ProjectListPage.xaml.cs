@@ -1424,6 +1424,11 @@ public partial class ProjectListPage : Page, IRefreshable
         if (dlg.ShowDialog() != true) return;
 
         bool deleteFolder = dlg.DeleteFolder;
+
+        // 削除対象がアクティブなら先に解除（自動保存による再生成を防ぐ）
+        if (_vm.ProjectService.ProjectFilePath == path)
+            _vm.ProjectService.CloseProject();
+
         _vm.AppSettingsService.RemoveProject(path);
         if (_selectedPath == path)
         {
@@ -1433,19 +1438,29 @@ public partial class ProjectListPage : Page, IRefreshable
         _coverBitmapCache.Clear();
         Refresh();
 
-        if (isFolderManaged)
+        if (isFolderManaged && deleteFolder
+            && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
         {
-            if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
-                await DeleteFolderWithProgressAsync(projectFolder, projectName);
-            else
-                // フォルダは残してプロジェクトJSONのみ削除
-                try { if (File.Exists(path)) File.Delete(path); } catch { }
+            // フォルダごと削除
+            await DeleteFolderWithProgressAsync(projectFolder, projectName);
         }
         else
         {
-            // フォルダ管理なし: ドキュメント配下のJSONファイルのみ削除
-            try { if (File.Exists(path)) File.Delete(path); } catch { }
+            // JSON本体とバックアップ(.bak)のみ削除（フォルダは残す）
+            DeleteProjectJsonFiles(path);
         }
+    }
+
+    /// <summary>プロジェクトのJSON本体とバックアップ(.bak)を削除する。</summary>
+    private static void DeleteProjectJsonFiles(string jsonPath)
+    {
+        try { if (File.Exists(jsonPath)) File.Delete(jsonPath); } catch { }
+        try
+        {
+            var bak = jsonPath + ".bak";
+            if (File.Exists(bak)) File.Delete(bak);
+        }
+        catch { }
     }
 
     /// <summary>プロジェクトフォルダをプログレスバー付きで非同期削除する。</summary>

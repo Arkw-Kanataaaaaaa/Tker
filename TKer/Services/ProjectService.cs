@@ -210,6 +210,19 @@ public class ProjectService
     }
 
     // =====================================================
+    // プロジェクトのクローズ（アクティブ解除）
+    // =====================================================
+    /// <summary>自動保存を止めてアクティブなプロジェクトを解除する。</summary>
+    public void CloseProject()
+    {
+        _autoSaveTimer.Stop();
+        _hasUnsavedChanges = false;
+        CurrentProject  = null;
+        ProjectFilePath = null;
+        ProjectChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // =====================================================
     // ⑥ プロジェクト移動後のパス再マッピング
     // =====================================================
     /// <summary>旧ベースパスを新ベースパスに一括置換してプロジェクトを保存する。</summary>

@@ -41,6 +41,15 @@ public partial class ProjectListPage : Page, IRefreshable
         public string UpdatedAtLabel     { get; init; } = "";
     }
 
+    // 新規プロジェクト作成時のカテゴリーテンプレート選択用
+    private sealed class NewProjectTemplateItem
+    {
+        public string Name { get; init; } = "";
+        public string Summary { get; init; } = "";
+        public bool IsSelected { get; set; }
+        public List<CategoryPresetItem> Categories { get; init; } = new();
+    }
+
     private readonly MainViewModel _vm;
     private string? _selectedPath;
     private string _coverImageData = string.Empty;
@@ -51,6 +60,9 @@ public partial class ProjectListPage : Page, IRefreshable
     private bool _isEditFolderManagementEnabled = true;
     private bool _isEditFolderMgmtToggleAnimating = false;
     private readonly SolidColorBrush _editFolderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
+    private bool _isCategoryGenEnabled = false;
+    private bool _isCategoryGenToggleAnimating = false;
+    private readonly SolidColorBrush _categoryGenToggleBg = new(Color.FromRgb(80, 80, 80));
     private string? _editingProjectPath;
     private ProjectData? _editingProjectData;
     private bool _isGridMode = true;
@@ -67,6 +79,7 @@ public partial class ProjectListPage : Page, IRefreshable
 
         FolderMgmtToggleSwitch.Background     = _folderMgmtToggleBg;
         EditFolderMgmtToggleSwitch.Background = _editFolderMgmtToggleBg;
+        CategoryGenToggleSwitch.Background    = _categoryGenToggleBg;
 
         Loaded += (_, _) =>
         {
@@ -302,6 +315,73 @@ public partial class ProjectListPage : Page, IRefreshable
             Duration = TimeSpan.FromMilliseconds(200)
         };
         _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
+    }
+
+    /// <summary>カテゴリー生成トグルの切り替え。</summary>
+    private void ToggleCategoryGeneration_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_isCategoryGenToggleAnimating) return;
+        _isCategoryGenEnabled = !_isCategoryGenEnabled;
+        AnimateCategoryGenToggle();
+        CategoryTemplateList.Visibility = _isCategoryGenEnabled ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>カテゴリー生成トグルのつまみと背景色をアニメーションで更新する。</summary>
+    private void AnimateCategoryGenToggle()
+    {
+        _isCategoryGenToggleAnimating = true;
+
+        var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+        {
+            To             = _isCategoryGenEnabled ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0),
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+            }
+        };
+        thumbAnim.Completed += (_, _) => _isCategoryGenToggleAnimating = false;
+        CategoryGenThumb.BeginAnimation(MarginProperty, thumbAnim);
+
+        var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+        {
+            To       = _isCategoryGenEnabled ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80),
+            Duration = TimeSpan.FromMilliseconds(200)
+        };
+        _categoryGenToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
+    }
+
+    /// <summary>カテゴリーテンプレート一覧（組み込み＋カスタム）を構築する。</summary>
+    private List<NewProjectTemplateItem> BuildCategoryTemplateItems()
+    {
+        var items = new List<NewProjectTemplateItem>();
+        foreach (var kv in CategoryTemplateDialog.BuiltInTemplates)
+        {
+            items.Add(new NewProjectTemplateItem
+            {
+                Name       = kv.Key,
+                Summary    = string.Join("、", kv.Value.Select(c => c.Name)),
+                IsSelected = false,
+                Categories = kv.Value.Select(c => new CategoryPresetItem
+                {
+                    Name = c.Name, Color = c.Color, Description = c.Description
+                }).ToList()
+            });
+        }
+        foreach (var p in _vm.AppSettingsService.Settings.CategoryPresets)
+        {
+            items.Add(new NewProjectTemplateItem
+            {
+                Name       = $"[カスタム] {p.Name}",
+                Summary    = string.Join("、", p.Categories.Select(c => c.Name)),
+                IsSelected = false,
+                Categories = p.Categories.Select(c => new CategoryPresetItem
+                {
+                    Name = c.Name, Color = c.Color, Description = c.Description
+                }).ToList()
+            });
+        }
+        return items;
     }
 
     // ── 右パネル制御 ─────────────────────────────────────
@@ -654,6 +734,16 @@ public partial class ProjectListPage : Page, IRefreshable
         _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, null);
         _folderMgmtToggleBg.Color    = Color.FromRgb(35, 131, 226);
         FolderPathSection.Visibility = Visibility.Visible;
+
+        // カテゴリー生成トグルをOFF状態にリセットし、テンプレート一覧を構築する
+        _isCategoryGenEnabled         = false;
+        _isCategoryGenToggleAnimating = false;
+        CategoryGenThumb.BeginAnimation(MarginProperty, null);
+        CategoryGenThumb.Margin       = new Thickness(2, 0, 0, 0);
+        _categoryGenToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, null);
+        _categoryGenToggleBg.Color    = Color.FromRgb(80, 80, 80);
+        CategoryTemplateList.ItemsSource = BuildCategoryTemplateItems();
+        CategoryTemplateList.Visibility  = Visibility.Collapsed;
 
         OpenDrawer(AddDrawerScroll);
         TxtNewProjName.Focus();
@@ -1118,12 +1208,12 @@ public partial class ProjectListPage : Page, IRefreshable
 
         _vm.ProjectService.CreateProject(path, name, desc, useFolder, _coverImageData, startDate, endDate);
 
-        var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
-        var templateDlg = new CategoryTemplateDialog(customPresets) { Owner = Window.GetWindow(this) };
-        if (templateDlg.ShowDialog() == true)
+        // カテゴリー生成が有効なら、チェックされたテンプレートのカテゴリーを自動生成する
+        if (_isCategoryGenEnabled && CategoryTemplateList.ItemsSource is IEnumerable<NewProjectTemplateItem> templates)
         {
-            foreach (var item in templateDlg.SelectedCategories)
-                _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
+            foreach (var tmpl in templates.Where(t => t.IsSelected))
+                foreach (var cat in tmpl.Categories)
+                    _vm.ProjectService.AddCategory(cat.Name, cat.Description, cat.Color);
         }
 
         _coverBitmapCache.Clear();

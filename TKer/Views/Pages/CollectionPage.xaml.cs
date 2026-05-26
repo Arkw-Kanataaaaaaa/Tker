@@ -46,25 +46,20 @@ public partial class CollectionPage : Page, IRefreshable
 
     // ── 表示モード ──────────────────────────────────────────
 
-    private void SetGridView_Click(object sender, MouseButtonEventArgs e)
+    private void ToggleViewMode_Click(object sender, MouseButtonEventArgs e)
     {
-        _isGridMode = true;
-        UpdateDisplayModeButtons();
-        ApplyFilter();
-    }
-
-    private void SetListView_Click(object sender, MouseButtonEventArgs e)
-    {
-        _isGridMode = false;
+        _isGridMode = !_isGridMode;
         UpdateDisplayModeButtons();
         ApplyFilter();
     }
 
     private void UpdateDisplayModeButtons()
     {
-        var activeBg  = new SolidColorBrush(Color.FromArgb(60, 35, 131, 226));
-        BtnViewGrid.Background = _isGridMode  ? activeBg : Brushes.Transparent;
-        BtnViewList.Background = !_isGridMode ? activeBg : Brushes.Transparent;
+        // 現在モードのアイコンを表示（グリッド中→グリッドアイコン、リスト中→リストアイコン）
+        var iconKey = _isGridMode ? "Bi.Grid3x3Gap" : "Bi.ListUl";
+        if (TryFindResource(iconKey) is Geometry geo)
+            ViewToggleIcon.Data = geo;
+        BtnViewToggle.ToolTip = _isGridMode ? "グリッド表示中（クリックでリスト）" : "リスト表示中（クリックでグリッド）";
     }
 
     // ── フィルタ・描画 ──────────────────────────────────────
@@ -126,9 +121,15 @@ public partial class CollectionPage : Page, IRefreshable
         var coverBmp = TryGetCoverBitmap(col);
         if (coverBmp != null)
         {
-            var img = new Image { Source = coverBmp, Stretch = Stretch.UniformToFill };
-            Grid.SetRow(img, 0);
-            grid.Children.Add(img);
+            // ClipToBounds で画像を行サイズに閉じ込め、上角丸でカードと合わせる
+            var imgWrapper = new Border
+            {
+                ClipToBounds = true,
+                CornerRadius = new CornerRadius(10, 10, 0, 0),
+                Child        = new Image { Source = coverBmp, Stretch = Stretch.UniformToFill },
+            };
+            Grid.SetRow(imgWrapper, 0);
+            grid.Children.Add(imgWrapper);
         }
         else
         {
@@ -145,9 +146,10 @@ public partial class CollectionPage : Page, IRefreshable
 
         var nameStrip = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(200, 15, 15, 20)),
-            Padding    = new Thickness(8, 6, 8, 6),
-            Child      = new TextBlock
+            Background   = new SolidColorBrush(Color.FromArgb(200, 15, 15, 20)),
+            CornerRadius = new CornerRadius(0, 0, 10, 10),
+            Padding      = new Thickness(8, 6, 8, 6),
+            Child        = new TextBlock
             {
                 Text             = col.Name,
                 FontSize         = 12,

@@ -82,19 +82,13 @@
                     Padding="8,4">
                 <DockPanel>
                     <!-- グリッド/リスト切り替え (右寄せ) -->
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                VerticalAlignment="Center" Margin="0,0,4,0">
-                        <Border x:Name="BtnViewGrid" Width="30" Height="30" CornerRadius="6"
-                                Cursor="Hand" ToolTip="グリッド表示" Margin="0,0,2,0"
-                                MouseLeftButtonUp="SetGridView_Click">
-                            <Path Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIcon}"/>
-                        </Border>
-                        <Border x:Name="BtnViewList" Width="30" Height="30" CornerRadius="6"
-                                Cursor="Hand" ToolTip="リスト表示"
-                                MouseLeftButtonUp="SetListView_Click">
-                            <Path Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIcon}"/>
-                        </Border>
-                    </StackPanel>
+                    <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
+                            Width="36" Height="36" CornerRadius="6"
+                            Cursor="Hand" VerticalAlignment="Center" Margin="0,0,4,0"
+                            MouseLeftButtonUp="ToggleViewMode_Click">
+                        <Path x:Name="ViewToggleIcon"
+                              Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIcon}"/>
+                    </Border>
 
                     <!-- 検索ボックス -->
                     <Border x:Name="SearchSection" Visibility="Collapsed"

@@ -57,7 +57,10 @@
                     </Border>
                     <TextBlock x:Name="SortModeLabel" Text="更新日時 ↓" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" Margin="6,0,0,0"/>
+                               VerticalAlignment="Center" Margin="6,0,0,0"
+                               Background="Transparent" Cursor="Hand"
+                               ToolTip="昇順／降順を切り替え"
+                               MouseLeftButtonUp="ToggleSortDirection_Click"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="プロジェクト"
@@ -437,18 +440,19 @@
                                      Margin="0,0,0,16"/>
 
                             <!-- 表紙画像 -->
-                            <TextBlock Text="表紙画像（任意）" FontSize="12"
+                            <TextBlock Text="表紙画像" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <Border x:Name="CoverImagePreviewBorder" Height="160" CornerRadius="6"
                                     Background="{StaticResource BgCardBrush}"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    Margin="0,0,0,8" ClipToBounds="True"
+                                    Margin="0,0,0,8" ClipToBounds="True" Cursor="Hand"
                                     AllowDrop="True"
+                                    MouseLeftButtonUp="CoverImageArea_Click"
                                     DragEnter="CoverImage_DragEnter" DragOver="CoverImage_DragOver"
                                     DragLeave="CoverImage_DragLeave" Drop="CoverImage_Drop">
                                 <Grid>
                                     <TextBlock x:Name="CoverImagePlaceholder"
-                                               Text="ドラッグ＆ドロップ、または下のボタンで画像を選択"
+                                               Text="クリック、またはドラッグ＆ドロップで画像を選択"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextDimBrush}" FontSize="12"/>
                                     <Image x:Name="CoverImagePreview" Stretch="UniformToFill"
@@ -456,23 +460,15 @@
                                 </Grid>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <Button Style="{StaticResource SecondaryButton}" Padding="10,5"
-                                        Click="BrowseCoverImage_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
-                                              Margin="0,0,4,0"/>
-                                        <TextBlock Text="画像を選択" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
                                 <Button x:Name="BtnClearCoverImage" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" Margin="8,0,0,0"
+                                        Padding="10,5"
                                         Click="ClearCoverImage_Click" Visibility="Collapsed">
                                     <TextBlock Text="クリア"/>
                                 </Button>
                             </StackPanel>
 
                             <!-- 説明 -->
-                            <TextBlock Text="説明（任意）" FontSize="12"
+                            <TextBlock Text="説明" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <TextBox x:Name="TxtNewProjDesc" Style="{StaticResource DarkTextBox}"
                                      Margin="0,0,0,16"/>
@@ -496,10 +492,6 @@
                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                    FontSize="13" FontWeight="SemiBold"/>
                                     </DockPanel>
-                                    <TextBlock Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDimBrush}">
-                                        オンにすると、カテゴリー・タスクに対応したフォルダ構造をプロジェクトフォルダ内に作成・管理します。&#x0a;オフにすると、フォルダ表示機能が無効になります。
-                                    </TextBlock>
                                 </StackPanel>
                             </Border>
 
@@ -526,7 +518,7 @@
                             </StackPanel>
 
                             <!-- プロジェクト期間 -->
-                            <TextBlock Text="プロジェクト期間（任意）" FontSize="12"
+                            <TextBlock Text="プロジェクト期間" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,24">
                                 <Grid.ColumnDefinitions>
@@ -576,18 +568,19 @@
                                      Margin="0,0,0,16"/>
 
                             <!-- 表紙画像 -->
-                            <TextBlock Text="表紙画像（任意）" FontSize="12"
+                            <TextBlock Text="表紙画像" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <Border x:Name="EditCoverImagePreviewBorder" Height="160" CornerRadius="6"
                                     Background="{StaticResource BgCardBrush}"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    Margin="0,0,0,8" ClipToBounds="True"
+                                    Margin="0,0,0,8" ClipToBounds="True" Cursor="Hand"
                                     AllowDrop="True"
+                                    MouseLeftButtonUp="EditCoverImageArea_Click"
                                     DragEnter="CoverImage_DragEnter" DragOver="CoverImage_DragOver"
                                     DragLeave="CoverImage_DragLeave" Drop="EditCoverImage_Drop">
                                 <Grid>
                                     <TextBlock x:Name="EditCoverImagePlaceholder"
-                                               Text="ドラッグ＆ドロップ、または下のボタンで画像を選択"
+                                               Text="クリック、またはドラッグ＆ドロップで画像を選択"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextDimBrush}" FontSize="12"/>
                                     <Image x:Name="EditCoverImagePreview" Stretch="UniformToFill"
@@ -595,23 +588,15 @@
                                 </Grid>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <Button Style="{StaticResource SecondaryButton}" Padding="10,5"
-                                        Click="BrowseEditCoverImage_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
-                                              Margin="0,0,4,0"/>
-                                        <TextBlock Text="画像を選択" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
                                 <Button x:Name="BtnClearEditCoverImage" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" Margin="8,0,0,0"
+                                        Padding="10,5"
                                         Click="ClearEditCoverImage_Click" Visibility="Collapsed">
                                     <TextBlock Text="クリア"/>
                                 </Button>
                             </StackPanel>
 
                             <!-- 説明 -->
-                            <TextBlock Text="説明（任意）" FontSize="12"
+                            <TextBlock Text="説明" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <TextBox x:Name="TxtEditProjDesc" Style="{StaticResource DarkTextBox}"
                                      Margin="0,0,0,16"/>
@@ -635,10 +620,6 @@
                                                    Foreground="{StaticResource TextPrimaryBrush}"
                                                    FontSize="13" FontWeight="SemiBold"/>
                                     </DockPanel>
-                                    <TextBlock Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDimBrush}">
-                                        オンにすると、カテゴリー・タスクに対応したフォルダ構造をプロジェクトフォルダ内に作成・管理します。&#x0a;オフにすると、フォルダ表示機能が無効になります。
-                                    </TextBlock>
                                 </StackPanel>
                             </Border>
 
@@ -665,7 +646,7 @@
                             </StackPanel>
 
                             <!-- プロジェクト期間 -->
-                            <TextBlock Text="プロジェクト期間（任意）" FontSize="12"
+                            <TextBlock Text="プロジェクト期間" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <Grid Margin="0,0,0,16">
                                 <Grid.ColumnDefinitions>

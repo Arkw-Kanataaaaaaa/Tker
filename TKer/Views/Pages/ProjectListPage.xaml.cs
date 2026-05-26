@@ -996,6 +996,9 @@ public partial class ProjectListPage : Page, IRefreshable
     private static readonly string[] _imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
 
     /// <summary>表紙画像ファイルを選択して読み込みプレビュー表示する。</summary>
+    private void CoverImageArea_Click(object sender, MouseButtonEventArgs e) => BrowseCoverImage_Click(sender, e);
+    private void EditCoverImageArea_Click(object sender, MouseButtonEventArgs e) => BrowseEditCoverImage_Click(sender, e);
+
     private void BrowseCoverImage_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog

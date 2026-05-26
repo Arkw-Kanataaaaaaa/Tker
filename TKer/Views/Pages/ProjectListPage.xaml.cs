@@ -291,9 +291,11 @@ public partial class ProjectListPage : Page, IRefreshable
 
                 ProjectInfoContent.Children.Add(new Border
                 {
+                    Height        = 180,
                     CornerRadius  = new CornerRadius(8),
                     ClipToBounds  = true,
                     Margin        = new Thickness(0, 0, 0, 16),
+                    Background     = (Brush)FindResource("BgCardBrush"),
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     Child         = new Image { Source = bmp, Stretch = Stretch.Uniform }
                 });

@@ -344,7 +344,7 @@ public partial class CollectionPage : Page, IRefreshable
 
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 0, To = 480,
+            From = 0, To = 500,
             Duration = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             {

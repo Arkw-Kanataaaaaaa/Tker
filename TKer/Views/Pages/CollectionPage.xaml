@@ -187,7 +187,7 @@
             <Grid>
 
                 <!-- 詳細パネル (480px) -->
-                <DockPanel x:Name="DetailDrawer" Width="480" HorizontalAlignment="Left"
+                <DockPanel x:Name="DetailDrawer" Width="500" HorizontalAlignment="Left"
                            Visibility="Collapsed">
                     <!-- ヘッダー -->
                     <Border DockPanel.Dock="Top"

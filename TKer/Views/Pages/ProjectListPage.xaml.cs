@@ -313,12 +313,7 @@ public partial class ProjectListPage : Page, IRefreshable
                         VerticalAlignment = VerticalAlignment.Center,
                     },
                 };
-                previewIcon.MouseLeftButtonUp += (_, _) =>
-                {
-                    var win = new TKer.Views.Dialogs.ImagePreviewWindow(capturedBmp);
-                    win.Owner = Window.GetWindow(this);
-                    win.Show();
-                };
+                previewIcon.MouseLeftButtonUp += (_, _) => OpenPreviewOverlay(capturedBmp);
 
                 var coverGrid = new Grid();
                 coverGrid.Children.Add(new Image { Source = bmp, Stretch = Stretch.Uniform });
@@ -517,6 +512,71 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>新規プロジェクト作成ドロワーを閉じる。</summary>
     private void HideAddProjectPanel() => CloseDrawer();
 
+    // ─── 画像プレビュー オーバーレイ ───
+    private Point _previewDragStart;
+    private Point _previewTranslateStart;
+    private bool _isPreviewDragging;
+
+    /// <summary>表紙画像を全画面オーバーレイでプレビュー表示する。</summary>
+    private void OpenPreviewOverlay(BitmapImage bmp)
+    {
+        PreviewImage.Source = bmp;
+        PreviewScale.ScaleX = PreviewScale.ScaleY = 1;
+        PreviewTranslate.X = PreviewTranslate.Y = 0;
+        PreviewZoomLabel.Text = "100%";
+        PreviewOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void ClosePreview_Click(object sender, RoutedEventArgs e) => ClosePreviewOverlay();
+
+    private void ClosePreviewOverlay()
+    {
+        _isPreviewDragging = false;
+        PreviewOverlay.ReleaseMouseCapture();
+        PreviewOverlay.Visibility = Visibility.Collapsed;
+        PreviewImage.Source = null;
+    }
+
+    private void PreviewOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
+
+        double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
+        double newScale = Math.Clamp(PreviewScale.ScaleX * factor, 0.1, 10.0);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = newScale;
+        PreviewZoomLabel.Text = $"{(int)Math.Round(newScale * 100)}%";
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        // 画像以外（背景）をクリックしたら閉じる
+        if (e.OriginalSource is not Image)
+        {
+            ClosePreviewOverlay();
+            return;
+        }
+        _isPreviewDragging     = true;
+        _previewDragStart      = e.GetPosition(PreviewOverlay);
+        _previewTranslateStart = new Point(PreviewTranslate.X, PreviewTranslate.Y);
+        PreviewOverlay.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPreviewDragging) return;
+        var pos = e.GetPosition(PreviewOverlay);
+        PreviewTranslate.X = _previewTranslateStart.X + (pos.X - _previewDragStart.X);
+        PreviewTranslate.Y = _previewTranslateStart.Y + (pos.Y - _previewDragStart.Y);
+    }
+
+    private void PreviewOverlay_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _isPreviewDragging = false;
+        PreviewOverlay.ReleaseMouseCapture();
+    }
+
     /// <summary>表紙画像フィールドをリセットする。</summary>
     private void ClearCoverImageField()
     {
@@ -583,7 +643,12 @@ public partial class ProjectListPage : Page, IRefreshable
         }
         else if (Keyboard.Modifiers == ModifierKeys.None)
         {
-            if (e.Key == Key.F2)
+            if (e.Key == Key.Escape && PreviewOverlay.Visibility == Visibility.Visible)
+            {
+                ClosePreviewOverlay();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F2)
             {
                 EditSettings_Click(this, new RoutedEventArgs());
                 e.Handled = true;

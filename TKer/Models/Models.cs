@@ -646,6 +646,12 @@ public class ProjectSummary
     public int OverdueTasks     { get; set; }
     /// <summary>プロジェクトの作成日時。</summary>
     public DateTime CreatedAt   { get; set; }
+    /// <summary>プロジェクトの更新日時。</summary>
+    public DateTime UpdatedAt   { get; set; }
+    /// <summary>プロジェクト開始日。</summary>
+    public DateTime? ProjectStartDate { get; set; }
+    /// <summary>プロジェクト終了日。</summary>
+    public DateTime? ProjectEndDate   { get; set; }
     /// <summary>完了率（0〜100 のパーセンテージ）。</summary>
     public double ProgressRate  => TotalTasks > 0 ? (double)DoneTasks / TotalTasks * 100 : 0;
     /// <summary>完了率を整数パーセントで表したラベル。</summary>

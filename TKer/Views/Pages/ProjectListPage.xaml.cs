@@ -38,6 +38,9 @@ public partial class ProjectListPage : Page, IRefreshable
         public bool HasNoCover           => CoverBitmap == null;
         public string HoverDetail        { get; init; } = "";
         public string LastOpenedLabel    { get; init; } = "";
+        public string PeriodLabel        { get; init; } = "";
+        public string CreatedAtLabel     { get; init; } = "";
+        public string UpdatedAtLabel     { get; init; } = "";
     }
 
     private readonly MainViewModel _vm;
@@ -53,8 +56,9 @@ public partial class ProjectListPage : Page, IRefreshable
     private string? _editingProjectPath;
     private ProjectData? _editingProjectData;
     private bool _isGridMode = true;
-    private enum SortMode { Recent, Name }
+    private enum SortMode { Recent, Name, Progress, Created, Updated }
     private SortMode _sortMode = SortMode.Recent;
+    private bool _sortDescending = true;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
     /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
@@ -69,6 +73,7 @@ public partial class ProjectListPage : Page, IRefreshable
         Loaded += (_, _) =>
         {
             UpdateDisplayModeButtons();
+            UpdateSortLabel();
             if (Window.GetWindow(this) is { } win)
             {
                 win.KeyDown -= Window_KeyDown;
@@ -109,10 +114,20 @@ public partial class ProjectListPage : Page, IRefreshable
         UpdateProjectToolbarState();
 
         var rawSummaries = _vm.AppSettingsService.CollectSummaries();
-        var summaries = (_sortMode == SortMode.Name
-            ? rawSummaries.OrderBy(s => s.Entry.ProjectName)
-            : rawSummaries.OrderByDescending(s => s.Entry.LastOpened))
-            .ToList();
+        IEnumerable<ProjectSummary> ordered = _sortMode switch
+        {
+            SortMode.Name     => _sortDescending ? rawSummaries.OrderByDescending(s => s.Entry.ProjectName)
+                                                 : rawSummaries.OrderBy(s => s.Entry.ProjectName),
+            SortMode.Progress => _sortDescending ? rawSummaries.OrderByDescending(s => s.ProgressRate)
+                                                 : rawSummaries.OrderBy(s => s.ProgressRate),
+            SortMode.Created  => _sortDescending ? rawSummaries.OrderByDescending(s => s.CreatedAt)
+                                                 : rawSummaries.OrderBy(s => s.CreatedAt),
+            SortMode.Updated  => _sortDescending ? rawSummaries.OrderByDescending(s => s.UpdatedAt)
+                                                 : rawSummaries.OrderBy(s => s.UpdatedAt),
+            _                 => _sortDescending ? rawSummaries.OrderByDescending(s => s.Entry.LastOpened)
+                                                 : rawSummaries.OrderBy(s => s.Entry.LastOpened),
+        };
+        var summaries = ordered.ToList();
         var activeFilePath = _vm.ProjectService.ProjectFilePath;
 
         var q = SearchBox?.Text?.Trim().ToLower() ?? "";
@@ -146,6 +161,9 @@ public partial class ProjectListPage : Page, IRefreshable
                 CoverBitmap     = TryGetCoverBitmap(s.Entry.DataFilePath),
                 HoverDetail     = BuildHoverDetail(s),
                 LastOpenedLabel = s.Entry.LastOpened.ToString("yyyy/MM/dd"),
+                PeriodLabel     = BuildPeriodLabel(s.ProjectStartDate, s.ProjectEndDate),
+                CreatedAtLabel  = s.CreatedAt.ToString("yyyy/MM/dd"),
+                UpdatedAtLabel  = s.UpdatedAt.ToString("yyyy/MM/dd"),
             }).ToList();
             ProjectGridControl.ItemsSource = items;
             ProjectListItemsControl.ItemsSource = items;
@@ -189,34 +207,66 @@ public partial class ProjectListPage : Page, IRefreshable
     }
 
     // ── ソート ──────────────────────────────────────────────
+    private static string SortModeName(SortMode mode) => mode switch
+    {
+        SortMode.Name     => "プロジェクト名",
+        SortMode.Progress => "進捗率",
+        SortMode.Created  => "作成日時",
+        SortMode.Updated  => "更新日時",
+        _                 => "最近",
+    };
+
     private void SortButton_Click(object sender, MouseButtonEventArgs e)
     {
         UpdateSortPopupHighlight();
         SortPopup.IsOpen = true;
     }
 
-    private void SortByRecent_Click(object sender, MouseButtonEventArgs e)
+    private void SetSortMode(SortMode mode)
     {
-        _sortMode = SortMode.Recent;
-        SortModeLabel.Text = "最近";
+        _sortMode = mode;
+        UpdateSortLabel();
         SortPopup.IsOpen = false;
         ApplyFilter();
     }
 
-    private void SortByName_Click(object sender, MouseButtonEventArgs e)
+    private void SortByRecent_Click(object sender, MouseButtonEventArgs e)   => SetSortMode(SortMode.Recent);
+    private void SortByName_Click(object sender, MouseButtonEventArgs e)     => SetSortMode(SortMode.Name);
+    private void SortByProgress_Click(object sender, MouseButtonEventArgs e) => SetSortMode(SortMode.Progress);
+    private void SortByCreated_Click(object sender, MouseButtonEventArgs e)  => SetSortMode(SortMode.Created);
+    private void SortByUpdated_Click(object sender, MouseButtonEventArgs e)  => SetSortMode(SortMode.Updated);
+
+    private void ToggleSortDirection_Click(object sender, MouseButtonEventArgs e)
     {
-        _sortMode = SortMode.Name;
-        SortModeLabel.Text = "プロジェクト名";
-        SortPopup.IsOpen = false;
+        _sortDescending = !_sortDescending;
+        UpdateSortLabel();
+        UpdateSortPopupHighlight();
         ApplyFilter();
+    }
+
+    private void UpdateSortLabel()
+    {
+        SortModeLabel.Text = $"{SortModeName(_sortMode)} {(_sortDescending ? "↓" : "↑")}";
     }
 
     private void UpdateSortPopupHighlight()
     {
         var active   = (Brush)FindResource("AccentCyanBrush");
         var inactive = (Brush)FindResource("TextPrimaryBrush");
-        SortOptRecentText.Foreground = _sortMode == SortMode.Recent ? active : inactive;
-        SortOptNameText.Foreground   = _sortMode == SortMode.Name   ? active : inactive;
+        SortOptRecentText.Foreground   = _sortMode == SortMode.Recent   ? active : inactive;
+        SortOptNameText.Foreground     = _sortMode == SortMode.Name     ? active : inactive;
+        SortOptProgressText.Foreground = _sortMode == SortMode.Progress ? active : inactive;
+        SortOptCreatedText.Foreground  = _sortMode == SortMode.Created  ? active : inactive;
+        SortOptUpdatedText.Foreground  = _sortMode == SortMode.Updated  ? active : inactive;
+        SortDirectionText.Text = _sortDescending ? "降順 ↓" : "昇順 ↑";
+    }
+
+    private static string BuildPeriodLabel(DateTime? start, DateTime? end)
+    {
+        if (start == null && end == null) return "─";
+        var s = start?.ToString("yyyy/MM/dd") ?? "─";
+        var e = end?.ToString("yyyy/MM/dd")   ?? "─";
+        return $"{s} 〜 {e}";
     }
 
     // ── グリッド/リスト表示モード切替 ──────────────────────

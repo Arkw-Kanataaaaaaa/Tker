@@ -587,7 +587,10 @@ public class AppSettingsService
                         DoneTasks = project.Tasks.Count(t => t.Status == "完了"),
                         WipTasks = project.Tasks.Count(t => t.Status == "対応中"),
                         OverdueTasks = project.Tasks.Count(t => t.IsOverdue),
-                        CreatedAt = project.Settings.CreatedAt
+                        CreatedAt = project.Settings.CreatedAt,
+                        UpdatedAt = project.Settings.UpdatedAt,
+                        ProjectStartDate = project.Settings.ProjectStartDate,
+                        ProjectEndDate = project.Settings.ProjectEndDate
                     });
                 }
                 catch { }

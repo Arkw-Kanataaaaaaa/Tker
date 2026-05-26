@@ -307,6 +307,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </Border>
+        </Grid>
 
             <!-- プロジェクト詳細ドロワー -->
             <Grid x:Name="ProjectDetailOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" Panel.ZIndex="10">
@@ -345,8 +346,6 @@
                     </Grid>
                 </Border>
             </Grid>
-            <!-- /Col=1 wrapper Grid -->
-
             <!-- ─── 右ドロワー（プッシュ型） ─── -->
             <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
                     Background="{StaticResource BgSecondaryBrush}"

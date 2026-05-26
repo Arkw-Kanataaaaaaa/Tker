@@ -113,6 +113,7 @@ public partial class CollectionPage : Page, IRefreshable
             ClipToBounds    = true,
             Cursor          = Cursors.Hand,
         };
+        card.Clip = new RectangleGeometry(new Rect(0, 0, 160, 180), 10, 10);
 
         var grid = new Grid();
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });

@@ -1437,6 +1437,9 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
                 await DeleteFolderWithProgressAsync(projectFolder, projectName);
+            else
+                // フォルダは残してプロジェクトJSONのみ削除
+                try { if (File.Exists(path)) File.Delete(path); } catch { }
         }
         else
         {

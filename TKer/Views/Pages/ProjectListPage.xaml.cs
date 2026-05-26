@@ -252,7 +252,7 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>ドロワーを閉じて未選択状態にする。</summary>
     private void ShowEmptyPanel()
     {
-        ProjectDetailOverlay.Visibility = Visibility.Collapsed;
+        if (_isDrawerOpen) CloseDrawer();
     }
 
     /// <summary>プロジェクト詳細ドロワーを開いてプロジェクト情報を表示する。</summary>
@@ -412,53 +412,23 @@ public partial class ProjectListPage : Page, IRefreshable
     }
 
 
-    /// <summary>プロジェクト詳細ドロワーをスライドインで表示する。既に表示中の場合は何もしない。</summary>
-    private void OpenDetailDrawer()
-    {
-        if (ProjectDetailOverlay.Visibility == Visibility.Visible) return;
-        ProjectDetailOverlay.Visibility = Visibility.Visible;
-        var anim = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            From = 520, To = 0,
-            Duration = TimeSpan.FromMilliseconds(260),
-            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
-            {
-                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
-            }
-        };
-        DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-    }
+    /// <summary>プロジェクト詳細をプッシュ型ドロワーで表示する。</summary>
+    private void OpenDetailDrawer() => OpenDrawer(DetailDrawerScroll);
 
     /// <summary>プロジェクト詳細ドロワーのクローズボタンのハンドラ。</summary>
     private void CloseDetailPanel_Click(object sender, RoutedEventArgs e) => CloseDetailDrawer();
 
-    /// <summary>プロジェクト詳細ドロワーをスライドアウトして閉じる。</summary>
+    /// <summary>プロジェクト詳細ドロワーを閉じて未選択状態に戻す。</summary>
     private void CloseDetailDrawer()
-    {
-        var anim = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            From = 0, To = 520,
-            Duration = TimeSpan.FromMilliseconds(200),
-            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
-            {
-                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn
-            }
-        };
-        anim.Completed += (_, _) =>
-        {
-            ProjectDetailOverlay.Visibility = Visibility.Collapsed;
-            _selectedPath = null;
-            ApplyFilter();
-        };
-        DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-    }
+        => CloseDrawer(() => { _selectedPath = null; ApplyFilter(); });
 
     private bool _isDrawerOpen = false;
 
     private void OpenDrawer(ScrollViewer target)
     {
-        AddDrawerScroll.Visibility  = target == AddDrawerScroll  ? Visibility.Visible : Visibility.Collapsed;
-        EditDrawerScroll.Visibility = target == EditDrawerScroll ? Visibility.Visible : Visibility.Collapsed;
+        AddDrawerScroll.Visibility    = target == AddDrawerScroll    ? Visibility.Visible : Visibility.Collapsed;
+        EditDrawerScroll.Visibility   = target == EditDrawerScroll   ? Visibility.Visible : Visibility.Collapsed;
+        DetailDrawerScroll.Visibility = target == DetailDrawerScroll ? Visibility.Visible : Visibility.Collapsed;
         if (_isDrawerOpen) return;
         _isDrawerOpen = true;
         var anim = new System.Windows.Media.Animation.DoubleAnimation
@@ -483,8 +453,9 @@ public partial class ProjectListPage : Page, IRefreshable
         anim.Completed += (_, _) =>
         {
             _isDrawerOpen = false;
-            AddDrawerScroll.Visibility  = Visibility.Collapsed;
-            EditDrawerScroll.Visibility = Visibility.Collapsed;
+            AddDrawerScroll.Visibility    = Visibility.Collapsed;
+            EditDrawerScroll.Visibility   = Visibility.Collapsed;
+            DetailDrawerScroll.Visibility = Visibility.Collapsed;
             onComplete?.Invoke();
         };
         DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
@@ -594,12 +565,10 @@ public partial class ProjectListPage : Page, IRefreshable
             }
             else if (e.Key == Key.Escape && _isDrawerOpen)
             {
-                CancelAddProject_Click(this, new RoutedEventArgs());
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Escape && ProjectDetailOverlay.Visibility == Visibility.Visible)
-            {
-                CloseDetailDrawer();
+                if (DetailDrawerScroll.Visibility == Visibility.Visible)
+                    CloseDetailDrawer();
+                else
+                    CloseDrawer();
                 e.Handled = true;
             }
         }

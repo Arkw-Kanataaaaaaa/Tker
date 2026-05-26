@@ -199,7 +199,6 @@
                                 <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                             </Button>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock x:Name="TxtDetailIcon" FontSize="22" Margin="0,0,0,2"/>
                                 <TextBlock x:Name="TxtDetailName" FontSize="15" FontWeight="SemiBold"
                                            Foreground="{StaticResource TextPrimaryBrush}"/>
                             </StackPanel>

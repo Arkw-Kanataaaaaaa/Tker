@@ -335,7 +335,6 @@ public partial class CollectionPage : Page, IRefreshable
         var col = _selectedId == null ? null : _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
         if (col == null) return;
 
-        TxtDetailIcon.Text = col.Icon;
         TxtDetailName.Text = col.Name;
         BuildDetailContent(col);
 

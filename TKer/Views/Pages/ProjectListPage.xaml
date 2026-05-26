@@ -312,48 +312,30 @@
             </Border>
         </Grid>
 
-            <!-- プロジェクト詳細ドロワー -->
-            <Grid x:Name="ProjectDetailOverlay" Grid.ColumnSpan="2" Visibility="Collapsed" Panel.ZIndex="10">
-                <Border Background="#66000000" MouseLeftButtonUp="CloseDetailPanel_Click"/>
-                <Border x:Name="ProjectDetailPanel" Width="520" HorizontalAlignment="Right"
-                        Background="{StaticResource BgSecondaryBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
-                    <Border.RenderTransform>
-                        <TranslateTransform x:Name="DetailPanelTransform" X="520"/>
-                    </Border.RenderTransform>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <!-- ドロワーヘッダー -->
-                        <Border Grid.Row="0" Padding="16,12"
-                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                        Click="CloseDetailPanel_Click" ToolTip="閉じる">
-                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                                </Button>
-                                <TextBlock x:Name="DetailPanelTitle"
-                                           FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="15"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            </DockPanel>
-                        </Border>
-                        <!-- プロジェクト詳細コンテンツ -->
-                        <Border Grid.Row="1" x:Name="ProjectInfoPanel">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                                <StackPanel x:Name="ProjectInfoContent"/>
-                            </ScrollViewer>
-                        </Border>
-                    </Grid>
-                </Border>
-            </Grid>
             <!-- ─── 右ドロワー（プッシュ型） ─── -->
             <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
                     Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
                 <Grid Width="500">
+
+                    <!-- プロジェクト詳細パネル -->
+                    <ScrollViewer x:Name="DetailDrawerScroll" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="24,20,24,24">
+                            <!-- ヘッダー行 -->
+                            <DockPanel Margin="0,0,0,16">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        ToolTip="閉じる" Click="CloseDetailPanel_Click">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="DetailPanelTitle"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                            <StackPanel x:Name="ProjectInfoContent"/>
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <!-- 新規作成パネル -->
                     <ScrollViewer x:Name="AddDrawerScroll" Visibility="Collapsed"

@@ -540,10 +540,24 @@
                     </DockPanel>
 
                     <!-- 編集パネル -->
-                    <ScrollViewer x:Name="EditDrawerScroll" Width="500" HorizontalAlignment="Left"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
+                    <DockPanel x:Name="EditDrawerScroll" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <!-- フッター（固定） -->
+                        <Border DockPanel.Dock="Bottom"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                                Padding="20,12">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
+                                        Padding="14,6" Margin="0,0,8,0"
+                                        Click="CancelEditProject_Click"/>
+                                <Button Content="保存" Style="{StaticResource PrimaryButton}"
+                                        Padding="22,6"
+                                        Click="SaveEditProject_Click"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- スクロール可能コンテンツ -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">
 
                             <!-- ヘッダー行 -->
@@ -663,15 +677,9 @@
                                          Style="{StaticResource DarkTextBox}" Tag="yyyy/MM/dd"/>
                             </Grid>
 
-                            <!-- ボタン群 -->
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="保存" Style="{StaticResource PrimaryButton}"
-                                        Padding="24,8" Margin="0,0,8,0" Click="SaveEditProject_Click"/>
-                                <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
-                                        Padding="14,8" Click="CancelEditProject_Click"/>
-                            </StackPanel>
                         </StackPanel>
-                    </ScrollViewer>
+                        </ScrollViewer>
+                    </DockPanel>
 
                 </Grid>
             </Border>

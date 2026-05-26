@@ -68,9 +68,9 @@ public class ProjectService
         }
         else
         {
-            // フォルダ管理しない場合は ドキュメント\TKer 配下に "プロジェクト名_project.json" で保持する
+            // フォルダ管理しない場合は ドキュメント\TKer_PJ 配下に "プロジェクト名_project.json" で保持する
             var tkerDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TKer");
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TKer_PJ");
             Directory.CreateDirectory(tkerDir);
             var safeName = string.Concat(projectName.Split(Path.GetInvalidFileNameChars()));
             projectPath  = "";

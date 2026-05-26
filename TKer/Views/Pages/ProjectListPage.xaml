@@ -349,7 +349,7 @@
 
                             <!-- ヘッダー行 -->
                             <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                    Padding="0,0,0,12" Margin="0,0,0,20">
+                                    Padding="24,0,24,12" Margin="-24,0,-24,20">
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
                                             ToolTip="閉じる" Click="CancelAddProject_Click">
@@ -490,7 +490,7 @@
 
                             <!-- ヘッダー行 -->
                             <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                    Padding="0,0,0,12" Margin="0,0,0,20">
+                                    Padding="24,0,24,12" Margin="-24,0,-24,20">
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
                                             ToolTip="閉じる" Click="CancelEditProject_Click">

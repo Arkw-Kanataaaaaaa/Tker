@@ -35,18 +35,23 @@
             </DockPanel>
         </Border>
 
-        <!-- 検索セクション（アニメーション付き） -->
+        <!-- 検索バー（ヘッダー下・右寄せ） -->
         <Border x:Name="SearchSection" Grid.Row="1" Visibility="Collapsed"
-                ClipToBounds="True"
-                Padding="12,8" Background="{StaticResource BgSecondaryBrush}"
-                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-            <DockPanel LastChildFill="False">
-                <TextBox x:Name="SearchBox" DockPanel.Dock="Right" Width="280"
-                         Style="{StaticResource DarkTextBox}"
+                HorizontalAlignment="Right" Margin="0,6,12,6"
+                Background="{StaticResource BgCardBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1" CornerRadius="4" Padding="8,5">
+            <StackPanel Orientation="Horizontal">
+                <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconSm}"
+                      Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBox x:Name="SearchBox" Width="260"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         CaretBrush="{StaticResource AccentCyanBrush}"
                          Tag="プロジェクト名・説明で検索"
-                         TextChanged="SearchBox_TextChanged"
-                         VerticalAlignment="Center"/>
-            </DockPanel>
+                         FontSize="13" VerticalAlignment="Center"
+                         TextChanged="SearchBox_TextChanged"/>
+            </StackPanel>
         </Border>
 
         <!-- メインコンテンツ: 縦型ツールバー + プロジェクトコンテンツ -->

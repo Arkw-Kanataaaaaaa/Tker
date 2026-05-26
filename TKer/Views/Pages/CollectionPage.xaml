@@ -73,15 +73,15 @@
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- ヘッダー行: 検索 + グリッド/リスト切り替え -->
+            <!-- ヘッダー行: グリッド/リスト切り替え -->
             <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                     Padding="8,4">
                 <DockPanel>
-                    <!-- グリッド/リスト切り替え (右寄せ) -->
                     <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
                             Width="36" Height="36" CornerRadius="6"
                             Cursor="Hand" VerticalAlignment="Center" Margin="0,0,4,0"
@@ -89,28 +89,29 @@
                         <Path x:Name="ViewToggleIcon"
                               Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIcon}"/>
                     </Border>
-
-                    <!-- 検索ボックス -->
-                    <Border x:Name="SearchSection" Visibility="Collapsed"
-                            VerticalAlignment="Center"
-                            Background="{StaticResource BgCardBrush}"
-                            BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="4" Padding="8,4" MaxWidth="300">
-                        <DockPanel>
-                            <Path DockPanel.Dock="Left" Data="{StaticResource Bi.Search}"
-                                  Style="{StaticResource BiIconSm}" Margin="0,0,6,0"/>
-                            <TextBox x:Name="SearchBox" Background="Transparent" BorderThickness="0"
-                                     Foreground="{StaticResource TextPrimaryBrush}"
-                                     CaretBrush="{StaticResource AccentCyanBrush}"
-                                     FontSize="13" VerticalAlignment="Center"
-                                     TextChanged="SearchBox_TextChanged"/>
-                        </DockPanel>
-                    </Border>
                 </DockPanel>
             </Border>
 
+            <!-- 検索バー（ヘッダー下・右寄せ） -->
+            <Border x:Name="SearchSection" Grid.Row="1" Visibility="Collapsed"
+                    HorizontalAlignment="Right" Margin="0,6,12,6"
+                    Background="{StaticResource BgCardBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="4" Padding="8,5">
+                <StackPanel Orientation="Horizontal">
+                    <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconSm}"
+                          Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SearchBox" Width="260"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             CaretBrush="{StaticResource AccentCyanBrush}"
+                             FontSize="13" VerticalAlignment="Center"
+                             TextChanged="SearchBox_TextChanged"/>
+                </StackPanel>
+            </Border>
+
             <!-- コンテンツエリア -->
-            <Grid Grid.Row="1" Background="{StaticResource BgPrimaryBrush}">
+            <Grid Grid.Row="2" Background="{StaticResource BgPrimaryBrush}">
 
                 <!-- グリッド表示 -->
                 <ScrollViewer x:Name="GridScrollViewer"

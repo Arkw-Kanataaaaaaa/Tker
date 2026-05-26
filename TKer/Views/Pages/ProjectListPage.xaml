@@ -15,17 +15,17 @@
         <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12" Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel>
-                <!-- グリッド/リスト切替ボタン -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
-                    <Border x:Name="BtnViewGrid" Width="30" Height="30" CornerRadius="6" Cursor="Hand"
-                            MouseLeftButtonUp="SetGridView_Click" ToolTip="グリッド表示" Margin="0,0,4,0">
-                        <Path Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconSm}"/>
-                    </Border>
-                    <Border x:Name="BtnViewList" Width="30" Height="30" CornerRadius="6" Cursor="Hand"
-                            MouseLeftButtonUp="SetListView_Click" ToolTip="リスト表示">
-                        <Path Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconSm}"/>
-                    </Border>
-                </StackPanel>
+                <!-- グリッド/リスト切替ボタン（1つのアイコン、現在モードを表示） -->
+                <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
+                        Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                        MouseLeftButtonUp="ToggleView_Click" ToolTip="リスト表示に切り替え"
+                        Margin="0,0,4,0">
+                    <Grid>
+                        <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconSm}"/>
+                        <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconSm}"
+                              Visibility="Collapsed"/>
+                    </Grid>
+                </Border>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="プロジェクト"
                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"

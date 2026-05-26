@@ -1149,6 +1149,7 @@ public partial class ProjectListPage : Page, IRefreshable
         if (_isFolderManagementEnabled && string.IsNullOrWhiteSpace(path))
         {
             AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            TxtNewProjPath.Focus();
             return;
         }
 
@@ -1350,6 +1351,12 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             AppDialog.ShowWarning("プロジェクト名を入力してください", "入力エラー", Window.GetWindow(this));
             TxtEditProjName.Focus();
+            return;
+        }
+        if (_isEditFolderManagementEnabled && string.IsNullOrWhiteSpace(TxtEditProjPath.Text.Trim()))
+        {
+            AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            TxtEditProjPath.Focus();
             return;
         }
 

@@ -1212,6 +1212,28 @@ public partial class ProjectListPage : Page, IRefreshable
         ShowOrganizeDialog(misplaced, project, rootPath);
     }
 
+    /// <summary>カテゴリテンプレート一覧ダイアログを表示し、選択されたカテゴリをプロジェクトに追加する。</summary>
+    private void CategoryTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
+        var dlg = new TKer.Views.Dialogs.CategoryTemplateDialog(customPresets)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        if (_vm.ProjectService.CurrentProject == null)
+        {
+            AppDialog.ShowInfo("カテゴリを追加するにはプロジェクトをアクティブにしてください", "確認", Window.GetWindow(this));
+            return;
+        }
+
+        foreach (var item in dlg.SelectedCategories)
+            _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
+
+        Refresh();
+    }
+
     /// <summary>フォルダ整理ダイアログを生成して表示する。</summary>
     private void ShowOrganizeDialog(List<(string FilePath, string Reason)> files,
                                     ProjectData project, string rootPath)

@@ -97,6 +97,10 @@
                                 Click="Organize_Click">
                             <Path Data="{StaticResource Bi.WrenchFill}" Style="{StaticResource BiIconLg}"/>
                         </Button>
+                        <Button ToolTip="カテゴリテンプレート" Style="{StaticResource VToolbarBtn}"
+                                Click="CategoryTemplate_Click">
+                            <Path Data="{StaticResource Bi.LayoutTextWindow}" Style="{StaticResource BiIconLg}"/>
+                        </Button>
                     </StackPanel>
                 </StackPanel>
             </Border>

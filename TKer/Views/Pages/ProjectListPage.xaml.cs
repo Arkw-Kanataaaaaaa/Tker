@@ -518,8 +518,8 @@ public partial class ProjectListPage : Page, IRefreshable
     private bool _isPreviewDragging;
     private bool _previewPressedBackground;
 
-    private const double PreviewMinScale   = 0.1;
-    private const double PreviewMaxScale   = 1.0;
+    private const double PreviewMinScale   = 1.0;   // フィット = 0%
+    private const double PreviewMaxScale   = 4.0;   // 最大ズーム = 100%
     private const double PreviewGaugeWidth = 160.0;
     private const double PreviewThumbSize  = 14.0;
     private bool _zoomDragging;
@@ -534,11 +534,11 @@ public partial class ProjectListPage : Page, IRefreshable
         PreviewOverlay.Visibility = Visibility.Visible;
     }
 
-    /// <summary>ズームゲージ・ツマミ・ラベルを現在の拡大率で更新する。</summary>
+    /// <summary>ズームゲージ・ツマミ・ラベルを現在の拡大率で更新する。割合は0〜100%で表示する。</summary>
     private void UpdateZoomGauge(double scale)
     {
-        PreviewZoomLabel.Text = $"{(int)Math.Round(scale * 100)}%";
         double ratio = Math.Clamp((scale - PreviewMinScale) / (PreviewMaxScale - PreviewMinScale), 0, 1);
+        PreviewZoomLabel.Text = $"{(int)Math.Round(ratio * 100)}%";
         PreviewZoomFill.Width = ratio * PreviewGaugeWidth;
         ZoomThumb.Margin = new Thickness(ratio * (PreviewGaugeWidth - PreviewThumbSize), 0, 0, 0);
     }

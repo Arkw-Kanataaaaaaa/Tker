@@ -711,15 +711,15 @@
                         MouseLeftButtonUp="ZoomTrack_MouseUp">
                     <Grid>
                         <Border Height="6" CornerRadius="3" Background="#55FFFFFF" VerticalAlignment="Center"/>
-                        <Border x:Name="PreviewZoomFill" Height="6" Width="160" CornerRadius="3"
+                        <Border x:Name="PreviewZoomFill" Height="6" Width="0" CornerRadius="3"
                                 Background="{StaticResource AccentCyanBrush}"
                                 HorizontalAlignment="Left" VerticalAlignment="Center"/>
                         <Ellipse x:Name="ZoomThumb" Width="14" Height="14" Fill="White"
                                  HorizontalAlignment="Left" VerticalAlignment="Center"
-                                 Margin="146,0,0,0"/>
+                                 Margin="0,0,0,0"/>
                     </Grid>
                 </Border>
-                <TextBlock x:Name="PreviewZoomLabel" Text="100%" FontSize="11" Foreground="White"
+                <TextBlock x:Name="PreviewZoomLabel" Text="0%" FontSize="11" Foreground="White"
                            VerticalAlignment="Center" Margin="10,0,0,0"/>
             </StackPanel>
         </Grid>

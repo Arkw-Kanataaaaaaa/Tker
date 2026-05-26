@@ -54,6 +54,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="52"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- 縦型ツールバー (Col 0) -->
@@ -328,20 +329,15 @@
                 </Border>
             </Grid>
 
-            <!-- 新規プロジェクト追加ドロワー（右からスライドイン オーバーレイ） -->
-            <Grid x:Name="AddProjectOverlay" Grid.ColumnSpan="2" Visibility="Collapsed"
-                  Panel.ZIndex="20">
-                <!-- 暗幕：クリックで閉じる -->
-                <Border Background="#66000000" MouseLeftButtonUp="CancelAddProject_Click"/>
+            <!-- ─── 右ドロワー（プッシュ型） ─── -->
+            <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
+                    Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <Grid Width="500">
 
-                <!-- スライドパネル本体 -->
-                <Border x:Name="AddProjectPanel" Width="500" HorizontalAlignment="Right"
-                        Background="{StaticResource BgSecondaryBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
-                    <Border.RenderTransform>
-                        <TranslateTransform x:Name="AddPanelTransform" X="500"/>
-                    </Border.RenderTransform>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <!-- 新規作成パネル -->
+                    <ScrollViewer x:Name="AddDrawerScroll" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="24,20,24,24">
 
                             <!-- ヘッダー行 -->
@@ -475,20 +471,10 @@
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
-                </Border>
-            </Grid>
 
-            <!-- プロジェクト編集ドロワー（右からスライドイン オーバーレイ） -->
-            <Grid x:Name="EditProjectOverlay" Grid.ColumnSpan="2" Visibility="Collapsed"
-                  Panel.ZIndex="21">
-                <Border Background="#66000000" MouseLeftButtonUp="CancelEditProject_Click"/>
-                <Border x:Name="EditProjectPanel" Width="500" HorizontalAlignment="Right"
-                        Background="{StaticResource BgSecondaryBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
-                    <Border.RenderTransform>
-                        <TranslateTransform x:Name="EditPanelTransform" X="500"/>
-                    </Border.RenderTransform>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <!-- 編集パネル -->
+                    <ScrollViewer x:Name="EditDrawerScroll" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="24,20,24,24">
 
                             <!-- ヘッダー行 -->
@@ -643,8 +629,9 @@
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
-                </Border>
-            </Grid>
+
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- 削除進捗エリア -->

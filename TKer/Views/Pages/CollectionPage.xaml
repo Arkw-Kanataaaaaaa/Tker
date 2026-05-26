@@ -42,6 +42,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="52"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- ─── 縦ツールバー ─── -->
@@ -174,19 +175,15 @@
             </Grid>
         </Grid>
 
-        <!-- ─── 詳細ドロワー (ZIndex=10) ─── -->
-        <Grid Grid.ColumnSpan="2" Panel.ZIndex="10"
-              x:Name="DetailOverlayRoot" Visibility="Collapsed">
-            <Border x:Name="DetailBackdrop" Background="#40000000"
-                    MouseLeftButtonUp="DetailBackdrop_Click"/>
-            <Border x:Name="DetailOverlay" HorizontalAlignment="Right" Width="480"
-                    Background="{StaticResource BgSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"
-                    ClipToBounds="True">
-                <Border.RenderTransform>
-                    <TranslateTransform x:Name="DetailPanelTransform"/>
-                </Border.RenderTransform>
-                <DockPanel>
+        <!-- ─── 右ドロワー（プッシュ型） ─── -->
+        <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
+                Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+            <Grid>
+
+                <!-- 詳細パネル (480px) -->
+                <DockPanel x:Name="DetailDrawer" Width="480" HorizontalAlignment="Left"
+                           Visibility="Collapsed">
                     <!-- ヘッダー -->
                     <Border DockPanel.Dock="Top"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
@@ -221,22 +218,10 @@
                         <StackPanel x:Name="DetailContentPanel" Margin="24,16,24,16"/>
                     </ScrollViewer>
                 </DockPanel>
-            </Border>
-        </Grid>
 
-        <!-- ─── フォームドロワー (ZIndex=20) ─── -->
-        <Grid Grid.ColumnSpan="2" Panel.ZIndex="20"
-              x:Name="FormOverlayRoot" Visibility="Collapsed">
-            <Border x:Name="FormBackdrop" Background="#40000000"
-                    MouseLeftButtonUp="FormBackdrop_Click"/>
-            <Border x:Name="FormOverlay" HorizontalAlignment="Right" Width="500"
-                    Background="{StaticResource BgSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"
-                    ClipToBounds="True">
-                <Border.RenderTransform>
-                    <TranslateTransform x:Name="FormPanelTransform"/>
-                </Border.RenderTransform>
-                <DockPanel>
+                <!-- フォームパネル (500px) -->
+                <DockPanel x:Name="FormDrawer" Width="500" HorizontalAlignment="Left"
+                           Visibility="Collapsed">
                     <!-- フォームヘッダー -->
                     <Border DockPanel.Dock="Top"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
@@ -413,8 +398,9 @@
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
-            </Border>
-        </Grid>
+
+            </Grid>
+        </Border>
 
     </Grid>
 </Page>

@@ -207,7 +207,7 @@ public partial class CollectionPage : Page, IRefreshable
         card.MouseLeave        += (_, _) => hoverOverlay.Visibility = Visibility.Collapsed;
         card.MouseLeftButtonUp += (_, _) =>
         {
-            if (_selectedId == col.Id && DetailOverlayRoot.Visibility == Visibility.Visible)
+            if (_selectedId == col.Id && DetailDrawer.Visibility == Visibility.Visible)
             { CloseDetailDrawer(); return; }
             _selectedId = col.Id;
             ApplyFilter();
@@ -296,7 +296,7 @@ public partial class CollectionPage : Page, IRefreshable
         row.MouseLeave        += (_, _) => { if (col.Id != _selectedId) row.Background = Brushes.Transparent; };
         row.MouseLeftButtonUp += (_, _) =>
         {
-            if (_selectedId == col.Id && DetailOverlayRoot.Visibility == Visibility.Visible)
+            if (_selectedId == col.Id && DetailDrawer.Visibility == Visibility.Visible)
             { CloseDetailDrawer(); return; }
             _selectedId = col.Id;
             ApplyFilter();
@@ -336,25 +336,27 @@ public partial class CollectionPage : Page, IRefreshable
         TxtDetailName.Text = col.Name;
         BuildDetailContent(col);
 
-        if (DetailOverlayRoot.Visibility == Visibility.Visible) return;
-        DetailOverlayRoot.Visibility = Visibility.Visible;
+        if (DetailDrawer.Visibility == Visibility.Visible) return;
+        DetailDrawer.Visibility = Visibility.Visible;
+        FormDrawer.Visibility   = Visibility.Collapsed;
+
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 480, To = 0,
+            From = 0, To = 480,
             Duration = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             {
                 EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
             }
         };
-        DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
     private void CloseDetailDrawer()
     {
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 0, To = 480,
+            From = DrawerContainer.ActualWidth, To = 0,
             Duration = TimeSpan.FromMilliseconds(200),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             {
@@ -363,24 +365,22 @@ public partial class CollectionPage : Page, IRefreshable
         };
         anim.Completed += (_, _) =>
         {
-            DetailOverlayRoot.Visibility = Visibility.Collapsed;
+            DetailDrawer.Visibility = Visibility.Collapsed;
             _selectedId = null;
             ApplyFilter();
             UpdateToolbarState();
         };
-        DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
     private void CloseDetailPanel_Click(object sender, RoutedEventArgs e) => CloseDetailDrawer();
-
-    private void DetailBackdrop_Click(object sender, MouseButtonEventArgs e) => CloseDetailDrawer();
 
     private void EditFromDetail_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedId == null) return;
         var col = _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
         if (col == null) return;
-        DetailOverlayRoot.Visibility = Visibility.Collapsed;
+        DetailDrawer.Visibility = Visibility.Collapsed;
         ShowForm(col);
     }
 
@@ -391,7 +391,7 @@ public partial class CollectionPage : Page, IRefreshable
         if (col == null) return;
         if (MessageBox.Show($"「{col.Name}」を削除しますか？",
                 "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        DetailOverlayRoot.Visibility = Visibility.Collapsed;
+        DetailDrawer.Visibility = Visibility.Collapsed;
         _svc.Delete(_selectedId);
         _selectedId = null;
         ApplyFilter();
@@ -402,18 +402,21 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void OpenFormDrawer()
     {
-        if (FormOverlayRoot.Visibility == Visibility.Visible) return;
-        FormOverlayRoot.Visibility = Visibility.Visible;
+        if (FormDrawer.Visibility == Visibility.Visible) return;
+        FormDrawer.Visibility   = Visibility.Visible;
+        DetailDrawer.Visibility = Visibility.Collapsed;
+
+        double from = DetailDrawer.Visibility == Visibility.Visible ? DrawerContainer.ActualWidth : 0;
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 500, To = 0,
+            From = from, To = 500,
             Duration = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             {
                 EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
             }
         };
-        FormPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
         TxtFormName.Focus();
     }
 
@@ -421,22 +424,15 @@ public partial class CollectionPage : Page, IRefreshable
     {
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 0, To = 500,
+            From = DrawerContainer.ActualWidth, To = 0,
             Duration = TimeSpan.FromMilliseconds(200),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             {
                 EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn
             }
         };
-        anim.Completed += (_, _) => FormOverlayRoot.Visibility = Visibility.Collapsed;
-        FormPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-    }
-
-    private void FormBackdrop_Click(object sender, MouseButtonEventArgs e)
-    {
-        _editingId = null;
-        _formFields.Clear();
-        CloseFormDrawer();
+        anim.Completed += (_, _) => FormDrawer.Visibility = Visibility.Collapsed;
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
     // ── ツールバーイベント ──────────────────────────────────
@@ -466,8 +462,8 @@ public partial class CollectionPage : Page, IRefreshable
         if (col == null) return;
         if (MessageBox.Show($"「{col.Name}」を削除しますか？",
                 "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        if (DetailOverlayRoot.Visibility == Visibility.Visible)
-            DetailOverlayRoot.Visibility = Visibility.Collapsed;
+        if (DetailDrawer.Visibility == Visibility.Visible)
+            DetailDrawer.Visibility = Visibility.Collapsed;
         _svc.Delete(_selectedId);
         _selectedId = null;
         ApplyFilter();

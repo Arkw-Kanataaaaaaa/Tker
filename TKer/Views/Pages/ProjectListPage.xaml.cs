@@ -453,7 +453,44 @@ public partial class ProjectListPage : Page, IRefreshable
         DetailPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
     }
 
-    /// <summary>新規プロジェクト作成フォームをドロワーとしてスライドイン表示する。</summary>
+    private bool _isDrawerOpen = false;
+
+    private void OpenDrawer(ScrollViewer target)
+    {
+        AddDrawerScroll.Visibility  = target == AddDrawerScroll  ? Visibility.Visible : Visibility.Collapsed;
+        EditDrawerScroll.Visibility = target == EditDrawerScroll ? Visibility.Visible : Visibility.Collapsed;
+        if (_isDrawerOpen) return;
+        _isDrawerOpen = true;
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = 0, To = 500,
+            Duration       = TimeSpan.FromMilliseconds(260),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+        };
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
+    }
+
+    private void CloseDrawer(Action? onComplete = null)
+    {
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = DrawerContainer.ActualWidth, To = 0,
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn }
+        };
+        anim.Completed += (_, _) =>
+        {
+            _isDrawerOpen = false;
+            AddDrawerScroll.Visibility  = Visibility.Collapsed;
+            EditDrawerScroll.Visibility = Visibility.Collapsed;
+            onComplete?.Invoke();
+        };
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
+    }
+
+    /// <summary>新規プロジェクト作成フォームをドロワーとして表示する。</summary>
     private void ShowAddProjectPanel()
     {
         TxtNewProjName.Clear();
@@ -472,39 +509,12 @@ public partial class ProjectListPage : Page, IRefreshable
         _folderMgmtToggleBg.Color    = Color.FromRgb(35, 131, 226);
         FolderPathSection.Visibility = Visibility.Visible;
 
-        // オーバーレイを表示してスライドイン
-        AddProjectOverlay.Visibility = Visibility.Visible;
-        var anim = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            From           = 500,
-            To             = 0,
-            Duration       = TimeSpan.FromMilliseconds(260),
-            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
-            {
-                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
-            }
-        };
-        AddPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-
+        OpenDrawer(AddDrawerScroll);
         TxtNewProjName.Focus();
     }
 
-    /// <summary>新規プロジェクト作成ドロワーをスライドアウトして閉じる。</summary>
-    private void HideAddProjectPanel()
-    {
-        var anim = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            From           = 0,
-            To             = 500,
-            Duration       = TimeSpan.FromMilliseconds(200),
-            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
-            {
-                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn
-            }
-        };
-        anim.Completed += (_, _) => AddProjectOverlay.Visibility = Visibility.Collapsed;
-        AddPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-    }
+    /// <summary>新規プロジェクト作成ドロワーを閉じる。</summary>
+    private void HideAddProjectPanel() => CloseDrawer();
 
     /// <summary>表紙画像フィールドをリセットする。</summary>
     private void ClearCoverImageField()
@@ -582,7 +592,7 @@ public partial class ProjectListPage : Page, IRefreshable
                 ToggleSearch_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
-            else if (e.Key == Key.Escape && AddProjectOverlay.Visibility == Visibility.Visible)
+            else if (e.Key == Key.Escape && _isDrawerOpen)
             {
                 CancelAddProject_Click(this, new RoutedEventArgs());
                 e.Handled = true;
@@ -856,31 +866,11 @@ public partial class ProjectListPage : Page, IRefreshable
         EditFolderPathSection.Visibility = _isEditFolderManagementEnabled
             ? Visibility.Visible : Visibility.Collapsed;
 
-        // ドロワーをスライドイン
-        EditProjectOverlay.Visibility = Visibility.Visible;
-        var anim = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            From           = 500, To = 0,
-            Duration       = TimeSpan.FromMilliseconds(260),
-            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
-                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
-        };
-        EditPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        OpenDrawer(EditDrawerScroll);
         TxtEditProjName.Focus();
     }
 
-    private void HideEditProjectPanel()
-    {
-        var anim = new System.Windows.Media.Animation.DoubleAnimation
-        {
-            From           = 0, To = 500,
-            Duration       = TimeSpan.FromMilliseconds(200),
-            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
-                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn }
-        };
-        anim.Completed += (_, _) => EditProjectOverlay.Visibility = Visibility.Collapsed;
-        EditPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-    }
+    private void HideEditProjectPanel() => CloseDrawer();
 
     private void ClearEditCoverImageField()
     {

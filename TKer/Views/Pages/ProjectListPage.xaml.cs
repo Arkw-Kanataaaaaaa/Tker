@@ -1449,6 +1449,10 @@ public partial class ProjectListPage : Page, IRefreshable
             // JSON本体とバックアップ(.bak)のみ削除（フォルダは残す）
             DeleteProjectJsonFiles(path);
         }
+
+        // settings.json を再読み込みしてグリッド表示領域を更新
+        _vm.AppSettingsService.Reload();
+        ApplyFilter();
     }
 
     /// <summary>プロジェクトのJSON本体とバックアップ(.bak)を削除する。</summary>

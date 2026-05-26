@@ -461,6 +461,13 @@ public class AppSettingsService
     }
 
     // ── ロード / セーブ ───────────────────────────
+    /// <summary>settings.json をディスクから再読み込みし、サマリーキャッシュをクリアする。</summary>
+    public void Reload()
+    {
+        _settings     = Load();
+        _summaryCache = null;
+    }
+
     /// <summary>設定ファイルを読み込んで返す（ファイル不在・破損時は新規設定を返す）。</summary>
     private AppSettings Load()
     {

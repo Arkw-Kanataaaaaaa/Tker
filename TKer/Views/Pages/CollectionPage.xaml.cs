@@ -339,12 +339,16 @@ public partial class CollectionPage : Page, IRefreshable
         BuildDetailContent(col);
 
         if (DetailDrawer.Visibility == Visibility.Visible) return;
+
+        // 切替前にドロワーが開いているか判定（フォーム→詳細ではしまわず内容だけ差し替える）
+        bool wasOpen = FormDrawer.Visibility == Visibility.Visible || DrawerContainer.ActualWidth > 0;
+
         DetailDrawer.Visibility = Visibility.Visible;
         FormDrawer.Visibility   = Visibility.Collapsed;
 
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 0, To = 500,
+            From = wasOpen ? DrawerContainer.ActualWidth : 0, To = 500,
             Duration = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             {

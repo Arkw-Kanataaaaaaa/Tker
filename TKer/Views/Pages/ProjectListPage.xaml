@@ -55,7 +55,7 @@
                             <Path Data="{StaticResource Bi.ArrowDownUp}" Style="{StaticResource BiIconLg}"/>
                         </Grid>
                     </Border>
-                    <TextBlock x:Name="SortModeLabel" Text="最近" FontSize="12"
+                    <TextBlock x:Name="SortModeLabel" Text="更新日時 ↓" FontSize="12"
                                Foreground="{DynamicResource TextSecondaryBrush}"
                                VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </StackPanel>
@@ -773,20 +773,6 @@
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                     CornerRadius="6" Padding="4" MinWidth="150">
                 <StackPanel>
-                    <Border x:Name="SortOptRecent" Padding="12,8" CornerRadius="4" Cursor="Hand"
-                            MouseLeftButtonUp="SortByRecent_Click">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource BgSecondaryBrush}"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <TextBlock x:Name="SortOptRecentText" Text="最近のプロジェクト" FontSize="13"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
-                    </Border>
                     <Border x:Name="SortOptName" Padding="12,8" CornerRadius="4" Cursor="Hand"
                             MouseLeftButtonUp="SortByName_Click">
                         <Border.Style>

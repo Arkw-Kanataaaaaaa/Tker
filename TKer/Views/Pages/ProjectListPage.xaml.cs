@@ -55,8 +55,8 @@ public partial class ProjectListPage : Page, IRefreshable
     private string? _editingProjectPath;
     private ProjectData? _editingProjectData;
     private bool _isGridMode = true;
-    private enum SortMode { Recent, Name, Progress, Created, Updated }
-    private SortMode _sortMode = SortMode.Recent;
+    private enum SortMode { Name, Progress, Created, Updated }
+    private SortMode _sortMode = SortMode.Updated;
     private bool _sortDescending = true;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
@@ -121,10 +121,8 @@ public partial class ProjectListPage : Page, IRefreshable
                                                  : rawSummaries.OrderBy(s => s.ProgressRate),
             SortMode.Created  => _sortDescending ? rawSummaries.OrderByDescending(s => s.CreatedAt)
                                                  : rawSummaries.OrderBy(s => s.CreatedAt),
-            SortMode.Updated  => _sortDescending ? rawSummaries.OrderByDescending(s => s.UpdatedAt)
+            _                 => _sortDescending ? rawSummaries.OrderByDescending(s => s.UpdatedAt)
                                                  : rawSummaries.OrderBy(s => s.UpdatedAt),
-            _                 => _sortDescending ? rawSummaries.OrderByDescending(s => s.Entry.LastOpened)
-                                                 : rawSummaries.OrderBy(s => s.Entry.LastOpened),
         };
         var summaries = ordered.ToList();
         var activeFilePath = _vm.ProjectService.ProjectFilePath;
@@ -210,8 +208,7 @@ public partial class ProjectListPage : Page, IRefreshable
         SortMode.Name     => "プロジェクト名",
         SortMode.Progress => "進捗率",
         SortMode.Created  => "作成日時",
-        SortMode.Updated  => "更新日時",
-        _                 => "最近",
+        _                 => "更新日時",
     };
 
     private void SortButton_Click(object sender, MouseButtonEventArgs e)
@@ -228,7 +225,6 @@ public partial class ProjectListPage : Page, IRefreshable
         ApplyFilter();
     }
 
-    private void SortByRecent_Click(object sender, MouseButtonEventArgs e)   => SetSortMode(SortMode.Recent);
     private void SortByName_Click(object sender, MouseButtonEventArgs e)     => SetSortMode(SortMode.Name);
     private void SortByProgress_Click(object sender, MouseButtonEventArgs e) => SetSortMode(SortMode.Progress);
     private void SortByCreated_Click(object sender, MouseButtonEventArgs e)  => SetSortMode(SortMode.Created);
@@ -251,7 +247,6 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         var active   = (Brush)FindResource("AccentCyanBrush");
         var inactive = (Brush)FindResource("TextPrimaryBrush");
-        SortOptRecentText.Foreground   = _sortMode == SortMode.Recent   ? active : inactive;
         SortOptNameText.Foreground     = _sortMode == SortMode.Name     ? active : inactive;
         SortOptProgressText.Foreground = _sortMode == SortMode.Progress ? active : inactive;
         SortOptCreatedText.Foreground  = _sortMode == SortMode.Created  ? active : inactive;

@@ -129,7 +129,7 @@
             </Border>
 
             <!-- コンテンツエリア -->
-            <Grid Grid.Row="1" Background="{StaticResource BgPrimaryBrush}">
+            <Grid Grid.Row="1">
 
                 <!-- グリッド表示 -->
                 <ScrollViewer x:Name="GridScrollViewer"

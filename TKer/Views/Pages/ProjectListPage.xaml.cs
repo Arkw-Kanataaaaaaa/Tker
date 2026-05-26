@@ -37,7 +37,6 @@ public partial class ProjectListPage : Page, IRefreshable
         public BitmapImage? CoverBitmap  { get; init; }
         public bool HasNoCover           => CoverBitmap == null;
         public string HoverDetail        { get; init; } = "";
-        public string LastOpenedLabel    { get; init; } = "";
         public string PeriodLabel        { get; init; } = "";
         public string CreatedAtLabel     { get; init; } = "";
         public string UpdatedAtLabel     { get; init; } = "";
@@ -160,10 +159,9 @@ public partial class ProjectListPage : Page, IRefreshable
                 IsSelected      = s.Entry.DataFilePath == _selectedPath,
                 CoverBitmap     = TryGetCoverBitmap(s.Entry.DataFilePath),
                 HoverDetail     = BuildHoverDetail(s),
-                LastOpenedLabel = s.Entry.LastOpened.ToString("yyyy/MM/dd"),
                 PeriodLabel     = BuildPeriodLabel(s.ProjectStartDate, s.ProjectEndDate),
-                CreatedAtLabel  = s.CreatedAt.ToString("yyyy/MM/dd"),
-                UpdatedAtLabel  = s.UpdatedAt.ToString("yyyy/MM/dd"),
+                CreatedAtLabel  = s.CreatedAt.ToString("yyyy/MM/dd HH:mm"),
+                UpdatedAtLabel  = s.UpdatedAt.ToString("yyyy/MM/dd HH:mm"),
             }).ToList();
             ProjectGridControl.ItemsSource = items;
             ProjectListItemsControl.ItemsSource = items;
@@ -555,7 +553,6 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             AddHRow("作成日時", projectData.Settings.CreatedAt.ToString("yyyy/MM/dd HH:mm"));
             AddHRow("更新日時", projectData.Settings.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
-            AddHRow("最終オープン", entry.LastOpened.ToString("yyyy/MM/dd HH:mm"));
         }
 
         // ── タスク統計セクション（セクション間の線は1本） ──

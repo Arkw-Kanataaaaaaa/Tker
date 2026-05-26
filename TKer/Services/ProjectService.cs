@@ -69,6 +69,7 @@ public class ProjectService
                 ProjectPath          = projectPath,
                 Description          = description,
                 CreatedAt            = DateTime.Now,
+                UpdatedAt            = DateTime.Now,
                 UseFolderManagement  = useFolderManagement,
                 CoverImageData       = coverImageData,
                 ProjectStartDate     = projectStartDate,
@@ -166,7 +167,8 @@ public class ProjectService
     public void SaveProject()
     {
         if (CurrentProject == null || ProjectFilePath == null) return;
-        CurrentProject.LastSaved = DateTime.Now;
+        CurrentProject.LastSaved            = DateTime.Now;
+        CurrentProject.Settings.UpdatedAt   = DateTime.Now;
 
         // バックアップ作成
         if (File.Exists(ProjectFilePath))

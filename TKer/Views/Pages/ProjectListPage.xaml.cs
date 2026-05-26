@@ -476,6 +476,11 @@ public partial class ProjectListPage : Page, IRefreshable
             var end   = projectData?.Settings.ProjectEndDate?.ToString("yyyy/MM/dd")   ?? "─";
             AddHRow("プロジェクト期間", $"{start}  〜  {end}");
         }
+        if (projectData != null)
+        {
+            AddHRow("作成日時", projectData.Settings.CreatedAt.ToString("yyyy/MM/dd HH:mm"));
+            AddHRow("更新日時", projectData.Settings.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
+        }
 
         // ── タスク統計セクション（セクション間の線は1本） ──
         if (projectData != null)
@@ -1253,6 +1258,7 @@ public partial class ProjectListPage : Page, IRefreshable
         project.Settings.UseFolderManagement = _isEditFolderManagementEnabled;
         project.Settings.ProjectPath        = TxtEditProjPath.Text.Trim();
         project.Settings.CoverImageData     = _editCoverImageData;
+        project.Settings.UpdatedAt          = DateTime.Now;
 
         if (DateTime.TryParse(TxtEditProjStartDate.Text.Trim(), out var sd)) project.Settings.ProjectStartDate = sd;
         else project.Settings.ProjectStartDate = null;

@@ -211,6 +211,39 @@
         <Setter Property="BorderBrush" Value="#FF4444"/>
     </Style>
 
+    <!-- 赤塗りの削除ボタン -->
+    <Style x:Key="DangerFilledButton" TargetType="Button">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <Border.Background>
+                            <SolidColorBrush x:Name="BdBrush" Color="#E03E3E"/>
+                        </Border.Background>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="BdBrush" Property="Color" Value="#C62828"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="BdBrush" Property="Color" Value="#B71C1C"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
         <Setter Property="Foreground" Value="{StaticResource AccentGreenBrush}"/>
         <Setter Property="BorderBrush" Value="#00E676"/>

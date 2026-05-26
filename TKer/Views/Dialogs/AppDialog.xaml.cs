@@ -12,7 +12,8 @@ public partial class AppDialog : Window
     public bool Confirmed { get; private set; } = false;
 
     /// <summary>ダイアログの種類と内容を指定して初期化する。</summary>
-    private AppDialog(string title, string message, AppDialogType type, bool showCancel)
+    private AppDialog(string title, string message, AppDialogType type, bool showCancel,
+                      string confirmLabel = "", bool dangerConfirm = false)
     {
         InitializeComponent();
         Title = title;
@@ -32,17 +33,19 @@ public partial class AppDialog : Window
             var cancel = MakeButton("キャンセル", false, isPrimary: false);
             ButtonPanel.Children.Add(cancel);
         }
-        var ok = MakeButton(showCancel ? "はい" : "OK", true, isPrimary: true);
+        var okLabel = !string.IsNullOrEmpty(confirmLabel) ? confirmLabel : (showCancel ? "はい" : "OK");
+        var ok = MakeButton(okLabel, true, isPrimary: true, dangerConfirm);
         ButtonPanel.Children.Add(ok);
     }
 
     /// <summary>指定ラベルと結果値でボタンを生成して返す。</summary>
-    private Button MakeButton(string label, bool result, bool isPrimary)
+    private Button MakeButton(string label, bool result, bool isPrimary, bool danger = false)
     {
+        var styleKey = danger ? "DangerFilledButton" : (isPrimary ? "PrimaryButton" : "SecondaryButton");
         var btn = new Button
         {
             Content = label,
-            Style = (Style)FindResource(isPrimary ? "PrimaryButton" : "SecondaryButton"),
+            Style = (Style)FindResource(styleKey),
             Padding = new Thickness(20, 6, 20, 6),
             Margin = new Thickness(8, 0, 0, 0)
         };
@@ -61,9 +64,11 @@ public partial class AppDialog : Window
         => Show(title, message, AppDialogType.Warning, false, owner);
 
     /// <summary>確認ダイアログを表示し、ユーザーの選択結果を返す。</summary>
-    public static bool Confirm(string message, string title = "確認", Window? owner = null)
+    public static bool Confirm(string message, string title = "確認", Window? owner = null,
+                               string confirmLabel = "", bool dangerConfirm = false)
     {
-        var dlg = new AppDialog(title, message, AppDialogType.Confirm, showCancel: true);
+        var dlg = new AppDialog(title, message, AppDialogType.Confirm, showCancel: true,
+                                confirmLabel, dangerConfirm);
         if (owner != null) dlg.Owner = owner;
         dlg.ShowDialog();
         return dlg.Confirmed;

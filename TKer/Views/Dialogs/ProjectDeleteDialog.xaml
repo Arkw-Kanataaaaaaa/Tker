@@ -44,9 +44,10 @@
         <!-- コンテンツ -->
         <StackPanel Grid.Row="1" Margin="28,20,28,24">
 
-            <!-- アイコン + プロジェクト名 -->
+            <!-- アイコン + タイトル -->
             <DockPanel Margin="0,0,0,12">
-                <TextBlock DockPanel.Dock="Left" Text="🗑" FontSize="22"
+                <TextBlock DockPanel.Dock="Left" Text="❓" FontSize="22"
+                           Foreground="#0B6E99"
                            VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <TextBlock x:Name="ProjectNameText"
                            FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="15"
@@ -90,7 +91,7 @@
                         Padding="14,6" Margin="0,0,8,0"
                         Click="Cancel_Click"/>
                 <Button Content="削除"
-                        Style="{StaticResource DangerButton}"
+                        Style="{StaticResource DangerFilledButton}"
                         Padding="20,6"
                         Click="Delete_Click"/>
             </StackPanel>

@@ -52,18 +52,6 @@
 
                     <!-- プロジェクト操作ボタン群（Project Detail mode） -->
                     <StackPanel x:Name="BtnProjectSection">
-                        <Button ToolTip="プロジェクト読み込み (Ctrl+N)" Style="{StaticResource VToolbarBtn}"
-                                Click="LoadProject_Click">
-                            <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button x:Name="BtnSetActive" ToolTip="アクティブに設定 (Ctrl+A)" Style="{StaticResource VToolbarBtn}"
-                                Click="SetActive_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.CheckCircleFill}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
-                        <Button x:Name="BtnOpenFolder" ToolTip="フォルダを開く (Ctrl+O)" Style="{StaticResource VToolbarBtn}"
-                                Click="OpenFolder_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconLg}"/>
-                        </Button>
                         <Button x:Name="BtnEditSettings" ToolTip="プロジェクト編集 (F2)" Style="{StaticResource VToolbarBtn}"
                                 Click="EditSettings_Click" IsEnabled="False">
                             <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
@@ -76,14 +64,26 @@
                                 Click="RemoveSelected_Click" IsEnabled="False">
                             <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                         </Button>
-                        <Button ToolTip="検索 (Ctrl+F)" Style="{StaticResource VToolbarBtn}"
-                                Click="ToggleSearch_Click">
-                            <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconLg}"/>
+                        <Button ToolTip="プロジェクト読み込み (Ctrl+N)" Style="{StaticResource VToolbarBtn}"
+                                Click="LoadProject_Click">
+                            <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconLg}"/>
                         </Button>
-                        <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
+                        <Button x:Name="BtnSetActive" ToolTip="アクティブに設定 (Ctrl+A)" Style="{StaticResource VToolbarBtn}"
+                                Click="SetActive_Click" IsEnabled="False">
+                            <Path Data="{StaticResource Bi.CheckCircleFill}" Style="{StaticResource BiIconLg}"/>
+                        </Button>
+                        <Button x:Name="BtnOpenFolder" ToolTip="フォルダを開く (Ctrl+O)" Style="{StaticResource VToolbarBtn}"
+                                Click="OpenFolder_Click" IsEnabled="False">
+                            <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconLg}"/>
+                        </Button>
                         <Button ToolTip="フォルダ整理" Style="{StaticResource VToolbarBtn}"
                                 Click="Organize_Click">
                             <Path Data="{StaticResource Bi.WrenchFill}" Style="{StaticResource BiIconLg}"/>
+                        </Button>
+                        <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
+                        <Button ToolTip="検索 (Ctrl+F)" Style="{StaticResource VToolbarBtn}"
+                                Click="ToggleSearch_Click">
+                            <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconLg}"/>
                         </Button>
                         <Button ToolTip="カテゴリテンプレート" Style="{StaticResource VToolbarBtn}"
                                 Click="CategoryTemplate_Click">

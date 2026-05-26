@@ -150,6 +150,9 @@
                                     <Border Width="170" Height="220" CornerRadius="12" Margin="6"
                                             ClipToBounds="True" Cursor="Hand"
                                             MouseLeftButtonUp="ProjectCard_Click">
+                                        <Border.Clip>
+                                            <RectangleGeometry Rect="0,0,170,220" RadiusX="12" RadiusY="12"/>
+                                        </Border.Clip>
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Opacity" Value="1"/>

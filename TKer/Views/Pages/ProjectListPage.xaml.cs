@@ -333,101 +333,84 @@ public partial class ProjectListPage : Page, IRefreshable
             catch { /* 画像デコード失敗は無視 */ }
         }
 
-        // 期間
+        // ── ローカルヘルパー ──
+        void AddSectionLine(Thickness margin) =>
+            ProjectInfoContent.Children.Add(new Border
+            {
+                Height = 1, Background = (Brush)FindResource("BorderBrush"), Margin = margin
+            });
+
+        void AddSectionTitle(string title) =>
+            ProjectInfoContent.Children.Add(new TextBlock
+            {
+                Text = title, FontSize = 11, FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("TextDimBrush"),
+                Margin = new Thickness(0, 8, 0, 8)
+            });
+
+        void AddHRow(string label, string value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var lbl = new TextBlock
+            {
+                Text = label, FontSize = 12,
+                Foreground = (Brush)FindResource("TextDimBrush"),
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            var val = new TextBlock
+            {
+                Text = value, FontSize = 12,
+                Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                TextWrapping = TextWrapping.Wrap
+            };
+            Grid.SetColumn(val, 1);
+            g.Children.Add(lbl);
+            g.Children.Add(val);
+            ProjectInfoContent.Children.Add(g);
+        }
+
+        // ── 詳細情報セクション ──
+        AddSectionLine(new Thickness(0, 0, 0, 0));
+        AddSectionTitle("詳細情報");
+        AddHRow("プロジェクト名", entry.ProjectName ?? "");
+        if (!string.IsNullOrWhiteSpace(entry.Description))
+            AddHRow("説明", entry.Description);
+        if (projectData?.Settings.UseFolderManagement == true && !string.IsNullOrEmpty(entry.ProjectPath))
+            AddHRow("フォルダパス", entry.ProjectPath);
         if (projectData?.Settings.ProjectStartDate != null || projectData?.Settings.ProjectEndDate != null)
         {
             var start = projectData?.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "─";
             var end   = projectData?.Settings.ProjectEndDate?.ToString("yyyy/MM/dd")   ?? "─";
-            ProjectInfoContent.Children.Add(new TextBlock
-            {
-                Text       = $"📅 {start}  〜  {end}",
-                FontSize   = 12,
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin     = new Thickness(0, 0, 0, 10)
-            });
+            AddHRow("プロジェクト期間", $"{start}  〜  {end}");
         }
+        AddSectionLine(new Thickness(0, 0, 0, 0));
 
-        // 説明
-        if (!string.IsNullOrWhiteSpace(entry.Description))
-        {
-            ProjectInfoContent.Children.Add(new TextBlock
-            {
-                Text = entry.Description,
-                FontSize = 13, TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin = new Thickness(0, 0, 0, 14)
-            });
-        }
-
-        // パス
-        AddInfoRowToPanel(ProjectInfoContent, "パス", entry.ProjectPath ?? "");
-        AddInfoRowToPanel(ProjectInfoContent, "ファイル", entry.DataFilePath ?? "");
-        AddInfoRowToPanel(ProjectInfoContent, "最終オープン", entry.LastOpened.ToString("yyyy/MM/dd HH:mm"));
-
-        // タスク統計
+        // ── タスク統計セクション ──
         if (projectData != null)
         {
-            var tasks   = projectData.Tasks;
-            int total   = tasks.Count;
-            int done    = tasks.Count(t => t.Status == "完了");
-            int wip     = tasks.Count(t => t.Status == "進行中");
-            int todo    = tasks.Count(t => t.Status == "未着手");
-            int overdue = tasks.Count(t => t.IsOverdue);
+            var tasks    = projectData.Tasks;
+            int total    = tasks.Count;
+            int done     = tasks.Count(t => t.Status == "完了");
+            int wip      = tasks.Count(t => t.Status == "進行中");
+            int todo     = tasks.Count(t => t.Status == "未着手");
+            int overdue  = tasks.Count(t => t.IsOverdue);
+            int pct      = total > 0 ? (int)Math.Round(done * 100.0 / total) : 0;
 
-            AddSectionDividerToPanel(ProjectInfoContent, "タスク統計");
-            AddInfoRowToPanel(ProjectInfoContent, "合計",   $"{total} 件");
-            AddInfoRowToPanel(ProjectInfoContent, "完了",   $"{done} 件");
-            AddInfoRowToPanel(ProjectInfoContent, "進行中", $"{wip} 件");
-            AddInfoRowToPanel(ProjectInfoContent, "未着手", $"{todo} 件");
+            ProjectInfoContent.Children.Add(new Border { Height = 8, Background = Brushes.Transparent });
+            AddSectionLine(new Thickness(0, 0, 0, 0));
+            AddSectionTitle("タスク統計");
+            AddHRow("進捗率",   $"{pct}%");
+            AddHRow("合計",     $"{total} 件");
+            AddHRow("完了",     $"{done} 件");
+            AddHRow("進行中",   $"{wip} 件");
+            AddHRow("未着手",   $"{todo} 件");
             if (overdue > 0)
-                AddInfoRowToPanel(ProjectInfoContent, "期限超過", $"⚠ {overdue} 件");
+                AddHRow("期限超過", $"⚠ {overdue} 件");
+            AddSectionLine(new Thickness(0, 0, 0, 0));
         }
-
-        // ボタン群
-        AddSectionDividerToPanel(ProjectInfoContent, "操作");
-        var btnPanel = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-
-        var btnActive = new Button
-        {
-            Content = "アクティブに設定",
-            Style = (Style)FindResource("PrimaryButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 8, 8)
-        };
-        btnActive.Click += (_, _) => SetActive_Click(btnActive, new RoutedEventArgs());
-        btnPanel.Children.Add(btnActive);
-
-        var btnExplorer = new Button
-        {
-            Content = "エクスプローラー",
-            Style = (Style)FindResource("SecondaryButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 8, 8)
-        };
-        btnExplorer.Click += (_, _) => OpenFolder_Click(btnExplorer, new RoutedEventArgs());
-        btnPanel.Children.Add(btnExplorer);
-
-        var btnEdit = new Button
-        {
-            Content = "編集",
-            Style = (Style)FindResource("SecondaryButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 8, 8)
-        };
-        btnEdit.Click += (_, _) => EditSettings_Click(btnEdit, new RoutedEventArgs());
-        btnPanel.Children.Add(btnEdit);
-
-        var btnDelete = new Button
-        {
-            Content = "削除",
-            Style = (Style)FindResource("DangerButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 0, 8)
-        };
-        btnDelete.Click += (_, _) => RemoveSelected_Click(btnDelete, new RoutedEventArgs());
-        btnPanel.Children.Add(btnDelete);
-
-        ProjectInfoContent.Children.Add(btnPanel);
 
         OpenDetailDrawer();
     }

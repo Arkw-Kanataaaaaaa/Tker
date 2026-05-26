@@ -320,7 +320,8 @@
 
                     <!-- プロジェクト詳細パネル -->
                     <ScrollViewer x:Name="DetailDrawerScroll" Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto">
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">
                             <!-- ヘッダー行 -->
                             <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
@@ -342,20 +343,24 @@
 
                     <!-- 新規作成パネル -->
                     <ScrollViewer x:Name="AddDrawerScroll" Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto">
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">
 
                             <!-- ヘッダー行 -->
-                            <DockPanel Margin="0,0,0,20">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                        ToolTip="閉じる" Click="CancelAddProject_Click">
-                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                                </Button>
-                                <TextBlock Text="新規プロジェクトの作成"
-                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           VerticalAlignment="Center"/>
-                            </DockPanel>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                    Padding="0,0,0,12" Margin="0,0,0,20">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                            ToolTip="閉じる" Click="CancelAddProject_Click">
+                                        <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                    </Button>
+                                    <TextBlock Text="新規プロジェクト"
+                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
 
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"
@@ -479,20 +484,24 @@
 
                     <!-- 編集パネル -->
                     <ScrollViewer x:Name="EditDrawerScroll" Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto">
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">
 
                             <!-- ヘッダー行 -->
-                            <DockPanel Margin="0,0,0,20">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                        ToolTip="閉じる" Click="CancelEditProject_Click">
-                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                                </Button>
-                                <TextBlock Text="プロジェクトを編集"
-                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
-                                           Foreground="{StaticResource TextPrimaryBrush}"
-                                           VerticalAlignment="Center"/>
-                            </DockPanel>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                    Padding="0,0,0,12" Margin="0,0,0,20">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                            ToolTip="閉じる" Click="CancelEditProject_Click">
+                                        <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                    </Button>
+                                    <TextBlock Text="プロジェクトを編集"
+                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
 
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"

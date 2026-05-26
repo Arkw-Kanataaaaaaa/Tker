@@ -516,10 +516,13 @@ public partial class ProjectListPage : Page, IRefreshable
     private Point _previewDragStart;
     private Point _previewTranslateStart;
     private bool _isPreviewDragging;
+    private bool _previewPressedBackground;
 
-    private const double PreviewMinScale  = 0.1;
-    private const double PreviewMaxScale  = 10.0;
+    private const double PreviewMinScale   = 0.1;
+    private const double PreviewMaxScale   = 1.0;
     private const double PreviewGaugeWidth = 160.0;
+    private const double PreviewThumbSize  = 14.0;
+    private bool _zoomDragging;
 
     /// <summary>表紙画像を全画面オーバーレイでプレビュー表示する。</summary>
     private void OpenPreviewOverlay(BitmapImage bmp)
@@ -531,19 +534,55 @@ public partial class ProjectListPage : Page, IRefreshable
         PreviewOverlay.Visibility = Visibility.Visible;
     }
 
-    /// <summary>ズームゲージとラベルを現在の拡大率で更新する。</summary>
+    /// <summary>ズームゲージ・ツマミ・ラベルを現在の拡大率で更新する。</summary>
     private void UpdateZoomGauge(double scale)
     {
         PreviewZoomLabel.Text = $"{(int)Math.Round(scale * 100)}%";
-        double ratio = Math.Clamp(scale / PreviewMaxScale, 0, 1);
-        PreviewZoomFill.Width = Math.Max(4, ratio * PreviewGaugeWidth);
+        double ratio = Math.Clamp((scale - PreviewMinScale) / (PreviewMaxScale - PreviewMinScale), 0, 1);
+        PreviewZoomFill.Width = ratio * PreviewGaugeWidth;
+        ZoomThumb.Margin = new Thickness(ratio * (PreviewGaugeWidth - PreviewThumbSize), 0, 0, 0);
     }
 
-    private void ClosePreview_Click(object sender, RoutedEventArgs e) => ClosePreviewOverlay();
+    /// <summary>ゲージ上の位置から拡大率を設定する。</summary>
+    private void SetZoomFromPoint(double x)
+    {
+        double ratio = Math.Clamp(x / PreviewGaugeWidth, 0, 1);
+        double scale = PreviewMinScale + ratio * (PreviewMaxScale - PreviewMinScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = scale;
+        UpdateZoomGauge(scale);
+    }
+
+    private void ZoomTrack_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = true;
+        ZoomTrack.CaptureMouse();
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+        e.Handled = true;
+    }
+
+    private void ZoomTrack_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_zoomDragging) return;
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+    }
+
+    private void ZoomTrack_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = false;
+        ZoomTrack.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
+    private void ClosePreview_Click(object sender, RoutedEventArgs e)
+    {
+        ClosePreviewOverlay();
+        e.Handled = true; // 下にある一覧ボタンへ MouseUp が伝播しないようにする
+    }
 
     private void ClosePreviewOverlay()
     {
         _isPreviewDragging = false;
+        _previewPressedBackground = false;
         PreviewOverlay.ReleaseMouseCapture();
         PreviewOverlay.Visibility = Visibility.Collapsed;
         PreviewImage.Source = null;
@@ -562,16 +601,19 @@ public partial class ProjectListPage : Page, IRefreshable
 
     private void PreviewOverlay_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        // 画像以外（背景）をクリックしたら閉じる
-        if (e.OriginalSource is not Image)
+        if (e.OriginalSource is Image)
         {
-            ClosePreviewOverlay();
-            return;
+            // 画像上はドラッグでパン
+            _isPreviewDragging     = true;
+            _previewDragStart      = e.GetPosition(PreviewOverlay);
+            _previewTranslateStart = new Point(PreviewTranslate.X, PreviewTranslate.Y);
+            PreviewOverlay.CaptureMouse();
         }
-        _isPreviewDragging     = true;
-        _previewDragStart      = e.GetPosition(PreviewOverlay);
-        _previewTranslateStart = new Point(PreviewTranslate.X, PreviewTranslate.Y);
-        PreviewOverlay.CaptureMouse();
+        else
+        {
+            // 背景押下。閉じる動作は MouseUp で行う（下のボタンへ伝播させないため）
+            _previewPressedBackground = true;
+        }
         e.Handled = true;
     }
 
@@ -585,8 +627,17 @@ public partial class ProjectListPage : Page, IRefreshable
 
     private void PreviewOverlay_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        _isPreviewDragging = false;
-        PreviewOverlay.ReleaseMouseCapture();
+        if (_isPreviewDragging)
+        {
+            _isPreviewDragging = false;
+            PreviewOverlay.ReleaseMouseCapture();
+        }
+        else if (_previewPressedBackground)
+        {
+            _previewPressedBackground = false;
+            ClosePreviewOverlay();
+        }
+        e.Handled = true;
     }
 
     /// <summary>表紙画像フィールドをリセットする。</summary>

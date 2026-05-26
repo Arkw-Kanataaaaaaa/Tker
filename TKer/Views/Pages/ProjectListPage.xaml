@@ -698,16 +698,23 @@
                        Margin="0,8,16,0" MouseLeftButtonUp="ClosePreview_Click"/>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left"
                         Margin="16,0,0,16">
-                <TextBlock Text="0" FontSize="11" Foreground="White" VerticalAlignment="Center"
-                           Margin="0,0,8,0"/>
-                <Border Width="160" Height="6" CornerRadius="3" Background="#55FFFFFF"
-                        VerticalAlignment="Center">
-                    <Border x:Name="PreviewZoomFill" Width="16" CornerRadius="3"
-                            Background="{StaticResource AccentCyanBrush}"
-                            HorizontalAlignment="Left"/>
+                <Border x:Name="ZoomTrack" Width="160" Height="16" Background="Transparent" Cursor="Hand"
+                        VerticalAlignment="Center"
+                        MouseLeftButtonDown="ZoomTrack_MouseDown"
+                        MouseMove="ZoomTrack_MouseMove"
+                        MouseLeftButtonUp="ZoomTrack_MouseUp">
+                    <Grid>
+                        <Border Height="6" CornerRadius="3" Background="#55FFFFFF" VerticalAlignment="Center"/>
+                        <Border x:Name="PreviewZoomFill" Height="6" Width="160" CornerRadius="3"
+                                Background="{StaticResource AccentCyanBrush}"
+                                HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <Ellipse x:Name="ZoomThumb" Width="14" Height="14" Fill="White"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center"
+                                 Margin="146,0,0,0"/>
+                    </Grid>
                 </Border>
                 <TextBlock x:Name="PreviewZoomLabel" Text="100%" FontSize="11" Foreground="White"
-                           VerticalAlignment="Center" Margin="8,0,0,0"/>
+                           VerticalAlignment="Center" Margin="10,0,0,0"/>
             </StackPanel>
         </Grid>
     </Grid>

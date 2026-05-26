@@ -225,8 +225,9 @@
                                                            Foreground="#E8FFFFFF" FontWeight="Bold" FontSize="13"
                                                            FontFamily="Yu Gothic UI" TextTrimming="CharacterEllipsis"/>
                                             </Border>
-                                            <!-- ホバー時の進捗オーバーレイ（中央） -->
-                                            <Border Background="#AA000000" CornerRadius="12" Padding="10">
+                                            <!-- ホバー時の色変化のみ -->
+                                            <Border CornerRadius="12" Background="#22FFFFFF"
+                                                    IsHitTestVisible="False">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -241,15 +242,6 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                    <TextBlock Text="{Binding ProgressLabel}"
-                                                               FontFamily="Consolas" FontSize="28" FontWeight="Bold"
-                                                               Foreground="White" HorizontalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding HoverDetail}"
-                                                               FontSize="11" Foreground="#CCFFFFFF"
-                                                               HorizontalAlignment="Center" TextAlignment="Center"
-                                                               Margin="0,4,0,0"/>
-                                                </StackPanel>
                                             </Border>
                                         </Grid>
                                     </Border>

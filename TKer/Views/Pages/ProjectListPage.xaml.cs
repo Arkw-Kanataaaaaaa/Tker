@@ -36,7 +36,6 @@ public partial class ProjectListPage : Page, IRefreshable
         public bool IsSelected           { get; init; }
         public BitmapImage? CoverBitmap  { get; init; }
         public bool HasNoCover           => CoverBitmap == null;
-        public string HoverDetail        { get; init; } = "";
         public string PeriodLabel        { get; init; } = "";
         public string CreatedAtLabel     { get; init; } = "";
         public string UpdatedAtLabel     { get; init; } = "";
@@ -156,7 +155,6 @@ public partial class ProjectListPage : Page, IRefreshable
                 IsActive        = s.Entry.DataFilePath == activeFilePath,
                 IsSelected      = s.Entry.DataFilePath == _selectedPath,
                 CoverBitmap     = TryGetCoverBitmap(s.Entry.DataFilePath),
-                HoverDetail     = BuildHoverDetail(s),
                 PeriodLabel     = BuildPeriodLabel(s.ProjectStartDate, s.ProjectEndDate),
                 CreatedAtLabel  = s.CreatedAt.ToString("yyyy/MM/dd HH:mm"),
                 UpdatedAtLabel  = s.UpdatedAt.ToString("yyyy/MM/dd HH:mm"),
@@ -190,16 +188,6 @@ public partial class ProjectListPage : Page, IRefreshable
             return bmp;
         }
         catch { _coverBitmapCache[jsonPath] = null; return null; }
-    }
-
-    /// <summary>ホバー時に表示するプロジェクト進捗の詳細テキストを生成する。</summary>
-    private static string BuildHoverDetail(ProjectSummary s)
-    {
-        var lines = new List<string>();
-        lines.Add($"完了 {s.DoneTasks} / {s.TotalTasks} タスク");
-        if (s.WipTasks > 0)      lines.Add($"進行中 {s.WipTasks} 件");
-        if (s.OverdueTasks > 0)  lines.Add($"⚠ 期限超過 {s.OverdueTasks} 件");
-        return string.Join("\n", lines);
     }
 
     // ── ソート ──────────────────────────────────────────────

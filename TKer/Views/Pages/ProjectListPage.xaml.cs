@@ -332,10 +332,9 @@ public partial class ProjectListPage : Page, IRefreshable
         }
         foreach (var p in _vm.CategoryTemplateService.UserPresets)
         {
-            var key = $"[カスタム] {p.Name}";
-            if (_newProjTemplates.ContainsKey(key)) continue;
-            names.Add(key);
-            _newProjTemplates[key] = p.Categories.Select(c => new CategoryPresetItem
+            if (_newProjTemplates.ContainsKey(p.Name)) continue;
+            names.Add(p.Name);
+            _newProjTemplates[p.Name] = p.Categories.Select(c => new CategoryPresetItem
             {
                 Name = c.Name, Color = c.Color, Description = c.Description
             }).ToList();

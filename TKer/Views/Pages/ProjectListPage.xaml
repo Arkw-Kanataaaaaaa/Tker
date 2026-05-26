@@ -100,7 +100,7 @@
                                 Click="RemoveSelected_Click" IsEnabled="False">
                             <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                         </Button>
-                        <Button ToolTip="プロジェクト読み込み (Ctrl+N)" Style="{StaticResource VToolbarBtn}"
+                        <Button ToolTip="プロジェクト読み込み (Ctrl+O)" Style="{StaticResource VToolbarBtn}"
                                 Click="LoadProject_Click">
                             <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconLg}"/>
                         </Button>

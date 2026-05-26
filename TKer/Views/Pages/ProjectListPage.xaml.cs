@@ -828,11 +828,8 @@ public partial class ProjectListPage : Page, IRefreshable
                     if (e.OriginalSource is TextBox) break;
                     SetActive_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
-                case Key.N:
-                    LoadProject_Click(this, new RoutedEventArgs());
-                    e.Handled = true; break;
                 case Key.O:
-                    OpenFolder_Click(this, new RoutedEventArgs());
+                    LoadProject_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
                 case Key.F:
                     if (SearchSection.Visibility != Visibility.Visible)

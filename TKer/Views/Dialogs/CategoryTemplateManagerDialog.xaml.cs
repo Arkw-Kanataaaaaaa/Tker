@@ -150,9 +150,7 @@ public partial class CategoryTemplateManagerDialog : Window
 
         if (sender is not FrameworkElement fe || fe.Tag is not string id) return;
 
-        var result = MessageBox.Show("このテンプレートを削除しますか？", "確認",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (result != MessageBoxResult.Yes) return;
+        if (!AppDialog.Confirm("このテンプレートを削除しますか？", "削除の確認", this)) return;
 
         _service.Delete(id);
         RefreshList();

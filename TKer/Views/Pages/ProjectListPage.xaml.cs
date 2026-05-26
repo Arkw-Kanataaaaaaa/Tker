@@ -1411,70 +1411,19 @@ public partial class ProjectListPage : Page, IRefreshable
     private async Task ShowDeleteDialogAsync(string path)
     {
         var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == path);
-        var projectName   = entry?.ProjectName ?? System.IO.Path.GetFileName(path);
-        var projectFolder = entry?.ProjectPath ?? System.IO.Path.GetDirectoryName(path) ?? "";
+        var projectName    = entry?.ProjectName ?? System.IO.Path.GetFileName(path);
+        var projectFolder  = entry?.ProjectPath ?? "";
+        var isFolderManaged = _vm.AppSettingsService.CollectSummaries()
+            .FirstOrDefault(s => s.Entry.DataFilePath == path)?.UseFolderManagement == true;
 
-        var bg  = (Brush)FindResource("BgCardBrush");
-        var fg  = (Brush)FindResource("TextPrimaryBrush");
-        var dim = (Brush)FindResource("TextDimBrush");
+        var dlg = new TKer.Views.Dialogs.ProjectDeleteDialog(
+            projectName, projectFolder, isFolderManaged)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dlg.ShowDialog() != true) return;
 
-        var win = new Window
-        {
-            Title = "プロジェクトの削除", Width = 440, Height = 240,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = Window.GetWindow(this), ResizeMode = ResizeMode.NoResize,
-            Background = bg
-        };
-        var sp = new StackPanel { Margin = new Thickness(24) };
-        sp.Children.Add(new TextBlock
-        {
-            Text = $"「{projectName}」を一覧から削除しますか？",
-            Foreground = fg, FontSize = 13, TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 16)
-        });
-        var chkFolder = new CheckBox
-        {
-            Content = "プロジェクトフォルダも削除する",
-            Foreground = fg, FontSize = 12,
-            Margin = new Thickness(0, 0, 0, 4)
-        };
-        sp.Children.Add(chkFolder);
-        sp.Children.Add(new TextBlock
-        {
-            Text = projectFolder,
-            Foreground = dim, FontSize = 10, FontFamily = new FontFamily("Consolas"),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(22, 0, 0, 20)
-        });
-        var btnPanel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        var btnCancel = new Button
-        {
-            Content = "キャンセル", Style = (Style)FindResource("SecondaryButton"),
-            Padding = new Thickness(14, 6, 14, 6), Margin = new Thickness(0, 0, 8, 0)
-        };
-        var btnOk = new Button
-        {
-            Content = "削除", Style = (Style)FindResource("DangerButton"),
-            Padding = new Thickness(20, 6, 20, 6)
-        };
-        btnCancel.Click += (_, _) => win.DialogResult = false;
-        btnOk.Click     += (_, _) => win.DialogResult = true;
-        btnPanel.Children.Add(btnCancel);
-        btnPanel.Children.Add(btnOk);
-        sp.Children.Add(btnPanel);
-        win.Content = sp;
-        win.PreviewKeyDown += (_, ev) =>
-        {
-            if (ev.Key == Key.Escape) { win.DialogResult = false; ev.Handled = true; }
-        };
-
-        if (win.ShowDialog() != true) return;
-
-        bool deleteFolder = chkFolder.IsChecked == true;
+        bool deleteFolder = dlg.DeleteFolder;
         _vm.AppSettingsService.RemoveProject(path);
         if (_selectedPath == path)
         {
@@ -1484,8 +1433,16 @@ public partial class ProjectListPage : Page, IRefreshable
         _coverBitmapCache.Clear();
         Refresh();
 
-        if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
-            await DeleteFolderWithProgressAsync(projectFolder, projectName);
+        if (isFolderManaged)
+        {
+            if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
+                await DeleteFolderWithProgressAsync(projectFolder, projectName);
+        }
+        else
+        {
+            // フォルダ管理なし: ドキュメント配下のJSONファイルのみ削除
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
+        }
     }
 
     /// <summary>プロジェクトフォルダをプログレスバー付きで非同期削除する。</summary>

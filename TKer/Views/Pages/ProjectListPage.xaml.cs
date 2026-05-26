@@ -614,7 +614,7 @@ public partial class ProjectListPage : Page, IRefreshable
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
     // ── カード選択 ────────────────────────────────────────
-    /// <summary>プロジェクトカードのクリックで選択・非選択を切り替える。</summary>
+    /// <summary>プロジェクトカードのクリックで選択・非選択を切り替える。ダブルクリックでアクティブに設定する。</summary>
     private void ProjectCard_Click(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is Button) return;
@@ -622,6 +622,14 @@ public partial class ProjectListPage : Page, IRefreshable
         FrameworkElement fe = (FrameworkElement)sender;
         if (fe.DataContext is not ProjectCardItem data) return;
         string path = data.Entry.DataFilePath ?? "";
+
+        if (e.ClickCount == 2)
+        {
+            _selectedPath = path;
+            _vm.SwitchProjectCommand.Execute(_selectedPath);
+            ApplyFilter();
+            return;
+        }
 
         if (_selectedPath == path)
         {

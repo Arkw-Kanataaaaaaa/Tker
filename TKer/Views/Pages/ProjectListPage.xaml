@@ -524,42 +524,14 @@
                             </StackPanel>
 
                             <!-- カテゴリーテンプレートからカテゴリー生成 -->
-                            <Border Background="{StaticResource BgCardBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    CornerRadius="6" Padding="14,12" Margin="0,0,0,24">
-                                <StackPanel>
-                                    <DockPanel>
-                                        <Border x:Name="CategoryGenToggleSwitch" DockPanel.Dock="Right"
-                                                Width="44" Height="24" CornerRadius="12"
-                                                Cursor="Hand" MouseLeftButtonUp="ToggleCategoryGeneration_Click">
-                                            <Grid>
-                                                <Border x:Name="CategoryGenThumb" Width="20" Height="20" CornerRadius="10"
-                                                        Background="White" HorizontalAlignment="Left"
-                                                        Margin="2,0,0,0" VerticalAlignment="Center"/>
-                                            </Grid>
-                                        </Border>
-                                        <TextBlock Text="カテゴリーテンプレートから生成" VerticalAlignment="Center"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                                   FontSize="13" FontWeight="SemiBold"/>
-                                    </DockPanel>
-                                    <ItemsControl x:Name="CategoryTemplateList" Visibility="Collapsed" Margin="0,10,0,0">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <CheckBox IsChecked="{Binding IsSelected}" Margin="0,4"
-                                                          VerticalContentAlignment="Top">
-                                                    <StackPanel Margin="4,0,0,0">
-                                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
-                                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
-                                                        <TextBlock Text="{Binding Summary}" FontSize="11"
-                                                                   Foreground="{StaticResource TextDimBrush}"
-                                                                   TextWrapping="Wrap"/>
-                                                    </StackPanel>
-                                                </CheckBox>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
+                            <TextBlock Text="カテゴリーテンプレート" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <ComboBox x:Name="CmbNewProjTemplate" Style="{StaticResource DarkComboBox}"
+                                      DisplayMemberPath="Name"
+                                      SelectionChanged="CmbNewProjTemplate_SelectionChanged"/>
+                            <TextBlock x:Name="NewProjTemplateSummary" FontSize="11"
+                                       Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap"
+                                       Margin="2,6,0,24"/>
 
                         </StackPanel>
                         </ScrollViewer>

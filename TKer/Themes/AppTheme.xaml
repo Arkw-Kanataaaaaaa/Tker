@@ -411,6 +411,9 @@
                     <Grid x:Name="Root">
                         <!-- トグルボタン＝枠そのもの（クリック領域）。標準ComboBoxと同じ構造 -->
                         <ToggleButton x:Name="PART_ToggleButton"
+                                      Style="{x:Null}"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                                       Focusable="False" Cursor="Hand"
                                       ClickMode="Press"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,

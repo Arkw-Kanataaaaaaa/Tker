@@ -18,9 +18,10 @@
                 <!-- グリッド/リスト切替ボタン（1つのアイコン、現在モードを表示） -->
                 <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
                         Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                        Background="Transparent"
                         MouseLeftButtonUp="ToggleView_Click" ToolTip="リスト表示に切り替え"
                         Margin="0,0,4,0">
-                    <Grid>
+                    <Grid Background="Transparent">
                         <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconSm}"/>
                         <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconSm}"
                               Visibility="Collapsed"/>

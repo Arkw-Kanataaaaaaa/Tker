@@ -75,6 +75,9 @@ public class ProjectService
             var safeName = string.Concat(projectName.Split(Path.GetInvalidFileNameChars()));
             projectPath  = "";
             dataFilePath = Path.Combine(tkerDir, $"{safeName}_project.json");
+            // 同名ファイルがある場合は連番を付けて上書きを防ぐ
+            for (int i = 2; File.Exists(dataFilePath); i++)
+                dataFilePath = Path.Combine(tkerDir, $"{safeName} ({i})_project.json");
         }
 
         CurrentProject = new ProjectData

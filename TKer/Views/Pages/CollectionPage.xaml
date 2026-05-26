@@ -125,8 +125,9 @@
                 <!-- グリッド表示 -->
                 <ScrollViewer x:Name="GridScrollViewer"
                               VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <WrapPanel x:Name="CollectionGridControl" Margin="12,12,0,12"/>
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="8,8,8,8">
+                    <WrapPanel x:Name="CollectionGridControl" Margin="4,4,4,4"/>
                 </ScrollViewer>
 
                 <!-- リスト表示 -->

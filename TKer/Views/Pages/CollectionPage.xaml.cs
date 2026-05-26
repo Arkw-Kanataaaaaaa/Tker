@@ -101,71 +101,72 @@ public partial class CollectionPage : Page, IRefreshable
 
         var card = new Border
         {
-            Width           = 160,
-            Height          = 180,
-            Margin          = new Thickness(0, 0, 12, 12),
-            CornerRadius    = new CornerRadius(10),
-            Background      = Brush("BgCardBrush"),
-            BorderBrush     = isSel
-                ? new SolidColorBrush(Color.FromRgb(35, 131, 226))
-                : Brush("BorderBrush"),
-            BorderThickness = isSel ? new Thickness(2) : new Thickness(1),
+            Width           = 170,
+            Height          = 220,
+            Margin          = new Thickness(6),
+            CornerRadius    = new CornerRadius(12),
             ClipToBounds    = true,
             Cursor          = Cursors.Hand,
         };
-        card.Clip = new RectangleGeometry(new Rect(0, 0, 160, 180), 10, 10);
+        card.Clip = new RectangleGeometry(new Rect(0, 0, 170, 220), 12, 12);
 
         var grid = new Grid();
-        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
+        // 背景（カバー画像なし時）
+        grid.Children.Add(new Border
+        {
+            Background   = Brush("BgCardBrush"),
+            CornerRadius = new CornerRadius(12),
+        });
+
+        // カバー画像 or プレースホルダーアイコン
         var coverBmp = TryGetCoverBitmap(col);
         if (coverBmp != null)
         {
-            // ClipToBounds で画像を行サイズに閉じ込め、上角丸でカードと合わせる
-            var imgWrapper = new Border
-            {
-                ClipToBounds = true,
-                CornerRadius = new CornerRadius(10, 10, 0, 0),
-                Child        = new Image { Source = coverBmp, Stretch = Stretch.UniformToFill },
-            };
-            Grid.SetRow(imgWrapper, 0);
-            grid.Children.Add(imgWrapper);
+            grid.Children.Add(new Image { Source = coverBmp, Stretch = Stretch.UniformToFill });
         }
         else
         {
-            var iconTb = new TextBlock
+            grid.Children.Add(new TextBlock
             {
                 Text                = col.Icon ?? "📁",
                 FontSize            = 52,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center,
-            };
-            Grid.SetRow(iconTb, 0);
-            grid.Children.Add(iconTb);
+            });
         }
 
-        var nameStrip = new Border
-        {
-            Background   = new SolidColorBrush(Color.FromArgb(200, 15, 15, 20)),
-            CornerRadius = new CornerRadius(0, 0, 10, 10),
-            Padding      = new Thickness(8, 6, 8, 6),
-            Child        = new TextBlock
+        // 選択枠
+        if (isSel)
+            grid.Children.Add(new Border
             {
-                Text             = col.Name,
-                FontSize         = 12,
-                FontWeight       = FontWeights.SemiBold,
-                Foreground       = Brushes.White,
-                TextTrimming     = TextTrimming.CharacterEllipsis,
+                CornerRadius    = new CornerRadius(12),
+                BorderThickness = new Thickness(3),
+                Background      = Brushes.Transparent,
+                BorderBrush     = new SolidColorBrush(Color.FromRgb(35, 131, 226)),
+            });
+
+        // プロジェクト名オーバーレイ（下部）
+        grid.Children.Add(new Border
+        {
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Background        = new SolidColorBrush(Color.FromArgb(0xAA, 0, 0, 0)),
+            Padding           = new Thickness(10, 6, 10, 10),
+            Child             = new TextBlock
+            {
+                Text         = col.Name,
+                Foreground   = new SolidColorBrush(Color.FromArgb(0xE8, 0xFF, 0xFF, 0xFF)),
+                FontWeight   = FontWeights.Bold,
+                FontSize     = 13,
+                FontFamily   = new FontFamily("Yu Gothic UI"),
+                TextTrimming = TextTrimming.CharacterEllipsis,
             },
-        };
-        Grid.SetRow(nameStrip, 1);
-        grid.Children.Add(nameStrip);
+        });
 
         var hoverOverlay = new Border
         {
-            Background   = new SolidColorBrush(Color.FromArgb(210, 10, 10, 20)),
-            CornerRadius = new CornerRadius(10),
+            Background   = new SolidColorBrush(Color.FromArgb(0xAA, 0, 0, 0)),
+            CornerRadius = new CornerRadius(12),
             Visibility   = Visibility.Collapsed,
         };
         var hoverSp = new StackPanel
@@ -201,7 +202,6 @@ public partial class CollectionPage : Page, IRefreshable
                 HorizontalAlignment = HorizontalAlignment.Center,
             });
         hoverOverlay.Child = hoverSp;
-        Grid.SetRowSpan(hoverOverlay, 2);
         grid.Children.Add(hoverOverlay);
 
         card.Child = grid;

@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Newtonsoft.Json;
 using TKer.Helpers;
 using TKer.Models;
@@ -33,16 +34,32 @@ public partial class ProjectListPage : Page, IRefreshable
         public DateTime CreatedAt        { get; init; }
         public bool IsActive             { get; init; }
         public bool IsSelected           { get; init; }
+        public BitmapImage? CoverBitmap  { get; init; }
+        public bool HasNoCover           => CoverBitmap == null;
+        public string PeriodLabel        { get; init; } = "";
+        public string CreatedAtLabel     { get; init; } = "";
+        public string UpdatedAtLabel     { get; init; } = "";
     }
 
     private readonly MainViewModel _vm;
+    // 新規プロジェクト作成時のカテゴリーテンプレート（表示名 → カテゴリー一覧）
+    private readonly Dictionary<string, List<CategoryPresetItem>> _newProjTemplates = new();
     private string? _selectedPath;
-
-    // ── ProjectPage から移植: ツリー/列カスタマイズ状態 ──
-    private FileNode? _selectedNode;
-    private static readonly string[] ALL_COLUMNS = { "名前", "更新日時", "種類", "サイズ" };
-    private List<string> _columnOrder = new() { "名前", "更新日時", "種類", "サイズ" };
-    private readonly HashSet<string> _hiddenColumns = new();
+    private string _coverImageData = string.Empty;
+    private bool _isFolderManagementEnabled = true;
+    private bool _isFolderMgmtToggleAnimating = false;
+    private readonly SolidColorBrush _folderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
+    private string _editCoverImageData = string.Empty;
+    private bool _isEditFolderManagementEnabled = true;
+    private bool _isEditFolderMgmtToggleAnimating = false;
+    private readonly SolidColorBrush _editFolderMgmtToggleBg = new(Color.FromRgb(35, 131, 226));
+    private string? _editingProjectPath;
+    private ProjectData? _editingProjectData;
+    private bool _isGridMode = true;
+    private enum SortMode { Name, Progress, Created, Updated }
+    private SortMode _sortMode = SortMode.Updated;
+    private bool _sortDescending = true;
+    private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
     /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
     public ProjectListPage(MainViewModel vm)
@@ -50,8 +67,13 @@ public partial class ProjectListPage : Page, IRefreshable
         _vm = vm;
         InitializeComponent();
 
+        FolderMgmtToggleSwitch.Background     = _folderMgmtToggleBg;
+        EditFolderMgmtToggleSwitch.Background = _editFolderMgmtToggleBg;
+
         Loaded += (_, _) =>
         {
+            UpdateDisplayModeButtons();
+            UpdateSortLabel();
             if (Window.GetWindow(this) is { } win)
             {
                 win.KeyDown -= Window_KeyDown;
@@ -76,10 +98,6 @@ public partial class ProjectListPage : Page, IRefreshable
         UiThemeHelper.ApplySectionTheme(PageHeader, _vm.AppSettingsService.GetSectionTheme("PL_Header"));
         ApplyFilter();
         ApplyBackground();
-
-        // TreePanel 表示中なら再読み込み
-        if (TreePanel.Visibility == Visibility.Visible)
-            ShowTreePanel();
     }
 
     /// <summary>コンテンツボーダーの背景テーマを適用する。</summary>
@@ -95,9 +113,19 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         UpdateProjectToolbarState();
 
-        var summaries = _vm.AppSettingsService.CollectSummaries()
-            .OrderByDescending(s => s.Entry.LastOpened)
-            .ToList();
+        var rawSummaries = _vm.AppSettingsService.CollectSummaries();
+        IEnumerable<ProjectSummary> ordered = _sortMode switch
+        {
+            SortMode.Name     => _sortDescending ? rawSummaries.OrderByDescending(s => s.Entry.ProjectName)
+                                                 : rawSummaries.OrderBy(s => s.Entry.ProjectName),
+            SortMode.Progress => _sortDescending ? rawSummaries.OrderByDescending(s => s.ProgressRate)
+                                                 : rawSummaries.OrderBy(s => s.ProgressRate),
+            SortMode.Created  => _sortDescending ? rawSummaries.OrderByDescending(s => s.CreatedAt)
+                                                 : rawSummaries.OrderBy(s => s.CreatedAt),
+            _                 => _sortDescending ? rawSummaries.OrderByDescending(s => s.UpdatedAt)
+                                                 : rawSummaries.OrderBy(s => s.UpdatedAt),
+        };
+        var summaries = ordered.ToList();
         var activeFilePath = _vm.ProjectService.ProjectFilePath;
 
         var q = SearchBox?.Text?.Trim().ToLower() ?? "";
@@ -108,197 +136,724 @@ public partial class ProjectListPage : Page, IRefreshable
 
         if (summaries.Count == 0)
         {
-            NoProjectBanner.Visibility      = Visibility.Visible;
-            ProjectItemsControl.ItemsSource = null;
+            NoProjectBanner.Visibility = Visibility.Visible;
+            ProjectGridControl.ItemsSource = null;
+            ProjectListItemsControl.ItemsSource = null;
         }
         else
         {
-            NoProjectBanner.Visibility      = Visibility.Collapsed;
-            ProjectItemsControl.ItemsSource = summaries.Select(s => new ProjectCardItem
+            NoProjectBanner.Visibility = Visibility.Collapsed;
+            var items = summaries.Select(s => new ProjectCardItem
             {
-                Entry         = s.Entry,
-                TotalTasks    = s.TotalTasks,
-                DoneTasks     = s.DoneTasks,
-                WipTasks      = s.WipTasks,
-                OverdueTasks  = s.OverdueTasks,
-                ProgressRate  = s.ProgressRate,
-                ProgressLabel = s.ProgressLabel,
-                HasAlert      = s.HasAlert,
-                CreatedAt     = s.CreatedAt,
-                IsActive      = s.Entry.DataFilePath == activeFilePath,
-                IsSelected    = s.Entry.DataFilePath == _selectedPath
+                Entry           = s.Entry,
+                TotalTasks      = s.TotalTasks,
+                DoneTasks       = s.DoneTasks,
+                WipTasks        = s.WipTasks,
+                OverdueTasks    = s.OverdueTasks,
+                ProgressRate    = s.ProgressRate,
+                ProgressLabel   = s.ProgressLabel,
+                HasAlert        = s.HasAlert,
+                CreatedAt       = s.CreatedAt,
+                IsActive        = s.Entry.DataFilePath == activeFilePath,
+                IsSelected      = s.Entry.DataFilePath == _selectedPath,
+                CoverBitmap     = TryGetCoverBitmap(s.Entry.DataFilePath),
+                PeriodLabel     = BuildPeriodLabel(s.ProjectStartDate, s.ProjectEndDate),
+                CreatedAtLabel  = s.CreatedAt.ToString("yyyy/MM/dd HH:mm"),
+                UpdatedAtLabel  = s.UpdatedAt.ToString("yyyy/MM/dd HH:mm"),
+            }).ToList();
+            ProjectGridControl.ItemsSource = items;
+            ProjectListItemsControl.ItemsSource = items;
+        }
+    }
+
+    // ── カバー画像キャッシュ ──────────────────────────────
+    /// <summary>プロジェクトファイルのカバー画像をキャッシュしながら取得する。</summary>
+    private BitmapImage? TryGetCoverBitmap(string? jsonPath)
+    {
+        if (string.IsNullOrEmpty(jsonPath)) return null;
+        if (_coverBitmapCache.TryGetValue(jsonPath, out var cached)) return cached;
+        try
+        {
+            if (!File.Exists(jsonPath)) { _coverBitmapCache[jsonPath] = null; return null; }
+            var json = File.ReadAllText(jsonPath);
+            var pd = JsonConvert.DeserializeObject<ProjectData>(json);
+            if (string.IsNullOrEmpty(pd?.Settings.CoverImageData))
+            { _coverBitmapCache[jsonPath] = null; return null; }
+            var bytes = Convert.FromBase64String(pd.Settings.CoverImageData);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = new MemoryStream(bytes);
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            _coverBitmapCache[jsonPath] = bmp;
+            return bmp;
+        }
+        catch { _coverBitmapCache[jsonPath] = null; return null; }
+    }
+
+    // ── ソート ──────────────────────────────────────────────
+    private static string SortModeName(SortMode mode) => mode switch
+    {
+        SortMode.Name     => "プロジェクト名",
+        SortMode.Progress => "進捗率",
+        SortMode.Created  => "作成日時",
+        _                 => "更新日時",
+    };
+
+    private void SortButton_Click(object sender, MouseButtonEventArgs e)
+    {
+        UpdateSortPopupHighlight();
+        SortPopup.IsOpen = true;
+    }
+
+    private void SetSortMode(SortMode mode)
+    {
+        _sortMode = mode;
+        UpdateSortLabel();
+        SortPopup.IsOpen = false;
+        ApplyFilter();
+    }
+
+    private void SortByName_Click(object sender, MouseButtonEventArgs e)     => SetSortMode(SortMode.Name);
+    private void SortByProgress_Click(object sender, MouseButtonEventArgs e) => SetSortMode(SortMode.Progress);
+    private void SortByCreated_Click(object sender, MouseButtonEventArgs e)  => SetSortMode(SortMode.Created);
+    private void SortByUpdated_Click(object sender, MouseButtonEventArgs e)  => SetSortMode(SortMode.Updated);
+
+    private void ToggleSortDirection_Click(object sender, MouseButtonEventArgs e)
+    {
+        _sortDescending = !_sortDescending;
+        UpdateSortLabel();
+        UpdateSortPopupHighlight();
+        ApplyFilter();
+    }
+
+    private void UpdateSortLabel()
+    {
+        SortModeLabel.Text = $"{SortModeName(_sortMode)} {(_sortDescending ? "↓" : "↑")}";
+    }
+
+    private void UpdateSortPopupHighlight()
+    {
+        var active   = (Brush)FindResource("AccentCyanBrush");
+        var inactive = (Brush)FindResource("TextPrimaryBrush");
+        SortOptNameText.Foreground     = _sortMode == SortMode.Name     ? active : inactive;
+        SortOptProgressText.Foreground = _sortMode == SortMode.Progress ? active : inactive;
+        SortOptCreatedText.Foreground  = _sortMode == SortMode.Created  ? active : inactive;
+        SortOptUpdatedText.Foreground  = _sortMode == SortMode.Updated  ? active : inactive;
+        SortDirectionText.Text = _sortDescending ? "降順 ↓" : "昇順 ↑";
+    }
+
+    private static string BuildPeriodLabel(DateTime? start, DateTime? end)
+    {
+        if (start == null && end == null) return "─";
+        var s = start?.ToString("yyyy/MM/dd") ?? "─";
+        var e = end?.ToString("yyyy/MM/dd")   ?? "─";
+        return $"{s} 〜 {e}";
+    }
+
+    // ── グリッド/リスト表示モード切替 ──────────────────────
+    /// <summary>グリッド/リスト表示をトグルする。</summary>
+    private void ToggleView_Click(object sender, MouseButtonEventArgs e)
+    {
+        _isGridMode = !_isGridMode;
+        ProjectGridControl.Visibility = _isGridMode ? Visibility.Visible  : Visibility.Collapsed;
+        ProjectListSection.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
+        UpdateDisplayModeButtons();
+    }
+
+    /// <summary>グリッド/リスト切替アイコンを現在のモードに合わせて更新する。</summary>
+    private void UpdateDisplayModeButtons()
+    {
+        ViewIconGrid.Visibility = _isGridMode ? Visibility.Visible   : Visibility.Collapsed;
+        ViewIconList.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
+        BtnViewToggle.ToolTip   = _isGridMode ? "リスト表示に切り替え" : "グリッド表示に切り替え";
+    }
+
+    /// <summary>フォルダ管理トグルのクリックで有効/無効を切り替える。</summary>
+    private void ToggleFolderManagement_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_isFolderMgmtToggleAnimating) return;
+        _isFolderManagementEnabled = !_isFolderManagementEnabled;
+        AnimateFolderMgmtToggle();
+        FolderPathSection.Visibility = _isFolderManagementEnabled ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isFolderManagementEnabled)
+            TxtNewProjPath.Clear();
+    }
+
+    /// <summary>フォルダ管理トグルのつまみと背景色をアニメーションで更新する。</summary>
+    private void AnimateFolderMgmtToggle()
+    {
+        _isFolderMgmtToggleAnimating = true;
+
+        var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+        {
+            To             = _isFolderManagementEnabled ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0),
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+            }
+        };
+        thumbAnim.Completed += (_, _) => _isFolderMgmtToggleAnimating = false;
+        FolderMgmtThumb.BeginAnimation(MarginProperty, thumbAnim);
+
+        var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+        {
+            To       = _isFolderManagementEnabled ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80),
+            Duration = TimeSpan.FromMilliseconds(200)
+        };
+        _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
+    }
+
+    /// <summary>カテゴリーテンプレートのドロップダウン選択時に概要を更新する。</summary>
+    private void CmbNewProjTemplate_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (NewProjTemplateSummary == null) return;
+        NewProjTemplateSummary.Text =
+            CmbNewProjTemplate.SelectedItem is string key && _newProjTemplates.TryGetValue(key, out var cats)
+                ? string.Join("、", cats.Select(c => c.Name)) : "";
+    }
+
+    /// <summary>カテゴリーテンプレートの表示名一覧（先頭=生成しない、組み込み＋ユーザー作成）を構築する。</summary>
+    private List<string> BuildCategoryTemplateItems()
+    {
+        _newProjTemplates.Clear();
+        var names = new List<string> { "（生成しない）" };
+        _newProjTemplates["（生成しない）"] = new();
+
+        foreach (var kv in CategoryTemplateDialog.BuiltInTemplates)
+        {
+            names.Add(kv.Key);
+            _newProjTemplates[kv.Key] = kv.Value.Select(c => new CategoryPresetItem
+            {
+                Name = c.Name, Color = c.Color, Description = c.Description
             }).ToList();
         }
+        foreach (var p in _vm.CategoryTemplateService.UserPresets)
+        {
+            if (_newProjTemplates.ContainsKey(p.Name)) continue;
+            names.Add(p.Name);
+            _newProjTemplates[p.Name] = p.Categories.Select(c => new CategoryPresetItem
+            {
+                Name = c.Name, Color = c.Color, Description = c.Description
+            }).ToList();
+        }
+        return names;
     }
 
     // ── 右パネル制御 ─────────────────────────────────────
-    /// <summary>右パネルを空（未選択）状態に切り替える。</summary>
+    /// <summary>ドロワーを閉じて未選択状態にする。</summary>
     private void ShowEmptyPanel()
     {
-        EmptyPanel.Visibility       = Visibility.Visible;
-        ProjectInfoPanel.Visibility = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Collapsed;
-        HideFileToolbar();
+        if (DrawerContainer.ActualWidth > 0) CloseDrawer();
     }
 
-    /// <summary>右パネルにプロジェクト情報を表示する。</summary>
+    /// <summary>プロジェクト詳細ドロワーを開いてプロジェクト情報を表示する。</summary>
     private void ShowInfoPanel()
     {
-        EmptyPanel.Visibility       = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility = Visibility.Visible;
-        HideFileToolbar();
+        var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == _selectedPath);
+        DetailPanelTitle.Text = entry?.ProjectName ?? "";
 
         ProjectInfoContent.Children.Clear();
 
-        var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == _selectedPath);
-        if (entry == null) return;
+        if (entry == null) { OpenDetailDrawer(); return; }
 
-        // プロジェクト名
-        ProjectInfoContent.Children.Add(new TextBlock
-        {
-            Text = entry.ProjectName,
-            FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 20,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 8)
-        });
-
-        // 説明
-        if (!string.IsNullOrWhiteSpace(entry.Description))
-        {
-            ProjectInfoContent.Children.Add(new TextBlock
-            {
-                Text = entry.Description,
-                FontSize = 13, TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin = new Thickness(0, 0, 0, 14)
-            });
-        }
-
-        // パス
-        AddInfoRowToPanel(ProjectInfoContent, "パス", entry.ProjectPath ?? "");
-        AddInfoRowToPanel(ProjectInfoContent, "ファイル", entry.DataFilePath ?? "");
-        AddInfoRowToPanel(ProjectInfoContent, "最終オープン", entry.LastOpened.ToString("yyyy/MM/dd HH:mm"));
-
-        // タスク統計
+        // タスク統計・設定を一度だけ読む
+        ProjectData? projectData = null;
         try
         {
             if (File.Exists(_selectedPath))
             {
-                var json = File.ReadAllText(_selectedPath!);
-                var project = JsonConvert.DeserializeObject<ProjectData>(json);
-                if (project != null)
-                {
-                    var tasks = project.Tasks;
-                    int total   = tasks.Count;
-                    int done    = tasks.Count(t => t.Status == "完了");
-                    int wip     = tasks.Count(t => t.Status == "進行中");
-                    int todo    = tasks.Count(t => t.Status == "未着手");
-                    int overdue = tasks.Count(t => t.IsOverdue);
-
-                    AddSectionDividerToPanel(ProjectInfoContent, "タスク統計");
-                    AddInfoRowToPanel(ProjectInfoContent, "合計",   $"{total} 件");
-                    AddInfoRowToPanel(ProjectInfoContent, "完了",   $"{done} 件");
-                    AddInfoRowToPanel(ProjectInfoContent, "進行中", $"{wip} 件");
-                    AddInfoRowToPanel(ProjectInfoContent, "未着手", $"{todo} 件");
-                    if (overdue > 0)
-                        AddInfoRowToPanel(ProjectInfoContent, "期限超過", $"⚠ {overdue} 件");
-                }
+                var rawJson = File.ReadAllText(_selectedPath!);
+                projectData = JsonConvert.DeserializeObject<ProjectData>(rawJson);
             }
         }
         catch { /* 読み込み失敗は無視 */ }
 
-        // ボタン群
-        AddSectionDividerToPanel(ProjectInfoContent, "操作");
-        var btnPanel = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-
-        var btnActive = new Button
+        // 表紙画像
+        if (!string.IsNullOrEmpty(projectData?.Settings.CoverImageData))
         {
-            Content = "アクティブに設定",
-            Style = (Style)FindResource("PrimaryButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 8, 8)
-        };
-        btnActive.Click += (_, _) => SetActive_Click(btnActive, new RoutedEventArgs());
-        btnPanel.Children.Add(btnActive);
+            try
+            {
+                var bytes = Convert.FromBase64String(projectData.Settings.CoverImageData);
+                var bmp   = new BitmapImage();
+                bmp.BeginInit();
+                bmp.StreamSource = new MemoryStream(bytes);
+                bmp.CacheOption  = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
 
+                var capturedBmp = bmp;
+
+                // プレビューアイコン（右下）
+                var previewIcon = new Border
+                {
+                    Width = 32,
+                    Height = 32,
+                    CornerRadius = new CornerRadius(4),
+                    Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(0, 0, 6, 6),
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Child = new System.Windows.Shapes.Path
+                    {
+                        Data = (Geometry)FindResource("Bi.ArrowsFullscreen"),
+                        Width = 16,
+                        Height = 16,
+                        Stretch = Stretch.Uniform,
+                        Fill = Brushes.White,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                };
+                previewIcon.MouseLeftButtonUp += (_, _) => OpenPreviewOverlay(capturedBmp);
+
+                var coverGrid = new Grid();
+                coverGrid.Children.Add(new Image { Source = bmp, Stretch = Stretch.Uniform });
+                coverGrid.Children.Add(previewIcon);
+
+                ProjectInfoContent.Children.Add(new Border
+                {
+                    Height        = 180,
+                    CornerRadius  = new CornerRadius(8),
+                    ClipToBounds  = true,
+                    Margin        = new Thickness(0, 0, 0, 16),
+                    Background     = (Brush)FindResource("BgCardBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Child         = coverGrid
+                });
+            }
+            catch { /* 画像デコード失敗は無視 */ }
+        }
+        else
+        {
+            // 表紙画像未設定時のプレースホルダー
+            ProjectInfoContent.Children.Add(new Border
+            {
+                Height = 60, CornerRadius = new CornerRadius(8),
+                Background = (Brush)FindResource("BgCardBrush"),
+                BorderBrush = (Brush)FindResource("BorderBrush"), BorderThickness = new Thickness(1),
+                Margin = new Thickness(0, 0, 0, 16),
+                Child = new TextBlock
+                {
+                    Text = "表紙画像は設定されていません",
+                    FontSize = 12,
+                    Foreground = (Brush)FindResource("TextDimBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            });
+        }
+
+        // ── ローカルヘルパー ──
+        void AddSectionLine() =>
+            ProjectInfoContent.Children.Add(new Border
+            {
+                Height = 1, Background = (Brush)FindResource("BorderBrush"),
+                Margin = new Thickness(0, 0, 0, 0)
+            });
+
+        void AddSectionTitle(string title) =>
+            ProjectInfoContent.Children.Add(new TextBlock
+            {
+                Text = title, FontSize = 14, FontWeight = FontWeights.Bold,
+                Foreground = (Brush)FindResource("AccentCyanBrush"),
+                Margin = new Thickness(0, 10, 0, 10)
+            });
+
+        void AddHRow(string label, string value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var lbl = new TextBlock
+            {
+                Text = label, FontSize = 13,
+                Foreground = (Brush)FindResource("TextDimBrush"),
+                VerticalAlignment = VerticalAlignment.Top
+            };
+            var val = new TextBlock
+            {
+                Text = value, FontSize = 13,
+                Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                TextWrapping = TextWrapping.Wrap
+            };
+            Grid.SetColumn(val, 1);
+
+            var copyIcon = new Border
+            {
+                Width = 20, Height = 20, Margin = new Thickness(4, 0, 0, 0),
+                CornerRadius = new CornerRadius(3), Cursor = System.Windows.Input.Cursors.Hand,
+                Opacity = 0, VerticalAlignment = VerticalAlignment.Top,
+                Child = new System.Windows.Shapes.Path
+                {
+                    Data = (Geometry)FindResource("Bi.ClipboardFill"),
+                    Fill = (Brush)FindResource("TextDimBrush"),
+                    Stretch = Stretch.Uniform, Width = 12, Height = 12,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            Grid.SetColumn(copyIcon, 2);
+            copyIcon.MouseLeftButtonUp += (_, _) =>
+            {
+                System.Windows.Clipboard.SetText(value);
+                copyIcon.Opacity = 1;
+            };
+
+            g.MouseEnter += (_, _) => copyIcon.Opacity = 0.45;
+            g.MouseLeave += (_, _) => copyIcon.Opacity = 0;
+
+            g.Children.Add(lbl);
+            g.Children.Add(val);
+            g.Children.Add(copyIcon);
+            ProjectInfoContent.Children.Add(g);
+        }
+
+        void AddProgressRow(string label, int pct)
+        {
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var lbl = new TextBlock
+            {
+                Text = label, FontSize = 13,
+                Foreground = (Brush)FindResource("TextDimBrush"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var valStack = new StackPanel();
+            valStack.Children.Add(new TextBlock
+            {
+                Text = $"{pct}%", FontSize = 13,
+                Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+            var track = new Border
+            {
+                Height = 6, CornerRadius = new CornerRadius(3),
+                Background = (Brush)FindResource("BgCardBrush")
+            };
+            var fill = new Border
+            {
+                Height = 6, CornerRadius = new CornerRadius(3),
+                Background = (Brush)FindResource("AccentCyanBrush"),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = 0  // set after layout via SizeChanged
+            };
+            var trackGrid = new Grid();
+            trackGrid.Children.Add(track);
+            trackGrid.Children.Add(fill);
+            track.SizeChanged += (_, e) =>
+                fill.Width = e.NewSize.Width * Math.Clamp(pct / 100.0, 0, 1);
+            valStack.Children.Add(trackGrid);
+            Grid.SetColumn(valStack, 1);
+            g.Children.Add(lbl);
+            g.Children.Add(valStack);
+            ProjectInfoContent.Children.Add(g);
+        }
+
+        // ── 詳細情報セクション ──
+        AddSectionLine();
+        AddSectionTitle("詳細情報");
+        AddHRow("プロジェクト名", entry.ProjectName ?? "");
+        if (!string.IsNullOrWhiteSpace(entry.Description))
+            AddHRow("説明", entry.Description);
+        if (projectData?.Settings.UseFolderManagement == true && !string.IsNullOrEmpty(entry.ProjectPath))
+            AddHRow("フォルダパス", entry.ProjectPath);
+        if (projectData?.Settings.ProjectStartDate != null || projectData?.Settings.ProjectEndDate != null)
+        {
+            var start = projectData?.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "─";
+            var end   = projectData?.Settings.ProjectEndDate?.ToString("yyyy/MM/dd")   ?? "─";
+            AddHRow("プロジェクト期間", $"{start}  〜  {end}");
+        }
+        if (projectData != null)
+        {
+            AddHRow("作成日時", projectData.Settings.CreatedAt.ToString("yyyy/MM/dd HH:mm"));
+            AddHRow("更新日時", projectData.Settings.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
+        }
+
+        // ── タスク統計セクション（セクション間の線は1本） ──
+        if (projectData != null)
+        {
+            var tasks    = projectData.Tasks;
+            int total    = tasks.Count;
+            int done     = tasks.Count(t => t.Status == "完了");
+            int wip      = tasks.Count(t => t.Status == "進行中");
+            int todo     = tasks.Count(t => t.Status == "未着手");
+            int overdue  = tasks.Count(t => t.IsOverdue);
+            int pct      = total > 0 ? (int)Math.Round(done * 100.0 / total) : 0;
+
+            AddSectionLine();   // 詳細情報下 = タスク統計上 を兼ねる1本線
+            AddSectionTitle("タスク統計");
+            AddProgressRow("進捗率", pct);
+            AddHRow("合計",     $"{total} 件");
+            AddHRow("完了",     $"{done} 件");
+            AddHRow("進行中",   $"{wip} 件");
+            AddHRow("未着手",   $"{todo} 件");
+            if (overdue > 0)
+                AddHRow("期限超過", $"⚠ {overdue} 件");
+            AddSectionLine();
+        }
+        else
+        {
+            AddSectionLine();   // タスクデータなし時の詳細情報下線
+        }
+
+        // ── エクスプローラーで開くボタン ──
+        bool folderEnabled = projectData?.Settings.UseFolderManagement == true
+                             && !string.IsNullOrEmpty(entry.ProjectPath);
         var btnExplorer = new Button
         {
-            Content = "エクスプローラー",
-            Style = (Style)FindResource("SecondaryButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 8, 8)
+            Content    = "エクスプローラーで開く",
+            Style      = (Style)FindResource("SecondaryButton"),
+            Padding    = new Thickness(14, 7, 14, 7),
+            Margin     = new Thickness(0, 12, 0, 4),
+            IsEnabled  = folderEnabled,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            ToolTip    = folderEnabled ? null : "フォルダ管理が無効のため使用できません"
         };
         btnExplorer.Click += (_, _) => OpenFolder_Click(btnExplorer, new RoutedEventArgs());
-        btnPanel.Children.Add(btnExplorer);
+        ProjectInfoContent.Children.Add(btnExplorer);
 
-        var btnEdit = new Button
-        {
-            Content = "編集",
-            Style = (Style)FindResource("SecondaryButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 8, 8)
-        };
-        btnEdit.Click += (_, _) => EditSettings_Click(btnEdit, new RoutedEventArgs());
-        btnPanel.Children.Add(btnEdit);
-
-        var btnDelete = new Button
-        {
-            Content = "削除",
-            Style = (Style)FindResource("DangerButton"),
-            Padding = new Thickness(12, 6, 12, 6),
-            Margin = new Thickness(0, 0, 0, 8)
-        };
-        btnDelete.Click += (_, _) => RemoveSelected_Click(btnDelete, new RoutedEventArgs());
-        btnPanel.Children.Add(btnDelete);
-
-        ProjectInfoContent.Children.Add(btnPanel);
+        OpenDetailDrawer();
     }
 
-    /// <summary>右パネルにフォルダツリーを表示する。</summary>
-    private void ShowTreePanel()
+
+    /// <summary>プロジェクト詳細をプッシュ型ドロワーで表示する。</summary>
+    private void OpenDetailDrawer() => OpenDrawer(DetailDrawerScroll);
+
+    /// <summary>プロジェクト詳細ドロワーのクローズボタンのハンドラ。</summary>
+    private void CloseDetailPanel_Click(object sender, RoutedEventArgs e) => CloseDetailDrawer();
+
+    /// <summary>プロジェクト詳細ドロワーを閉じて未選択状態に戻す。</summary>
+    private void CloseDetailDrawer()
+        => CloseDrawer(() => { _selectedPath = null; ApplyFilter(); });
+
+    private void OpenDrawer(FrameworkElement target)
     {
-        EmptyPanel.Visibility       = Visibility.Collapsed;
-        ProjectInfoPanel.Visibility = Visibility.Collapsed;
-        TreePanel.Visibility        = Visibility.Visible;
-        ShowFileToolbar();
+        bool wasOpen = DrawerContainer.ActualWidth > 0;
 
-        var tree = _vm.ProjectService.GetProjectFolderTree();
-        if (tree != null)
-            FolderTree.ItemsSource = new[] { tree };
-        UpdateFileToolbarState();
+        AddDrawerScroll.Visibility    = target == AddDrawerScroll    ? Visibility.Visible : Visibility.Collapsed;
+        EditDrawerScroll.Visibility   = target == EditDrawerScroll   ? Visibility.Visible : Visibility.Collapsed;
+        DetailDrawerScroll.Visibility = target == DetailDrawerScroll ? Visibility.Visible : Visibility.Collapsed;
+
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = wasOpen ? DrawerContainer.ActualWidth : 0, To = 500,
+            Duration       = TimeSpan.FromMilliseconds(260),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+        };
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
-    /// <summary>ファイル操作ツールバーを表示する。</summary>
-    private void ShowFileToolbar()  => BtnTreeSection.Visibility = Visibility.Visible;
-    /// <summary>ファイル操作ツールバーを非表示にする。</summary>
-    private void HideFileToolbar()  => BtnTreeSection.Visibility = Visibility.Collapsed;
+    private void CloseDrawer(Action? onComplete = null)
+    {
+        var anim = new System.Windows.Media.Animation.DoubleAnimation
+        {
+            From = DrawerContainer.ActualWidth, To = 0,
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn }
+        };
+        anim.Completed += (_, _) =>
+        {
+            AddDrawerScroll.Visibility    = Visibility.Collapsed;
+            EditDrawerScroll.Visibility   = Visibility.Collapsed;
+            DetailDrawerScroll.Visibility = Visibility.Collapsed;
+            onComplete?.Invoke();
+        };
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
+    }
+
+    /// <summary>新規プロジェクト作成フォームをドロワーとして表示する。</summary>
+    private void ShowAddProjectPanel()
+    {
+        // 選択中プロジェクトがあれば解除する
+        _selectedPath = null;
+        ApplyFilter();
+
+        TxtNewProjName.Clear();
+        TxtNewProjDesc.Clear();
+        TxtNewProjPath.Clear();
+        TxtNewProjStartDate.Clear();
+        TxtNewProjEndDate.Clear();
+        ClearCoverImageField();
+
+        // フォルダ管理トグルをON状態にリセット
+        _isFolderManagementEnabled   = true;
+        _isFolderMgmtToggleAnimating = false;
+        FolderMgmtThumb.BeginAnimation(MarginProperty, null);
+        FolderMgmtThumb.Margin = new Thickness(22, 0, 0, 0);
+        _folderMgmtToggleBg.BeginAnimation(SolidColorBrush.ColorProperty, null);
+        _folderMgmtToggleBg.Color    = Color.FromRgb(35, 131, 226);
+        FolderPathSection.Visibility = Visibility.Visible;
+
+        // カテゴリーテンプレートのドロップダウンを構築し、先頭(生成しない)を選択する
+        CmbNewProjTemplate.ItemsSource  = BuildCategoryTemplateItems();
+        CmbNewProjTemplate.SelectedIndex = 0;
+
+        OpenDrawer(AddDrawerScroll);
+        TxtNewProjName.Focus();
+    }
+
+    /// <summary>新規プロジェクト作成ドロワーを閉じる。</summary>
+    private void HideAddProjectPanel() => CloseDrawer();
+
+    // ─── 画像プレビュー オーバーレイ ───
+    private Point _previewDragStart;
+    private Point _previewTranslateStart;
+    private bool _isPreviewDragging;
+    private bool _previewPressedBackground;
+
+    private const double PreviewMinScale   = 1.0;   // フィット = 0%
+    private const double PreviewMaxScale   = 4.0;   // 最大ズーム = 100%
+    private const double PreviewGaugeWidth = 160.0;
+    private const double PreviewThumbSize  = 14.0;
+    private bool _zoomDragging;
+
+    /// <summary>表紙画像を全画面オーバーレイでプレビュー表示する。</summary>
+    private void OpenPreviewOverlay(BitmapImage bmp)
+    {
+        PreviewImage.Source = bmp;
+        PreviewScale.ScaleX = PreviewScale.ScaleY = 1;
+        PreviewTranslate.X = PreviewTranslate.Y = 0;
+        UpdateZoomGauge(1);
+        PreviewOverlay.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>ズームゲージ・ツマミ・ラベルを現在の拡大率で更新する。割合は0〜100%で表示する。</summary>
+    private void UpdateZoomGauge(double scale)
+    {
+        double ratio = Math.Clamp((scale - PreviewMinScale) / (PreviewMaxScale - PreviewMinScale), 0, 1);
+        PreviewZoomLabel.Text = $"{(int)Math.Round(ratio * 100)}%";
+        PreviewZoomFill.Width = ratio * PreviewGaugeWidth;
+        ZoomThumb.Margin = new Thickness(ratio * (PreviewGaugeWidth - PreviewThumbSize), 0, 0, 0);
+    }
+
+    /// <summary>ゲージ上の位置から拡大率を設定する。</summary>
+    private void SetZoomFromPoint(double x)
+    {
+        double ratio = Math.Clamp(x / PreviewGaugeWidth, 0, 1);
+        double scale = PreviewMinScale + ratio * (PreviewMaxScale - PreviewMinScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = scale;
+        UpdateZoomGauge(scale);
+    }
+
+    private void ZoomTrack_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = true;
+        ZoomTrack.CaptureMouse();
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+        e.Handled = true;
+    }
+
+    private void ZoomTrack_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_zoomDragging) return;
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+    }
+
+    private void ZoomTrack_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = false;
+        ZoomTrack.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
+    private void ClosePreview_Click(object sender, RoutedEventArgs e)
+    {
+        ClosePreviewOverlay();
+        e.Handled = true; // 下にある一覧ボタンへ MouseUp が伝播しないようにする
+    }
+
+    private void ClosePreviewOverlay()
+    {
+        _isPreviewDragging = false;
+        _previewPressedBackground = false;
+        PreviewOverlay.ReleaseMouseCapture();
+        PreviewOverlay.Visibility = Visibility.Collapsed;
+        PreviewImage.Source = null;
+    }
+
+    private void PreviewOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
+
+        double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
+        double newScale = Math.Clamp(PreviewScale.ScaleX * factor, PreviewMinScale, PreviewMaxScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = newScale;
+        UpdateZoomGauge(newScale);
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is Image)
+        {
+            // 画像上はドラッグでパン
+            _isPreviewDragging     = true;
+            _previewDragStart      = e.GetPosition(PreviewOverlay);
+            _previewTranslateStart = new Point(PreviewTranslate.X, PreviewTranslate.Y);
+            PreviewOverlay.CaptureMouse();
+        }
+        else
+        {
+            // 背景押下。閉じる動作は MouseUp で行う（下のボタンへ伝播させないため）
+            _previewPressedBackground = true;
+        }
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPreviewDragging) return;
+        var pos = e.GetPosition(PreviewOverlay);
+        PreviewTranslate.X = _previewTranslateStart.X + (pos.X - _previewDragStart.X);
+        PreviewTranslate.Y = _previewTranslateStart.Y + (pos.Y - _previewDragStart.Y);
+    }
+
+    private void PreviewOverlay_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isPreviewDragging)
+        {
+            _isPreviewDragging = false;
+            PreviewOverlay.ReleaseMouseCapture();
+        }
+        else if (_previewPressedBackground)
+        {
+            _previewPressedBackground = false;
+            ClosePreviewOverlay();
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>表紙画像フィールドをリセットする。</summary>
+    private void ClearCoverImageField()
+    {
+        _coverImageData                  = string.Empty;
+        CoverImagePreview.Source         = null;
+        CoverImagePreview.Visibility     = Visibility.Collapsed;
+        CoverImagePlaceholder.Visibility = Visibility.Visible;
+        BtnClearCoverImage.Visibility    = Visibility.Collapsed;
+    }
 
     /// <summary>プロジェクトツールバーボタンの有効/無効を更新する。</summary>
     private void UpdateProjectToolbarState()
     {
         bool hasSelection = !string.IsNullOrEmpty(_selectedPath);
+        bool folderManaged = hasSelection && _vm.AppSettingsService.CollectSummaries()
+            .FirstOrDefault(s => s.Entry.DataFilePath == _selectedPath)?.UseFolderManagement == true;
         BtnSetActive.IsEnabled      = hasSelection;
-        BtnOpenFolder.IsEnabled     = hasSelection;
         BtnEditSettings.IsEnabled   = hasSelection;
         BtnRemoveSelected.IsEnabled = hasSelection;
+        BtnOrganize.IsEnabled       = folderManaged;
     }
 
-    /// <summary>ファイル操作ツールバーボタンの有効/無効を更新する。</summary>
-    private void UpdateFileToolbarState()
-    {
-        bool hasNode = _selectedNode != null;
-        bool isDir   = _selectedNode?.IsDirectory == true;
-
-        BtnOpen.IsEnabled      = hasNode;
-        BtnNewFolder.IsEnabled = isDir;
-        BtnNewFile.IsEnabled   = isDir;
-        BtnRename.IsEnabled    = hasNode && !IsProtectedPath(_selectedNode!.FullPath, allowRenameRoot: false);
-        BtnCopyPath.IsEnabled  = hasNode;
-        BtnDelete.IsEnabled    = hasNode && !IsProtectedPath(_selectedNode!.FullPath, allowRenameRoot: false);
-    }
 
     // ── キーボードショートカット ───────────────────────────
     /// <summary>ウィンドウ全体のキーボードショートカットを処理する。</summary>
@@ -318,16 +873,14 @@ public partial class ProjectListPage : Page, IRefreshable
                     if (e.OriginalSource is TextBox) break;
                     SetActive_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
-                case Key.N:
+                case Key.O:
                     LoadProject_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
-                case Key.O:
-                    OpenFolder_Click(this, new RoutedEventArgs());
+                case Key.M:
+                    if (BtnOrganize.IsEnabled) Organize_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
                 case Key.F:
-                    if (SearchSection.Visibility != Visibility.Visible)
-                        ToggleSearch_Click(this, new RoutedEventArgs());
-                    else { SearchBox.Focus(); SearchBox.SelectAll(); }
+                    ToggleSearch_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
                 case Key.OemMinus:
                 case Key.Subtract:
@@ -345,7 +898,12 @@ public partial class ProjectListPage : Page, IRefreshable
         }
         else if (Keyboard.Modifiers == ModifierKeys.None)
         {
-            if (e.Key == Key.F2)
+            if (e.Key == Key.Escape && PreviewOverlay.Visibility == Visibility.Visible)
+            {
+                ClosePreviewOverlay();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F2)
             {
                 EditSettings_Click(this, new RoutedEventArgs());
                 e.Handled = true;
@@ -353,6 +911,14 @@ public partial class ProjectListPage : Page, IRefreshable
             else if (e.Key == Key.Escape && SearchSection.Visibility == Visibility.Visible)
             {
                 ToggleSearch_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && DrawerContainer.ActualWidth > 0)
+            {
+                if (DetailDrawerScroll.Visibility == Visibility.Visible)
+                    CloseDetailDrawer();
+                else
+                    CloseDrawer();
                 e.Handled = true;
             }
         }
@@ -367,26 +933,34 @@ public partial class ProjectListPage : Page, IRefreshable
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
 
     // ── カード選択 ────────────────────────────────────────
-    /// <summary>プロジェクトカードのクリックで選択・非選択を切り替える。</summary>
+    /// <summary>プロジェクトカードのクリックで選択・非選択を切り替える。ダブルクリックでアクティブに設定する。</summary>
     private void ProjectCard_Click(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is Button) return;
-        if (((Border)sender).DataContext is not ProjectCardItem data) return;
-        string path = data.Entry.DataFilePath ?? "";
-        _selectedPath = _selectedPath == path ? null : path;
-        ApplyFilter();
 
-        if (string.IsNullOrEmpty(_selectedPath))
+        FrameworkElement fe = (FrameworkElement)sender;
+        if (fe.DataContext is not ProjectCardItem data) return;
+        string path = data.Entry.DataFilePath ?? "";
+
+        if (e.ClickCount == 2)
         {
-            ShowEmptyPanel();
+            _selectedPath = path;
+            SetActive_Click(this, new RoutedEventArgs());
             return;
         }
 
-        bool isActive = (_selectedPath == _vm.ProjectService.ProjectFilePath);
-        if (isActive)
-            ShowTreePanel();
-        else
-            ShowInfoPanel();
+        if (_selectedPath == path)
+        {
+            // 同じカードをクリック → 選択解除
+            _selectedPath = null;
+            ApplyFilter();
+            ShowEmptyPanel();
+            return;
+        }
+        _selectedPath = path;
+        ApplyFilter();
+
+        ShowInfoPanel();
     }
 
     // ── ツールバー: プロジェクト管理 ─────────────────────
@@ -399,7 +973,8 @@ public partial class ProjectListPage : Page, IRefreshable
             return;
         }
         _vm.SwitchProjectCommand.Execute(_selectedPath);
-        ShowTreePanel();
+        ApplyFilter();
+        ShowInfoPanel();
     }
 
     /// <summary>選択中プロジェクトのフォルダをエクスプローラーで開く。</summary>
@@ -430,24 +1005,176 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
-    /// <summary>新規プロジェクト作成ダイアログを表示してプロジェクトを作成する。</summary>
-    private void NewProject_Click(object sender, RoutedEventArgs e)
+    /// <summary>プロジェクト追加フォームパネルをインライン表示する。</summary>
+    private void NewProject_Click(object sender, RoutedEventArgs e) => ShowAddProjectPanel();
+
+    /// <summary>新規プロジェクト作成フォームの保存先フォルダ参照ダイアログを開く。</summary>
+    private void BrowseNewProjPath_Click(object sender, RoutedEventArgs e)
     {
-        var owner = Window.GetWindow(this);
-        var dlg = new NewProjectDialog { Owner = owner };
-        if (dlg.ShowDialog() != true) return;
-
-        _vm.ProjectService.CreateProject(dlg.SavePath, dlg.ProjectName, dlg.Description);
-
-        var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
-        var templateDlg = new CategoryTemplateDialog(customPresets) { Owner = owner };
-        if (templateDlg.ShowDialog() == true)
+        var dlg = new Microsoft.Win32.SaveFileDialog
         {
-            foreach (var item in templateDlg.SelectedCategories)
-                _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
-        }
-        Refresh();
+            Title           = "保存先フォルダを選択（そのままOKを押してください）",
+            ValidateNames   = false,
+            CheckFileExists = false,
+            FileName        = "ここを変更せずOKを押してください",
+            Filter          = "フォルダ|*.none"
+        };
+        if (dlg.ShowDialog() == true)
+            TxtNewProjPath.Text = System.IO.Path.GetDirectoryName(dlg.FileName) ?? "";
     }
+
+    private static readonly string[] _imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
+
+    /// <summary>表紙画像ファイルを選択して読み込みプレビュー表示する。</summary>
+    private void CoverImageArea_Click(object sender, MouseButtonEventArgs e) => BrowseCoverImage_Click(sender, e);
+    private void EditCoverImageArea_Click(object sender, MouseButtonEventArgs e) => BrowseEditCoverImage_Click(sender, e);
+
+    private void BrowseCoverImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "表紙画像を選択",
+            Filter = "画像ファイル|*.jpg;*.jpeg;*.png;*.bmp;*.gif|すべてのファイル|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+        LoadCoverImage(dlg.FileName, isEdit: false);
+    }
+
+    /// <summary>指定ファイルを表紙画像として読み込みプレビューに反映する。</summary>
+    private void LoadCoverImage(string filePath, bool isEdit)
+    {
+        try
+        {
+            var bytes = File.ReadAllBytes(filePath);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = new MemoryStream(bytes);
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+
+            if (isEdit)
+            {
+                _editCoverImageData                  = Convert.ToBase64String(bytes);
+                EditCoverImagePreview.Source         = bmp;
+                EditCoverImagePreview.Visibility     = Visibility.Visible;
+                EditCoverImagePlaceholder.Visibility = Visibility.Collapsed;
+                BtnClearEditCoverImage.Visibility    = Visibility.Visible;
+            }
+            else
+            {
+                _coverImageData                  = Convert.ToBase64String(bytes);
+                CoverImagePreview.Source         = bmp;
+                CoverImagePreview.Visibility     = Visibility.Visible;
+                CoverImagePlaceholder.Visibility = Visibility.Collapsed;
+                BtnClearCoverImage.Visibility    = Visibility.Visible;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppDialog.ShowError($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
+        }
+    }
+
+    // ── 表紙画像 ドラッグ＆ドロップ ──────────────────────
+    private void CoverImage_DragEnter(object sender, DragEventArgs e)
+    {
+        if (sender is Border b && e.Data.GetDataPresent(DataFormats.FileDrop))
+            b.BorderBrush = (Brush)FindResource("AccentCyanBrush");
+    }
+
+    private void CoverImage_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void CoverImage_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is Border b)
+            b.BorderBrush = (Brush)FindResource("BorderBrush");
+    }
+
+    private void CoverImage_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is Border b) b.BorderBrush = (Brush)FindResource("BorderBrush");
+        if (TryGetDroppedImagePath(e, out string path))
+            LoadCoverImage(path, isEdit: false);
+    }
+
+    private void EditCoverImage_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is Border b) b.BorderBrush = (Brush)FindResource("BorderBrush");
+        if (TryGetDroppedImagePath(e, out string path))
+            LoadCoverImage(path, isEdit: true);
+    }
+
+    /// <summary>ドロップされたファイルが画像なら取得する。非画像なら警告を表示して false を返す。</summary>
+    private bool TryGetDroppedImagePath(DragEventArgs e, out string path)
+    {
+        path = string.Empty;
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return false;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return false;
+
+        string file = files[0];
+        string ext  = Path.GetExtension(file).ToLowerInvariant();
+        if (!_imageExtensions.Contains(ext))
+        {
+            AppDialog.ShowWarning(
+                $"画像ファイル（{string.Join(", ", _imageExtensions)}）をドロップしてください。\n" +
+                $"対応していないファイル: {Path.GetFileName(file)}",
+                "対応していないファイル形式", Window.GetWindow(this));
+            return false;
+        }
+        path = file;
+        return true;
+    }
+
+    /// <summary>選択中の表紙画像をクリアする。</summary>
+    private void ClearCoverImage_Click(object sender, RoutedEventArgs e) => ClearCoverImageField();
+
+    /// <summary>新規プロジェクト作成フォームの入力値を検証してプロジェクトを作成する。</summary>
+    private void CreateProject_Click(object sender, RoutedEventArgs e)
+    {
+        var name = TxtNewProjName.Text.Trim();
+        var desc = TxtNewProjDesc.Text.Trim();
+        var path = TxtNewProjPath.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            AppDialog.ShowWarning("プロジェクト名を入力してください", "入力エラー", Window.GetWindow(this));
+            TxtNewProjName.Focus();
+            return;
+        }
+        if (_isFolderManagementEnabled && string.IsNullOrWhiteSpace(path))
+        {
+            AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            return;
+        }
+
+        bool useFolder = _isFolderManagementEnabled;
+
+        DateTime? startDate = null, endDate = null;
+        if (DateTime.TryParse(TxtNewProjStartDate.Text.Trim(), out var sd)) startDate = sd;
+        if (DateTime.TryParse(TxtNewProjEndDate.Text.Trim(), out var ed)) endDate = ed;
+
+        _vm.ProjectService.CreateProject(path, name, desc, useFolder, _coverImageData, startDate, endDate);
+
+        // テンプレートが選択されていれば、そのカテゴリーを自動生成する
+        if (CmbNewProjTemplate.SelectedItem is string tmplKey && _newProjTemplates.TryGetValue(tmplKey, out var tmplCats))
+        {
+            foreach (var cat in tmplCats)
+                _vm.ProjectService.AddCategory(cat.Name, cat.Description, cat.Color);
+        }
+
+        _coverBitmapCache.Clear();
+        ApplyFilter();
+        HideAddProjectPanel();
+    }
+
+    /// <summary>新規プロジェクト作成ドロワーをキャンセルして閉じる。</summary>
+    private void CancelAddProject_Click(object sender, RoutedEventArgs e)
+        => HideAddProjectPanel();
 
     /// <summary>既存プロジェクトファイルを読み込むダイアログを表示する。</summary>
     private void LoadProject_Click(object sender, RoutedEventArgs e)
@@ -466,7 +1193,7 @@ public partial class ProjectListPage : Page, IRefreshable
         }
     }
 
-    /// <summary>プロジェクト設定編集ダイアログを表示して設定を保存する。</summary>
+    /// <summary>プロジェクト編集ドロワーを表示する。</summary>
     private void EditSettings_Click(object sender, RoutedEventArgs e)
     {
         var path = _selectedPath;
@@ -478,52 +1205,187 @@ public partial class ProjectListPage : Page, IRefreshable
 
         ProjectData? project;
         if (path == _vm.ProjectService.ProjectFilePath)
-        {
             project = _vm.ProjectService.CurrentProject;
-        }
         else
         {
-            try
-            {
-                var json = File.ReadAllText(path);
-                project = JsonConvert.DeserializeObject<ProjectData>(json);
-            }
+            try   { project = JsonConvert.DeserializeObject<ProjectData>(File.ReadAllText(path)); }
             catch { project = null; }
         }
 
         if (project == null)
         { AppDialog.ShowError("プロジェクトを開けませんでした", "エラー", Window.GetWindow(this)); return; }
 
-        var dlg = new TKer.Views.Dialogs.ProjectSettingsDialog(project)
-        {
-            Owner = Window.GetWindow(this)
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            project.Settings.ProjectName = dlg.ProjectName;
-            project.Settings.Description = dlg.Description;
-            project.ProjectVersion       = dlg.Version;
-            project.Manager              = dlg.Manager;
-
-            if (path == _vm.ProjectService.ProjectFilePath)
-            {
-                _vm.ProjectService.SaveProject();
-            }
-            else
-            {
-                try
-                {
-                    var json = JsonConvert.SerializeObject(project, Formatting.Indented);
-                    File.WriteAllText(path, json);
-                    _vm.AppSettingsService.RegisterProject(path, dlg.ProjectName,
-                        project.Settings.ProjectPath, dlg.ProjectName);
-                    _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
-                }
-                catch { }
-            }
-            Refresh();
-        }
+        ShowEditProjectPanel(project, path);
     }
+
+    private void ShowEditProjectPanel(ProjectData project, string path)
+    {
+        _editingProjectPath = path;
+        _editingProjectData = project;
+
+        // フィールドを既存値で初期化
+        TxtEditProjName.Text    = project.Settings.ProjectName;
+        TxtEditProjDesc.Text    = project.Settings.Description;
+        TxtEditProjPath.Text    = project.Settings.ProjectPath ?? "";
+        TxtEditProjStartDate.Text = project.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "";
+        TxtEditProjEndDate.Text   = project.Settings.ProjectEndDate?.ToString("yyyy/MM/dd") ?? "";
+
+
+        // 表紙画像
+        _editCoverImageData = project.Settings.CoverImageData ?? "";
+        if (!string.IsNullOrEmpty(_editCoverImageData))
+        {
+            try
+            {
+                var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                bmp.BeginInit();
+                bmp.StreamSource = new System.IO.MemoryStream(Convert.FromBase64String(_editCoverImageData));
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                EditCoverImagePreview.Source          = bmp;
+                EditCoverImagePreview.Visibility      = Visibility.Visible;
+                EditCoverImagePlaceholder.Visibility  = Visibility.Collapsed;
+                BtnClearEditCoverImage.Visibility     = Visibility.Visible;
+            }
+            catch { ClearEditCoverImageField(); }
+        }
+        else
+        {
+            ClearEditCoverImageField();
+        }
+
+        // フォルダ管理トグル
+        _isEditFolderManagementEnabled   = project.Settings.UseFolderManagement;
+        _isEditFolderMgmtToggleAnimating = false;
+        EditFolderMgmtThumb.BeginAnimation(MarginProperty, null);
+        EditFolderMgmtThumb.Margin = _isEditFolderManagementEnabled
+            ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0);
+        _editFolderMgmtToggleBg.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, null);
+        _editFolderMgmtToggleBg.Color = _isEditFolderManagementEnabled
+            ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80);
+        EditFolderPathSection.Visibility = _isEditFolderManagementEnabled
+            ? Visibility.Visible : Visibility.Collapsed;
+
+        OpenDrawer(EditDrawerScroll);
+        TxtEditProjName.Focus();
+    }
+
+    private void HideEditProjectPanel() => CloseDrawer();
+
+    private void ClearEditCoverImageField()
+    {
+        _editCoverImageData                     = string.Empty;
+        EditCoverImagePreview.Source            = null;
+        EditCoverImagePreview.Visibility        = Visibility.Collapsed;
+        EditCoverImagePlaceholder.Visibility    = Visibility.Visible;
+        BtnClearEditCoverImage.Visibility       = Visibility.Collapsed;
+    }
+
+    private void BrowseEditCoverImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "表紙画像を選択",
+            Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|すべてのファイル (*.*)|*.*"
+        };
+        if (dlg.ShowDialog() != true) return;
+        LoadCoverImage(dlg.FileName, isEdit: true);
+    }
+
+    private void ClearEditCoverImage_Click(object sender, RoutedEventArgs e) => ClearEditCoverImageField();
+
+    private void BrowseEditProjPath_Click(object sender, RoutedEventArgs e)
+    {
+        using var dlg = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description         = "保存先フォルダを選択してください",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = true
+        };
+        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            TxtEditProjPath.Text = dlg.SelectedPath;
+    }
+
+    private void ToggleEditFolderManagement_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_isEditFolderMgmtToggleAnimating) return;
+        _isEditFolderManagementEnabled = !_isEditFolderManagementEnabled;
+        AnimateEditFolderMgmtToggle();
+        EditFolderPathSection.Visibility = _isEditFolderManagementEnabled
+            ? Visibility.Visible : Visibility.Collapsed;
+        if (!_isEditFolderManagementEnabled)
+            TxtEditProjPath.Clear();
+    }
+
+    private void AnimateEditFolderMgmtToggle()
+    {
+        _isEditFolderMgmtToggleAnimating = true;
+
+        var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+        {
+            To = _isEditFolderManagementEnabled ? new Thickness(22, 0, 0, 0) : new Thickness(2, 0, 0, 0),
+            Duration       = TimeSpan.FromMilliseconds(200),
+            EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+        };
+        thumbAnim.Completed += (_, _) => _isEditFolderMgmtToggleAnimating = false;
+        EditFolderMgmtThumb.BeginAnimation(MarginProperty, thumbAnim);
+
+        var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+        {
+            To       = _isEditFolderManagementEnabled ? Color.FromRgb(35, 131, 226) : Color.FromRgb(80, 80, 80),
+            Duration = TimeSpan.FromMilliseconds(200)
+        };
+        _editFolderMgmtToggleBg.BeginAnimation(System.Windows.Media.SolidColorBrush.ColorProperty, colorAnim);
+    }
+
+    private void SaveEditProject_Click(object sender, RoutedEventArgs e)
+    {
+        var project = _editingProjectData;
+        var path    = _editingProjectPath;
+        if (project == null || string.IsNullOrEmpty(path)) return;
+
+        var name = TxtEditProjName.Text.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            AppDialog.ShowWarning("プロジェクト名を入力してください", "入力エラー", Window.GetWindow(this));
+            TxtEditProjName.Focus();
+            return;
+        }
+
+        project.Settings.ProjectName        = name;
+        project.Settings.Description        = TxtEditProjDesc.Text.Trim();
+        project.Settings.UseFolderManagement = _isEditFolderManagementEnabled;
+        project.Settings.ProjectPath        = TxtEditProjPath.Text.Trim();
+        project.Settings.CoverImageData     = _editCoverImageData;
+        project.Settings.UpdatedAt          = DateTime.Now;
+
+        if (DateTime.TryParse(TxtEditProjStartDate.Text.Trim(), out var sd)) project.Settings.ProjectStartDate = sd;
+        else project.Settings.ProjectStartDate = null;
+        if (DateTime.TryParse(TxtEditProjEndDate.Text.Trim(), out var ed)) project.Settings.ProjectEndDate = ed;
+        else project.Settings.ProjectEndDate = null;
+
+        if (path == _vm.ProjectService.ProjectFilePath)
+        {
+            _vm.ProjectService.SaveProject();
+        }
+        else
+        {
+            try
+            {
+                File.WriteAllText(path, JsonConvert.SerializeObject(project, Formatting.Indented));
+                _vm.AppSettingsService.RegisterProject(path, name, project.Settings.ProjectPath, name);
+                _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
+            }
+            catch { }
+        }
+
+        _coverBitmapCache.Clear();
+        Refresh();
+        HideEditProjectPanel();
+    }
+
+    private void CancelEditProject_Click(object sender, RoutedEventArgs e) => HideEditProjectPanel();
 
     // ── 削除 ──────────────────────────────────────────────
     /// <summary>選択中プロジェクトの削除ダイアログを表示する。</summary>
@@ -619,6 +1481,7 @@ public partial class ProjectListPage : Page, IRefreshable
             _selectedPath = null;
             ShowEmptyPanel();
         }
+        _coverBitmapCache.Clear();
         Refresh();
 
         if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
@@ -669,1089 +1532,6 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             DeletionArea.Visibility = Visibility.Collapsed;
         }
-    }
-
-    // ── ピン留め ──────────────────────────────────────────
-    /// <summary>プロジェクトのピン留めをトグルする。</summary>
-    private void PinProject_Click(object sender, RoutedEventArgs e)
-    {
-        if (((Button)sender).Tag is string path)
-        {
-            _vm.AppSettingsService.TogglePin(path);
-            Refresh();
-        }
-    }
-
-    // ── FolderTree: 選択変更 (ProjectPage から移植) ───────
-    /// <summary>フォルダツリーの選択変更時に詳細パネルを更新する。</summary>
-    private void FolderTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        if (e.NewValue is not FileNode node) { _selectedNode = null; UpdateFileToolbarState(); return; }
-        _selectedNode = node;
-        UpdateFileToolbarState();
-
-        DetailPanel.Children.Clear();
-
-        DetailPanel.Children.Add(new TextBlock
-        {
-            Text         = node.FullPath,
-            FontFamily   = new FontFamily("Consolas"),
-            FontSize     = 11,
-            Foreground   = (Brush)FindResource("TextDimBrush"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin       = new Thickness(0, 0, 0, 10)
-        });
-
-        if (node.IsDirectory)
-        {
-            var cat = FindCategoryByPath(node.FullPath);
-            if (cat != null) { ShowCategoryDetail(cat, node); return; }
-
-            var (task, taskCat) = FindTaskByPath(node.FullPath);
-            if (task != null) { ShowTaskDetail(task, taskCat, node); return; }
-
-            ShowGenericFolderDetail(node);
-        }
-        else
-        {
-            ShowFileDetail(node);
-        }
-    }
-
-    // ── CAT フォルダ: カテゴリー情報 ─────────────────────
-    /// <summary>カテゴリーフォルダ選択時に詳細パネルにカテゴリー情報を表示する。</summary>
-    private void ShowCategoryDetail(Category cat, FileNode node)
-    {
-        var project = _vm.ProjectService.CurrentProject!;
-
-        var tagSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        tagSp.Children.Add(UiBadgeHelper.MakeBadge("📂 カテゴリー", "#3D7EFF"));
-        DetailPanel.Children.Add(tagSp);
-
-        var headerSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 14) };
-        headerSp.Children.Add(new Border
-        {
-            Width = 14, Height = 14, CornerRadius = new CornerRadius(7),
-            Background = UiBadgeHelper.ParseBrush(cat.Color),
-            Margin = new Thickness(0, 3, 10, 0), VerticalAlignment = VerticalAlignment.Top
-        });
-        headerSp.Children.Add(new TextBlock
-        {
-            Text = cat.Name, FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 20,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"), TextWrapping = TextWrapping.Wrap
-        });
-        DetailPanel.Children.Add(headerSp);
-
-        if (!string.IsNullOrWhiteSpace(cat.Description))
-        {
-            DetailPanel.Children.Add(new TextBlock
-            {
-                Text = cat.Description, FontSize = 13, TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin = new Thickness(0, 0, 0, 14)
-            });
-        }
-
-        var tasks = project.Tasks.Where(t => t.CategoryId == cat.Id).ToList();
-        int total   = tasks.Count;
-        int done    = tasks.Count(t => t.Status == "完了");
-        int wip     = tasks.Count(t => t.Status == "進行中");
-        int todo    = tasks.Count(t => t.Status == "未着手");
-        int overdue = tasks.Count(t => t.IsOverdue);
-
-        AddInfoRow("作成日時",       cat.CreatedAt.ToString("yyyy/MM/dd"));
-        AddInfoRow("タスク数",       $"{total} 件（完了 {done} / 進行中 {wip} / 未着手 {todo}）");
-        if (overdue > 0)
-            AddInfoRow("期限超過",   $"⚠ {overdue} 件");
-
-        if (tasks.Count > 0)
-        {
-            AddSectionDivider("タスク一覧");
-            foreach (var t in tasks.OrderBy(t => t.PlannedEndDate ?? DateTime.MaxValue))
-                DetailPanel.Children.Add(BuildTaskRow(t));
-        }
-
-        AddChildFileSection(node);
-    }
-
-    // ── TSK フォルダ: タスク情報 ──────────────────────────
-    /// <summary>タスクフォルダ選択時に詳細パネルにタスク情報を表示する。</summary>
-    private void ShowTaskDetail(TaskItem task, Category? cat, FileNode node)
-    {
-        var badgeSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-        badgeSp.Children.Add(UiBadgeHelper.MakeBadge("✅ タスク", "#2E7D32"));
-        badgeSp.Children.Add(UiBadgeHelper.MakeBadge(task.Status, UiBadgeHelper.StatusColor(task.Status), margin: 6));
-        badgeSp.Children.Add(UiBadgeHelper.MakeBadge($"優先度: {task.Priority}", UiBadgeHelper.PriorityColor(task.Priority), margin: 6));
-        if (task.IsOverdue)
-            badgeSp.Children.Add(UiBadgeHelper.MakeBadge("⚠ 期限超過", "#C62828", margin: 6));
-        else if (task.IsDueSoon)
-            badgeSp.Children.Add(UiBadgeHelper.MakeBadge("⏰ 期限間近", "#E65100", margin: 6));
-        DetailPanel.Children.Add(badgeSp);
-
-        DetailPanel.Children.Add(new TextBlock
-        {
-            Text = task.Name, FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 20,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 14)
-        });
-
-        if (!string.IsNullOrWhiteSpace(task.Description))
-        {
-            DetailPanel.Children.Add(new TextBlock
-            {
-                Text = task.Description, FontSize = 13, TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin = new Thickness(0, 0, 0, 14)
-            });
-        }
-
-        if (cat != null)
-            AddInfoRow("カテゴリー", cat.Name);
-        if (!string.IsNullOrWhiteSpace(task.Assignee))
-            AddInfoRow("担当者", task.Assignee);
-        if (!string.IsNullOrWhiteSpace(task.SubCategory))
-            AddInfoRow("サブカテゴリー", task.SubCategory);
-        if (!string.IsNullOrWhiteSpace(task.Environment))
-            AddInfoRow("環境", task.Environment);
-
-        AddSectionDivider("日程");
-        AddInfoRow("予定開始", task.PlannedStartDate?.ToString("yyyy/MM/dd") ?? "─");
-        AddInfoRow("予定終了", task.PlannedEndDate?.ToString("yyyy/MM/dd")  ?? "─");
-        AddInfoRow("実績開始", task.ActualStartDate?.ToString("yyyy/MM/dd") ?? "─");
-        AddInfoRow("実績終了", task.ActualEndDate?.ToString("yyyy/MM/dd")   ?? "─");
-
-        if (task.RemainingDays.HasValue && task.Status != "完了")
-        {
-            var rd = task.RemainingDays.Value;
-            AddInfoRow("残り日数", rd >= 0 ? $"{rd} 日" : $"超過 {-rd} 日");
-        }
-        if (task.DelayDays.HasValue && task.DelayDays.Value != 0)
-            AddInfoRow("遅延日数", $"{task.DelayDays.Value} 日");
-
-        if (!string.IsNullOrWhiteSpace(task.Tags))
-        {
-            AddSectionDivider("タグ");
-            var tagWrap = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
-            foreach (var tag in task.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                tagWrap.Children.Add(UiBadgeHelper.MakeBadge(tag, "#37474F", margin: 4));
-            DetailPanel.Children.Add(tagWrap);
-        }
-        if (!string.IsNullOrWhiteSpace(task.Notes))
-        {
-            AddSectionDivider("メモ");
-            DetailPanel.Children.Add(new TextBlock
-            {
-                Text = task.Notes, FontSize = 12, TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Margin = new Thickness(0, 4, 0, 0)
-            });
-        }
-
-        AddProgressTagSection(task);
-        AddChildFileSection(node, task);
-    }
-
-    // ── 汎用フォルダ ──────────────────────────────────────
-    /// <summary>汎用フォルダ選択時に詳細パネルにフォルダ情報を表示する。</summary>
-    private void ShowGenericFolderDetail(FileNode node)
-    {
-        DetailPanel.Children.Add(new TextBlock
-        {
-            Text = $"📁  {node.Name}", FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 20,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            Margin = new Thickness(0, 0, 0, 12)
-        });
-
-        if (Directory.Exists(node.FullPath))
-        {
-            var di = new DirectoryInfo(node.FullPath);
-            AddInfoRow("種類",     "ファイル フォルダー");
-            AddInfoRow("更新日時", di.LastWriteTime.ToString("yyyy/MM/dd HH:mm:ss"));
-            AddInfoRow("内容",     $"{node.Children.Count} 件");
-        }
-
-        AddChildFileSection(node);
-    }
-
-    // ── ファイル詳細 ──────────────────────────────────────
-    /// <summary>ファイル選択時に詳細パネルにファイル情報を表示する。</summary>
-    private void ShowFileDetail(FileNode node)
-    {
-        DetailPanel.Children.Add(new TextBlock
-        {
-            Text = $"{node.Icon}  {node.Name}", FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 20,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            Margin = new Thickness(0, 0, 0, 12)
-        });
-
-        if (File.Exists(node.FullPath))
-        {
-            var fi = new FileInfo(node.FullPath);
-            AddInfoRow("種類",     FileHelper.GetFileType(node.FullPath));
-            AddInfoRow("サイズ",   FileHelper.FormatSize(fi.Length));
-            AddInfoRow("更新日時", fi.LastWriteTime.ToString("yyyy/MM/dd HH:mm:ss"));
-            AddInfoRow("作成日時", fi.CreationTime.ToString("yyyy/MM/dd HH:mm:ss"));
-
-            var openBtn = new Button
-            {
-                Content = "📂 ファイルを開く",
-                Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(0, 16, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-            openBtn.Click += (_, _) =>
-                Process.Start(new ProcessStartInfo(node.FullPath) { UseShellExecute = true });
-            DetailPanel.Children.Add(openBtn);
-        }
-    }
-
-    // ── 子ファイル一覧セクション（共通） ─────────────────
-    /// <summary>詳細パネルにノードの子ファイル一覧セクションを追加する。</summary>
-    private void AddChildFileSection(FileNode node, TaskItem? ownerTask = null)
-    {
-        if (node.Children.Count == 0) return;
-
-        var sectionSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 6) };
-        sectionSp.Children.Add(new TextBlock
-        {
-            Text = "フォルダ内容", FontSize = 11, FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("TextDimBrush"),
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0)
-        });
-        sectionSp.Children.Add(new Border
-        {
-            Height = 1, Background = (Brush)FindResource("BorderBrush"),
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Stretch, MinWidth = 60
-        });
-        DetailPanel.Children.Add(sectionSp);
-
-        DetailPanel.Children.Add(BuildChildHeader());
-
-        foreach (var child in node.Children
-                     .OrderByDescending(c => c.IsDirectory)
-                     .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            DetailPanel.Children.Add(BuildChildRow(child, ownerTask));
-        }
-    }
-
-    // ── タスク行（カテゴリー詳細内） ──────────────────────
-    /// <summary>カテゴリー詳細内のタスク行UIを生成する。</summary>
-    private Border BuildTaskRow(TaskItem task)
-    {
-        var g = new Grid();
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
-
-        var nameTb = new TextBlock
-        {
-            Text = task.Name, FontSize = 12,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 4, 0)
-        };
-        var statusBadge = UiBadgeHelper.MakeBadge(task.Status, UiBadgeHelper.StatusColor(task.Status));
-        var dateTb = new TextBlock
-        {
-            Text = task.PlannedEndDate?.ToString("MM/dd") ?? "─",
-            FontSize = 11, Foreground = task.IsOverdue
-                ? new SolidColorBrush(Color.FromRgb(239, 83, 80))
-                : (Brush)FindResource("TextDimBrush"),
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-
-        Grid.SetColumn(nameTb, 0);
-        Grid.SetColumn(statusBadge, 1);
-        Grid.SetColumn(dateTb, 2);
-        g.Children.Add(nameTb); g.Children.Add(statusBadge); g.Children.Add(dateTb);
-
-        return new Border
-        {
-            BorderBrush = (Brush)FindResource("BorderBrush"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(0, 6, 0, 6),
-            Child = g
-        };
-    }
-
-    // ── マッチング ────────────────────────────────────────
-    /// <summary>フルパスに一致するカテゴリーを返す。</summary>
-    private Category? FindCategoryByPath(string fullPath)
-    {
-        var project = _vm.ProjectService.CurrentProject;
-        if (project == null) return null;
-        return project.Categories.FirstOrDefault(c =>
-            !string.IsNullOrEmpty(c.FolderPath) &&
-            string.Equals(Path.GetFullPath(c.FolderPath),
-                          Path.GetFullPath(fullPath),
-                          StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>フルパスに一致するタスクとそのカテゴリーを返す。</summary>
-    private (TaskItem? task, Category? cat) FindTaskByPath(string fullPath)
-    {
-        var project = _vm.ProjectService.CurrentProject;
-        if (project == null) return (null, null);
-        var task = project.Tasks.FirstOrDefault(t =>
-            !string.IsNullOrEmpty(t.FolderPath) &&
-            string.Equals(Path.GetFullPath(t.FolderPath),
-                          Path.GetFullPath(fullPath),
-                          StringComparison.OrdinalIgnoreCase));
-        if (task == null) return (null, null);
-        var cat = project.Categories.FirstOrDefault(c => c.Id == task.CategoryId);
-        return (task, cat);
-    }
-
-    // ── UI ヘルパー (DetailPanel 用) ─────────────────────
-    /// <summary>詳細パネルにセクション区切り線とタイトルを追加する。</summary>
-    private void AddSectionDivider(string title)
-    {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 6) };
-        sp.Children.Add(new TextBlock
-        {
-            Text = title, FontSize = 11, FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("TextDimBrush"),
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0)
-        });
-        sp.Children.Add(new Border
-        {
-            Height = 1, Background = (Brush)FindResource("BorderBrush"),
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            MinWidth = 60
-        });
-        DetailPanel.Children.Add(sp);
-    }
-
-    /// <summary>詳細パネルにラベルと値の情報行を追加する。</summary>
-    private void AddInfoRow(string label, string value)
-    {
-        var g = new Grid { Margin = new Thickness(0, 0, 0, 7) };
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var l = new TextBlock
-        {
-            Text       = label,
-            FontSize   = 12,
-            Foreground = (Brush)FindResource("TextDimBrush")
-        };
-        var v = new TextBlock
-        {
-            Text       = value,
-            FontSize   = 12,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            FontFamily = new FontFamily("Consolas"),
-            TextWrapping = TextWrapping.Wrap
-        };
-        Grid.SetColumn(l, 0); Grid.SetColumn(v, 1);
-        g.Children.Add(l); g.Children.Add(v);
-        DetailPanel.Children.Add(g);
-    }
-
-    // ── UI ヘルパー (任意パネル用) ────────────────────────
-    /// <summary>指定パネルにセクション区切り線とタイトルを追加する。</summary>
-    private void AddSectionDividerToPanel(StackPanel panel, string title)
-    {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 6) };
-        sp.Children.Add(new TextBlock
-        {
-            Text = title, FontSize = 11, FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("TextDimBrush"),
-            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0)
-        });
-        sp.Children.Add(new Border
-        {
-            Height = 1, Background = (Brush)FindResource("BorderBrush"),
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            MinWidth = 60
-        });
-        panel.Children.Add(sp);
-    }
-
-    /// <summary>指定パネルにラベルと値の情報行を追加する。</summary>
-    private void AddInfoRowToPanel(StackPanel panel, string label, string value)
-    {
-        var g = new Grid { Margin = new Thickness(0, 0, 0, 7) };
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var l = new TextBlock
-        {
-            Text       = label,
-            FontSize   = 12,
-            Foreground = (Brush)FindResource("TextDimBrush")
-        };
-        var v = new TextBlock
-        {
-            Text       = value,
-            FontSize   = 12,
-            Foreground = (Brush)FindResource("TextPrimaryBrush"),
-            FontFamily = new FontFamily("Consolas"),
-            TextWrapping = TextWrapping.Wrap
-        };
-        Grid.SetColumn(l, 0); Grid.SetColumn(v, 1);
-        g.Children.Add(l); g.Children.Add(v);
-        panel.Children.Add(g);
-    }
-
-    // ── 列カスタマイズ ────────────────────────────────────
-    /// <summary>非表示列を除いた表示中の列リストを返す。</summary>
-    private List<string> VisibleColumns =>
-        _columnOrder.Where(c => !_hiddenColumns.Contains(c)).ToList();
-
-    /// <summary>子ファイル一覧のヘッダー行を生成する。</summary>
-    private Border BuildChildHeader()
-    {
-        var vis = VisibleColumns;
-        var g   = MakeRowGrid(vis);
-        for (int i = 0; i < vis.Count; i++)
-        {
-            var align = vis[i] == "サイズ" ? TextAlignment.Right : TextAlignment.Left;
-            AddCell(g, vis[i], i, isHeader: true, align: align);
-        }
-
-        return new Border
-        {
-            Background      = (Brush)FindResource("BgSecondaryBrush"),
-            BorderBrush     = (Brush)FindResource("BorderBrush"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding         = new Thickness(4, 5, 4, 5),
-            Child           = g
-        };
-    }
-
-    /// <summary>子ファイル一覧の1行UIを生成する。</summary>
-    private Border BuildChildRow(FileNode child, TaskItem? ownerTask = null)
-    {
-        string modified, type, size;
-        if (child.IsDirectory && Directory.Exists(child.FullPath))
-        {
-            var di = new DirectoryInfo(child.FullPath);
-            modified = di.LastWriteTime.ToString("yyyy/MM/dd HH:mm");
-            type     = "ファイル フォルダー";
-            size     = "";
-        }
-        else if (!child.IsDirectory && File.Exists(child.FullPath))
-        {
-            var fi = new FileInfo(child.FullPath);
-            modified = fi.LastWriteTime.ToString("yyyy/MM/dd HH:mm");
-            type     = FileHelper.GetFileType(child.FullPath);
-            size     = FileHelper.FormatSize(fi.Length);
-        }
-        else { modified = type = size = "--"; }
-
-        var dataMap = new Dictionary<string, string>
-        {
-            { "更新日時", modified }, { "種類", type }, { "サイズ", size }
-        };
-
-        var vis = VisibleColumns;
-        var g   = MakeRowGrid(vis);
-
-        for (int i = 0; i < vis.Count; i++)
-        {
-            if (vis[i] == "名前")
-            {
-                var isTagged = ownerTask != null && !child.IsDirectory &&
-                    ownerTask.ProgressTagFiles.Any(f =>
-                        string.Equals(f, child.FullPath, StringComparison.OrdinalIgnoreCase));
-
-                var nameSp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-                if (isTagged)
-                {
-                    nameSp.Children.Add(new TextBlock
-                    {
-                        Text = "📌", FontSize = 11, Margin = new Thickness(0, 0, 3, 0),
-                        VerticalAlignment = VerticalAlignment.Center,
-                        ToolTip = "進捗反映タグ付き"
-                    });
-                }
-                nameSp.Children.Add(new TextBlock
-                {
-                    Text = child.Icon, Margin = new Thickness(0, 0, 6, 0),
-                    FontSize = 13, VerticalAlignment = VerticalAlignment.Center
-                });
-                nameSp.Children.Add(new TextBlock
-                {
-                    Text = child.Name, FontSize = 12,
-                    Foreground = isTagged
-                        ? new SolidColorBrush(Color.FromRgb(0, 191, 216))
-                        : (Brush)FindResource("TextPrimaryBrush"),
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    VerticalAlignment = VerticalAlignment.Center
-                });
-                Grid.SetColumn(nameSp, i);
-                g.Children.Add(nameSp);
-            }
-            else
-            {
-                var align = vis[i] == "サイズ" ? TextAlignment.Right : TextAlignment.Left;
-                AddCell(g, dataMap.GetValueOrDefault(vis[i], ""), i, isHeader: false, align: align);
-            }
-        }
-
-        var border = new Border
-        {
-            BorderBrush     = (Brush)FindResource("BorderBrush"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding         = new Thickness(4, 6, 4, 6),
-            Cursor          = Cursors.Hand,
-            Child           = g
-        };
-
-        if (ownerTask != null && !child.IsDirectory)
-        {
-            var cm = new ContextMenu();
-            var task    = ownerTask;
-            var fp      = child.FullPath;
-            bool tagged = task.ProgressTagFiles.Any(f =>
-                string.Equals(f, fp, StringComparison.OrdinalIgnoreCase));
-
-            var tagItem = new MenuItem { Header = tagged ? "📌 タグを解除" : "📌 進捗タグを付ける" };
-            tagItem.Click += (_, _) => ToggleProgressTag(task, fp);
-            cm.Items.Add(tagItem);
-            border.ContextMenu = cm;
-        }
-
-        border.MouseEnter        += (_, _) => border.Background = (Brush)FindResource("BgSecondaryBrush");
-        border.MouseLeave        += (_, _) => border.Background = Brushes.Transparent;
-        border.MouseLeftButtonUp += (_, _) =>
-        {
-            if (child.IsDirectory) ShellHelper.OpenInExplorer(child.FullPath);
-            else Process.Start(new ProcessStartInfo(child.FullPath) { UseShellExecute = true });
-        };
-        return border;
-    }
-
-    /// <summary>ファイルの進捗タグを切り替えて詳細パネルを再描画する。</summary>
-    private void ToggleProgressTag(TaskItem task, string filePath)
-    {
-        var existing = task.ProgressTagFiles
-            .FirstOrDefault(f => string.Equals(f, filePath, StringComparison.OrdinalIgnoreCase));
-        if (existing != null)
-            task.ProgressTagFiles.Remove(existing);
-        else
-            task.ProgressTagFiles.Add(filePath);
-
-        _vm.ProjectService.MarkDirtyAndSave();
-        if (_selectedNode != null)
-            FolderTree_SelectedItemChanged(FolderTree, new RoutedPropertyChangedEventArgs<object>(null!, _selectedNode));
-    }
-
-    /// <summary>詳細パネルに進捗反映タグセクションを追加する。</summary>
-    private void AddProgressTagSection(TaskItem task)
-    {
-        if (!Directory.Exists(task.FolderPath)) return;
-
-        AddSectionDivider("進捗反映タグ");
-
-        var hint = new TextBlock
-        {
-            Text = "ファイル行を右クリック → タグを付けると、そのファイル変更時に進捗入力ダイアログが表示されます",
-            FontSize = 11, TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)FindResource("TextDimBrush"),
-            Margin = new Thickness(0, 0, 0, 6)
-        };
-        DetailPanel.Children.Add(hint);
-
-        var tagged = task.ProgressTagFiles.Where(File.Exists).ToList();
-
-        if (tagged.Count == 0)
-        {
-            DetailPanel.Children.Add(new TextBlock
-            {
-                Text = "タグ付きファイルなし（全ファイルが監視対象）",
-                FontSize = 11, Foreground = (Brush)FindResource("TextDimBrush"),
-                Margin = new Thickness(0, 0, 0, 4)
-            });
-            return;
-        }
-
-        foreach (var fp in tagged)
-        {
-            var capturedFp = fp;
-            var row = new Border
-            {
-                BorderBrush = (Brush)FindResource("BorderBrush"),
-                BorderThickness = new Thickness(0, 0, 0, 1),
-                Padding = new Thickness(4, 5, 4, 5)
-            };
-            var dock = new DockPanel { LastChildFill = true };
-
-            var removeBtn = new Button
-            {
-                Content = "解除", FontSize = 10,
-                Padding = new Thickness(6, 2, 6, 2),
-                Margin = new Thickness(6, 0, 0, 0),
-                Style = (Style)FindResource("SecondaryButton"),
-                Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x53, 0x50))
-            };
-            removeBtn.Click += (_, _) => ToggleProgressTag(task, capturedFp);
-            DockPanel.SetDock(removeBtn, Dock.Right);
-            dock.Children.Add(removeBtn);
-
-            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            sp.Children.Add(new TextBlock { Text = "📌", Margin = new Thickness(0, 0, 5, 0) });
-            sp.Children.Add(new TextBlock
-            {
-                Text = Path.GetFileName(fp), FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0, 191, 216)),
-                TextTrimming = TextTrimming.CharacterEllipsis
-            });
-            dock.Children.Add(sp);
-            row.Child = dock;
-            DetailPanel.Children.Add(row);
-        }
-    }
-
-    /// <summary>列カスタマイズダイアログを表示して表示列と順序を設定する。</summary>
-    private void BtnColumnConfig_Click(object sender, RoutedEventArgs e)
-    {
-        var bg  = (Brush)FindResource("BgCardBrush");
-        var dim = (Brush)FindResource("TextDimBrush");
-        var fg  = (Brush)FindResource("TextPrimaryBrush");
-
-        var win = new Window
-        {
-            Title = "列の表示設定", Width = 320, Height = 340,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = Window.GetWindow(this), ResizeMode = ResizeMode.NoResize,
-            Background = bg
-        };
-
-        var sp = new StackPanel { Margin = new Thickness(16) };
-        sp.Children.Add(new TextBlock
-        {
-            Text = "表示する列を選択してください", FontSize = 12,
-            Foreground = dim, Margin = new Thickness(0, 0, 0, 12)
-        });
-
-        var listSp = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
-        sp.Children.Add(listSp);
-
-        void RebuildRows()
-        {
-            listSp.Children.Clear();
-            for (int idx = 0; idx < _columnOrder.Count; idx++)
-            {
-                var col     = _columnOrder[idx];
-                var captCol = col;
-                var captIdx = idx;
-
-                var rowSp = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Margin      = new Thickness(0, 0, 0, 6)
-                };
-
-                var cb = new CheckBox
-                {
-                    Content   = col,
-                    IsChecked = !_hiddenColumns.Contains(col),
-                    FontSize  = 13,
-                    Foreground = fg,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Width = 140,
-                    IsEnabled = col != "名前"
-                };
-                cb.Checked   += (_, _) => { _hiddenColumns.Remove(captCol); };
-                cb.Unchecked += (_, _) => { _hiddenColumns.Add(captCol); };
-                rowSp.Children.Add(cb);
-
-                var upBtn = new Button
-                {
-                    Content = "↑", Width = 28, Height = 24,
-                    Padding = new Thickness(0), Margin = new Thickness(4, 0, 2, 0),
-                    IsEnabled = captIdx > 0
-                };
-                upBtn.Click += (_, _) =>
-                {
-                    int i = _columnOrder.IndexOf(captCol);
-                    if (i > 0)
-                    {
-                        (_columnOrder[i], _columnOrder[i - 1]) = (_columnOrder[i - 1], _columnOrder[i]);
-                        RebuildRows();
-                    }
-                };
-                rowSp.Children.Add(upBtn);
-
-                var downBtn = new Button
-                {
-                    Content = "↓", Width = 28, Height = 24,
-                    Padding = new Thickness(0), Margin = new Thickness(0, 0, 0, 0),
-                    IsEnabled = captIdx < _columnOrder.Count - 1
-                };
-                downBtn.Click += (_, _) =>
-                {
-                    int i = _columnOrder.IndexOf(captCol);
-                    if (i < _columnOrder.Count - 1)
-                    {
-                        (_columnOrder[i], _columnOrder[i + 1]) = (_columnOrder[i + 1], _columnOrder[i]);
-                        RebuildRows();
-                    }
-                };
-                rowSp.Children.Add(downBtn);
-
-                listSp.Children.Add(rowSp);
-            }
-        }
-
-        RebuildRows();
-
-        var btnRow = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        var btnOk = new Button
-        {
-            Content = "適用", Padding = new Thickness(20, 6, 20, 6),
-            Style = (Style)FindResource("PrimaryButton")
-        };
-        btnOk.Click += (_, _) => { win.DialogResult = true; };
-        var btnCancel = new Button
-        {
-            Content = "キャンセル", Padding = new Thickness(14, 6, 14, 6),
-            Margin = new Thickness(0, 0, 8, 0),
-            Style = (Style)FindResource("SecondaryButton")
-        };
-        btnCancel.Click += (_, _) => win.DialogResult = false;
-        btnRow.Children.Add(btnCancel);
-        btnRow.Children.Add(btnOk);
-        sp.Children.Add(btnRow);
-        win.Content = sp;
-
-        var backupOrder  = new List<string>(_columnOrder);
-        var backupHidden = new HashSet<string>(_hiddenColumns);
-
-        if (win.ShowDialog() == true)
-        {
-            if (_selectedNode != null)
-                FolderTree_SelectedItemChanged(FolderTree,
-                    new RoutedPropertyChangedEventArgs<object>(null!, _selectedNode));
-        }
-        else
-        {
-            _columnOrder.Clear();
-            _columnOrder.AddRange(backupOrder);
-            _hiddenColumns.Clear();
-            foreach (var h in backupHidden) _hiddenColumns.Add(h);
-        }
-    }
-
-    /// <summary>可視列リストに基づいてGridを生成する。</summary>
-    private Grid MakeRowGrid(List<string> visibleCols)
-    {
-        var g = new Grid();
-        foreach (var col in visibleCols)
-        {
-            g.ColumnDefinitions.Add(col switch
-            {
-                "名前"    => new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
-                "更新日時" => new ColumnDefinition { Width = new GridLength(130) },
-                "種類"    => new ColumnDefinition { Width = new GridLength(140) },
-                "サイズ"  => new ColumnDefinition { Width = new GridLength(72) },
-                _         => new ColumnDefinition { Width = new GridLength(100) }
-            });
-        }
-        return g;
-    }
-
-    /// <summary>Gridの指定列にテキストセルを追加する。</summary>
-    private void AddCell(Grid g, string text, int col, bool isHeader,
-                         TextAlignment align = TextAlignment.Left)
-    {
-        var dimBrush  = (Brush)FindResource("TextDimBrush");
-        var mainBrush = (Brush)FindResource("TextSecondaryBrush");
-
-        var tb = new TextBlock
-        {
-            Text              = text,
-            FontSize          = 12,
-            FontWeight        = isHeader ? FontWeights.SemiBold : FontWeights.Normal,
-            Foreground        = isHeader ? dimBrush : mainBrush,
-            TextTrimming      = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextAlignment     = align,
-            Margin            = new Thickness(4, 0, 4, 0)
-        };
-        Grid.SetColumn(tb, col);
-        g.Children.Add(tb);
-    }
-
-    // ── コンテキストメニュー表示前フック ─────────────────
-    /// <summary>コンテキストメニューの開く前に項目の有効/無効を設定する。</summary>
-    private void TreeContextMenu_Opened(object sender, RoutedEventArgs e)
-    {
-        if (sender is not ContextMenu cm) return;
-        bool hasNode = _selectedNode != null;
-        bool isDir   = _selectedNode?.IsDirectory == true;
-        bool isRoot  = _selectedNode != null && IsProtectedPath(_selectedNode.FullPath, allowRenameRoot: false);
-
-        foreach (var item in cm.Items.OfType<MenuItem>())
-        {
-            switch (item.Tag?.ToString())
-            {
-                case "CtxNewFolder": item.IsEnabled = isDir; break;
-                case "CtxNewFile":   item.IsEnabled = isDir; break;
-                case "CtxRename":    item.IsEnabled = hasNode && !isRoot; break;
-                case "CtxDelete":    item.IsEnabled = hasNode && !isRoot; break;
-                default:             item.IsEnabled = hasNode; break;
-            }
-        }
-    }
-
-    // ── ファイル操作 ──────────────────────────────────────
-    /// <summary>選択ノードをエクスプローラーまたは関連アプリで開く。</summary>
-    private void FileOp_Open_Click(object sender, RoutedEventArgs e)
-    {
-        var node = GetTargetNode(sender);
-        if (node == null) return;
-
-        if (node.IsDirectory)
-            ShellHelper.OpenInExplorer(node.FullPath);
-        else
-            Process.Start(new ProcessStartInfo(node.FullPath) { UseShellExecute = true });
-    }
-
-    /// <summary>選択フォルダ内に新規フォルダを作成する。</summary>
-    private void FileOp_NewFolder_Click(object sender, RoutedEventArgs e)
-    {
-        var node = GetTargetNode(sender);
-        if (node == null || !node.IsDirectory) return;
-
-        var name = PromptName("新規フォルダ名を入力してください", "新規フォルダ");
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        var newPath = Path.Combine(node.FullPath, name);
-        if (Directory.Exists(newPath))
-        { AppDialog.ShowWarning("同名のフォルダが既に存在します", "エラー", Window.GetWindow(this)); return; }
-
-        try
-        {
-            Directory.CreateDirectory(newPath);
-            ShowTreePanel();
-        }
-        catch (Exception ex)
-        {
-            AppDialog.ShowError($"フォルダ作成に失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
-        }
-    }
-
-    /// <summary>選択フォルダ内に新規ファイルを作成する。</summary>
-    private void FileOp_NewFile_Click(object sender, RoutedEventArgs e)
-    {
-        var node = GetTargetNode(sender);
-        if (node == null || !node.IsDirectory) return;
-
-        var name = PromptName("新規ファイル名を入力してください（拡張子を含む）", "新規ファイル.txt");
-        if (string.IsNullOrWhiteSpace(name)) return;
-
-        var newPath = Path.Combine(node.FullPath, name);
-        if (File.Exists(newPath))
-        { AppDialog.ShowWarning("同名のファイルが既に存在します", "エラー", Window.GetWindow(this)); return; }
-
-        try
-        {
-            File.WriteAllText(newPath, "");
-            ShowTreePanel();
-            Process.Start(new ProcessStartInfo(newPath) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            AppDialog.ShowError($"ファイル作成に失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
-        }
-    }
-
-    /// <summary>選択ノードの名前変更ダイアログを表示して名前を変更する。</summary>
-    private void FileOp_Rename_Click(object sender, RoutedEventArgs e)
-    {
-        var node = GetTargetNode(sender);
-        if (node == null) return;
-        if (IsProtectedPath(node.FullPath, allowRenameRoot: false))
-        { AppDialog.ShowWarning("このファイル/フォルダは変更できません", "保護済み", Window.GetWindow(this)); return; }
-
-        var oldName = Path.GetFileName(node.FullPath);
-        var newName = PromptName("新しい名前を入力してください", oldName);
-        if (string.IsNullOrWhiteSpace(newName) || newName == oldName) return;
-
-        var parent  = Path.GetDirectoryName(node.FullPath)!;
-        var newPath = Path.Combine(parent, newName);
-        try
-        {
-            if (node.IsDirectory) Directory.Move(node.FullPath, newPath);
-            else                  File.Move(node.FullPath, newPath);
-
-            UpdateModelPath(node.FullPath, newPath);
-            ShowTreePanel();
-        }
-        catch (Exception ex)
-        {
-            AppDialog.ShowError($"名前変更に失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
-        }
-    }
-
-    /// <summary>選択ノードのフルパスをクリップボードにコピーする。</summary>
-    private void FileOp_CopyPath_Click(object sender, RoutedEventArgs e)
-    {
-        var node = GetTargetNode(sender);
-        if (node == null) return;
-        try { Clipboard.SetText(node.FullPath); }
-        catch { }
-    }
-
-    /// <summary>選択ノードを削除する確認ダイアログを表示して削除する。</summary>
-    private void FileOp_Delete_Click(object sender, RoutedEventArgs e)
-    {
-        var node = GetTargetNode(sender);
-        if (node == null) return;
-        if (IsProtectedPath(node.FullPath, allowRenameRoot: false))
-        { AppDialog.ShowWarning("このファイル/フォルダは削除できません", "保護済み", Window.GetWindow(this)); return; }
-
-        var typeName = node.IsDirectory ? "フォルダ" : "ファイル";
-        if (!AppDialog.Confirm($"{typeName}「{node.Name}」を削除しますか？\n中のファイルも全て削除されます。",
-                               "削除確認", Window.GetWindow(this))) return;
-
-        try
-        {
-            if (node.IsDirectory)
-            {
-                Directory.Delete(node.FullPath, recursive: true);
-                ClearModelReference(node.FullPath);
-            }
-            else
-            {
-                File.Delete(node.FullPath);
-            }
-            _selectedNode = null;
-            ShowTreePanel();
-        }
-        catch (Exception ex)
-        {
-            AppDialog.ShowError($"削除に失敗しました:\n{ex.Message}", "エラー", Window.GetWindow(this));
-        }
-    }
-
-    /// <summary>変更・削除できないパスかどうかを返す。</summary>
-    private bool IsProtectedPath(string fullPath, bool allowRenameRoot)
-    {
-        var project = _vm.ProjectService.CurrentProject;
-        if (project == null) return false;
-
-        if (string.Equals(Path.GetFullPath(fullPath),
-                          Path.GetFullPath(project.Settings.ProjectPath),
-                          StringComparison.OrdinalIgnoreCase)) return !allowRenameRoot;
-
-        var name = Path.GetFileName(fullPath);
-        if (name.EndsWith("project_data.json", StringComparison.OrdinalIgnoreCase)) return true;
-        if (name.EndsWith(".json.bak",         StringComparison.OrdinalIgnoreCase)) return true;
-        if (name == "作業完了") return true;
-
-        return false;
-    }
-
-    /// <summary>リネーム後にモデル内のパスを新しいパスに更新する。</summary>
-    private void UpdateModelPath(string oldPath, string newPath)
-    {
-        var project = _vm.ProjectService.CurrentProject;
-        if (project == null) return;
-
-        bool dirty = false;
-        var oldFull = Path.GetFullPath(oldPath);
-
-        foreach (var cat in project.Categories)
-        {
-            if (!string.IsNullOrEmpty(cat.FolderPath) &&
-                Path.GetFullPath(cat.FolderPath).StartsWith(oldFull, StringComparison.OrdinalIgnoreCase))
-            {
-                cat.FolderPath = newPath + cat.FolderPath[oldPath.Length..];
-                dirty = true;
-            }
-        }
-        foreach (var task in project.Tasks)
-        {
-            if (!string.IsNullOrEmpty(task.FolderPath) &&
-                Path.GetFullPath(task.FolderPath).StartsWith(oldFull, StringComparison.OrdinalIgnoreCase))
-            {
-                task.FolderPath = newPath + task.FolderPath[oldPath.Length..];
-                dirty = true;
-            }
-        }
-        if (dirty) _vm.ProjectService.MarkDirtyAndSave();
-    }
-
-    /// <summary>削除後にモデル内の対象フォルダへの参照を解除する。</summary>
-    private void ClearModelReference(string deletedPath)
-    {
-        var project = _vm.ProjectService.CurrentProject;
-        if (project == null) return;
-
-        bool dirty = false;
-        var delFull = Path.GetFullPath(deletedPath);
-
-        foreach (var cat in project.Categories.Where(c =>
-            !string.IsNullOrEmpty(c.FolderPath) &&
-            Path.GetFullPath(c.FolderPath).StartsWith(delFull, StringComparison.OrdinalIgnoreCase)))
-        {
-            cat.FolderPath = "";
-            cat.FolderCreated = false;
-            dirty = true;
-        }
-        foreach (var task in project.Tasks.Where(t =>
-            !string.IsNullOrEmpty(t.FolderPath) &&
-            Path.GetFullPath(t.FolderPath).StartsWith(delFull, StringComparison.OrdinalIgnoreCase)))
-        {
-            task.FolderPath = "";
-            task.FolderCreated = false;
-            dirty = true;
-        }
-        if (dirty) _vm.ProjectService.MarkDirtyAndSave();
-    }
-
-    /// <summary>操作対象のノードを返す。</summary>
-    private FileNode? GetTargetNode(object senderObj) => _selectedNode;
-
-    /// <summary>名前入力ダイアログを表示して入力値を返す。</summary>
-    private string? PromptName(string prompt, string defaultValue)
-    {
-        var bg  = (Brush)FindResource("BgCardBrush");
-        var dim = (Brush)FindResource("TextDimBrush");
-        var win = new Window
-        {
-            Title = "名前の入力", Width = 380, Height = 160,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = Window.GetWindow(this), ResizeMode = ResizeMode.NoResize,
-            Background = bg
-        };
-        var sp = new StackPanel { Margin = new Thickness(20) };
-        sp.Children.Add(new TextBlock { Text = prompt, FontSize = 12, Foreground = dim, Margin = new Thickness(0, 0, 0, 8) });
-        var tb = new TextBox { Style = (Style)FindResource("DarkTextBox"), Text = defaultValue, Margin = new Thickness(0, 0, 0, 16) };
-        sp.Children.Add(tb);
-        var btnPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var btnOk = new Button { Content = "OK", Style = (Style)FindResource("PrimaryButton"), Padding = new Thickness(20, 6, 20, 6), Margin = new Thickness(0, 0, 8, 0) };
-        var btnCancel = new Button { Content = "キャンセル", Style = (Style)FindResource("SecondaryButton"), Padding = new Thickness(14, 6, 14, 6) };
-        btnOk.Click += (_, _) => win.DialogResult = true;
-        btnCancel.Click += (_, _) => win.DialogResult = false;
-        btnPanel.Children.Add(btnOk);
-        btnPanel.Children.Add(btnCancel);
-        sp.Children.Add(btnPanel);
-        win.Content = sp;
-        win.Loaded += (_, _) => { tb.Focus(); tb.SelectAll(); };
-        return win.ShowDialog() == true ? tb.Text.Trim() : null;
-    }
-
-    /// <summary>ツリーパネル表示中にツリーを再読み込みする。</summary>
-    private void RefreshTree_Click(object sender, RoutedEventArgs e)
-    {
-        if (TreePanel.Visibility == Visibility.Visible)
-            ShowTreePanel();
     }
 
     /// <summary>フォルダ整理ダイアログを表示して未紐づけファイルを一括移動する。</summary>
@@ -1812,6 +1592,25 @@ public partial class ProjectListPage : Page, IRefreshable
         }
 
         ShowOrganizeDialog(misplaced, project, rootPath);
+    }
+
+    /// <summary>カテゴリーテンプレート管理ダイアログを開く。</summary>
+    private void CategoryTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new TKer.Views.Dialogs.CategoryTemplateManagerDialog(_vm.CategoryTemplateService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        dlg.ShowDialog();
+
+        // ダイアログ閉じ後に新規プロジェクトのテンプレートドロップダウンを再構築
+        if (CmbNewProjTemplate.IsVisible)
+        {
+            var selected = CmbNewProjTemplate.SelectedItem as string;
+            CmbNewProjTemplate.ItemsSource = BuildCategoryTemplateItems();
+            CmbNewProjTemplate.SelectedItem = selected ?? CmbNewProjTemplate.Items.Cast<string>().FirstOrDefault();
+            if (CmbNewProjTemplate.SelectedIndex < 0) CmbNewProjTemplate.SelectedIndex = 0;
+        }
     }
 
     /// <summary>フォルダ整理ダイアログを生成して表示する。</summary>
@@ -1954,7 +1753,6 @@ public partial class ProjectListPage : Page, IRefreshable
                 AppDialog.ShowWarning($"移動完了: {moved} 件\n失敗: {failed} 件", "フォルダ整理", Window.GetWindow(this));
             else
                 AppDialog.ShowInfo($"移動完了: {moved} 件", "フォルダ整理", Window.GetWindow(this));
-            ShowTreePanel();
         };
 
         btnPanel.Children.Add(cancelBtn); btnPanel.Children.Add(moveBtn);
@@ -1963,11 +1761,37 @@ public partial class ProjectListPage : Page, IRefreshable
         win.ShowDialog();
     }
 
-    /// <summary>アクティブプロジェクトのフォルダをエクスプローラーで開く。</summary>
-    private void OpenExplorer_Click(object sender, RoutedEventArgs e)
+    private void AddSectionDividerToPanel(StackPanel panel, string title)
     {
-        var path = _vm.ProjectService.CurrentProject?.Settings.ProjectPath;
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
-            ShellHelper.OpenInExplorer(path);
+        panel.Children.Add(new TextBlock
+        {
+            Text = title, FontSize = 11, FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("AccentCyanBrush"),
+            Margin = new Thickness(0, 14, 0, 6),
+        });
+        panel.Children.Add(new Border
+        {
+            Height = 1, Background = (Brush)FindResource("BorderBrush"),
+            Margin = new Thickness(0, 0, 0, 8),
+        });
     }
+
+    private void AddInfoRowToPanel(StackPanel panel, string label, string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        var row = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+        row.Children.Add(new TextBlock
+        {
+            Text = label, FontSize = 11,
+            Foreground = (Brush)FindResource("TextDimBrush"),
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = value, FontSize = 12,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            TextWrapping = TextWrapping.Wrap,
+        });
+        panel.Children.Add(row);
+    }
+
 }

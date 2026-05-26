@@ -356,24 +356,36 @@
     <Style x:Key="DarkComboBoxItem" TargetType="ComboBoxItem">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Padding" Value="10,8"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontFamily" Value="Yu Gothic UI"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
                     <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                            CornerRadius="4" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter VerticalAlignment="Center"/>
+                            CornerRadius="5" Padding="{TemplateBinding Padding}" Margin="0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter Grid.Column="0" VerticalAlignment="Center"/>
+                            <!-- 選択中チェックマーク -->
+                            <Path x:Name="Check" Grid.Column="1" Margin="8,0,0,0"
+                                  Data="M1 5 L4.2 8 L9 1.5"
+                                  Stroke="{StaticResource AccentCyanBrush}" StrokeThickness="1.8"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource BgHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Bd" Property="Background">
-                                <Setter.Value><SolidColorBrush Color="{StaticResource AccentCyanColor}" Opacity="0.35"/></Setter.Value>
-                            </Setter>
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+                            <Setter Property="Foreground" Value="{StaticResource AccentCyanBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -387,76 +399,114 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Padding" Value="12,8"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontFamily" Value="Yu Gothic UI"/>
+        <Setter Property="MinHeight" Value="38"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItem}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
-                    <!-- 外枠 Border で背景・罫線・角丸を一括管理 -->
                     <Grid x:Name="Root">
-                        <Border x:Name="OuterBd"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="28"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 選択中テキスト -->
-                                <ContentPresenter x:Name="ContentSite"
-                                                  Grid.Column="0"
-                                                  IsHitTestVisible="False"
-                                                  Content="{TemplateBinding SelectionBoxItem}"
-                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                  VerticalAlignment="Center"
-                                                  Margin="10,7,4,7"/>
-
-                                <!-- チェブロン矢印 -->
-                                <Path Grid.Column="1"
-                                      Data="M 0 0 L 5 5 L 10 0"
-                                      Stroke="{StaticResource TextDimBrush}"
-                                      StrokeThickness="1.5"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      IsHitTestVisible="False"/>
-                            </Grid>
-                        </Border>
-
-                        <!-- クリック領域（透明 ToggleButton で全体を覆う） -->
+                        <!-- トグルボタン＝枠そのもの（クリック領域）。標準ComboBoxと同じ構造 -->
                         <ToggleButton x:Name="PART_ToggleButton"
+                                      Style="{x:Null}"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                                       Focusable="False" Cursor="Hand"
-                                      Background="Transparent"
-                                      BorderThickness="0"
+                                      ClickMode="Press"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
                                                   RelativeSource={RelativeSource TemplatedParent}}">
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType="ToggleButton">
-                                    <Border Background="Transparent"/>
+                                    <Border x:Name="OuterBd"
+                                            Background="{StaticResource DropdownBgBrush}"
+                                            BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="1" CornerRadius="8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="32"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- 選択中テキスト（枠と同じ背景の上に表示） -->
+                                            <ContentPresenter Grid.Column="0"
+                                                              IsHitTestVisible="False"
+                                                              VerticalAlignment="Center"
+                                                              Margin="12,0,4,0"
+                                                              Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                              ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
+                                            <!-- シェブロン（開閉で回転） -->
+                                            <Path x:Name="Chevron" Grid.Column="1"
+                                                  Data="M0,0 L4,4 L8,0"
+                                                  Stroke="{StaticResource TextDimBrush}"
+                                                  StrokeThickness="1.6"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  StrokeLineJoin="Round"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  RenderTransformOrigin="0.5,0.5">
+                                                <Path.RenderTransform>
+                                                    <RotateTransform Angle="0"/>
+                                                </Path.RenderTransform>
+                                            </Path>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="OuterBd" Property="BorderBrush" Value="{StaticResource BorderBrightBrush}"/>
+                                            <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource TextPrimaryBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="OuterBd" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}"/>
+                                            <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource AccentBlueBrush}"/>
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="Chevron"
+                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                            To="180" Duration="0:0:0.18"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="Chevron"
+                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                            To="0" Duration="0:0:0.18"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
 
+                        <!-- 選択中テキスト（クリックを透過させる） -->
+                        <ContentPresenter x:Name="ContentSite"
+                                          IsHitTestVisible="False"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          VerticalAlignment="Center"
+                                          Margin="12,0,36,0"/>
+
                         <Popup x:Name="PART_Popup"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
-                               Placement="Bottom"
+                               Placement="Bottom" VerticalOffset="4"
                                AllowsTransparency="True"
                                Focusable="False"
                                PopupAnimation="Fade">
                             <Border Background="{StaticResource DropdownBgBrush}"
                                     BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1" CornerRadius="6" Padding="4"
-                                    MinWidth="{Binding ElementName=Root, Path=ActualWidth}">
+                                    BorderThickness="1" CornerRadius="8" Padding="5"
+                                    Margin="0,0,8,8"
+                                    Width="{Binding ElementName=Root, Path=ActualWidth}">
                                 <Border.Effect>
-                                    <DropShadowEffect BlurRadius="12" ShadowDepth="2"
-                                                      Direction="270" Color="#000000" Opacity="0.35"/>
+                                    <DropShadowEffect BlurRadius="16" ShadowDepth="3"
+                                                      Direction="270" Color="#000000" Opacity="0.4"/>
                                 </Border.Effect>
-                                <ScrollViewer MaxHeight="220"
+                                <ScrollViewer MaxHeight="260"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled">
                                     <ItemsPresenter/>
@@ -467,12 +517,6 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Root" Property="Opacity" Value="0.4"/>
-                        </Trigger>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="OuterBd" Property="BorderBrush" Value="{StaticResource BorderBrightBrush}"/>
-                        </Trigger>
-                        <Trigger Property="IsDropDownOpen" Value="True">
-                            <Setter TargetName="OuterBd" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

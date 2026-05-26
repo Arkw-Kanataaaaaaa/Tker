@@ -48,24 +48,55 @@ public class ProjectService
     // プロジェクト作成
     // =====================================================
     /// <summary>指定パスに新規プロジェクトを作成してデータを保存する。</summary>
-    public void CreateProject(string basePath, string projectName, string description = "")
+    public void CreateProject(
+        string basePath,
+        string projectName,
+        string description       = "",
+        bool useFolderManagement = true,
+        string coverImageData    = "",
+        DateTime? projectStartDate = null,
+        DateTime? projectEndDate   = null)
     {
-        var projectPath = Path.Combine(basePath, projectName);
-        Directory.CreateDirectory(projectPath);
-        Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER_NAME));
+        string projectPath;
+        string dataFilePath;
+        if (useFolderManagement)
+        {
+            projectPath = Path.Combine(basePath, projectName);
+            Directory.CreateDirectory(projectPath);
+            Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER_NAME));
+            dataFilePath = Path.Combine(projectPath, DATA_FILE_NAME);
+        }
+        else
+        {
+            // フォルダ管理しない場合は ドキュメント\TKer_PJ 配下に "プロジェクト名_project.json" で保持する
+            var tkerDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TKer_PJ");
+            Directory.CreateDirectory(tkerDir);
+            var safeName = string.Concat(projectName.Split(Path.GetInvalidFileNameChars()));
+            projectPath  = "";
+            dataFilePath = Path.Combine(tkerDir, $"{safeName}_project.json");
+            // 同名ファイルがある場合は連番を付けて上書きを防ぐ
+            for (int i = 2; File.Exists(dataFilePath); i++)
+                dataFilePath = Path.Combine(tkerDir, $"{safeName} ({i})_project.json");
+        }
 
         CurrentProject = new ProjectData
         {
             Settings = new ProjectSettings
             {
-                ProjectName = projectName,
-                ProjectPath = projectPath,
-                Description = description,
-                CreatedAt   = DateTime.Now
+                ProjectName          = projectName,
+                ProjectPath          = projectPath,
+                Description          = description,
+                CreatedAt            = DateTime.Now,
+                UpdatedAt            = DateTime.Now,
+                UseFolderManagement  = useFolderManagement,
+                CoverImageData       = coverImageData,
+                ProjectStartDate     = projectStartDate,
+                ProjectEndDate       = projectEndDate
             }
         };
 
-        ProjectFilePath = Path.Combine(projectPath, DATA_FILE_NAME);
+        ProjectFilePath = dataFilePath;
         SaveProject();
         _autoSaveTimer.Start();
         ProjectChanged?.Invoke(this, EventArgs.Empty);
@@ -96,11 +127,56 @@ public class ProjectService
                 _hasUnsavedChanges = true;
             }
 
+            // 読み込み後の整合修復
+            bool repaired = RepairFolderPathsOnLoad();
+            CleanupStaleTempFolders();
+            if (repaired) _hasUnsavedChanges = true;
+
             _autoSaveTimer.Start();
             ProjectChanged?.Invoke(this, EventArgs.Empty);
             return true;
         }
         catch { return false; }
+    }
+
+    /// <summary>ロード後にFolderPathが実在しない場合はFolderCreated/FolderPathをリセットする。変更があればtrueを返す。</summary>
+    private bool RepairFolderPathsOnLoad()
+    {
+        if (CurrentProject == null) return false;
+        bool dirty = false;
+
+        foreach (var cat in CurrentProject.Categories)
+        {
+            if (cat.FolderCreated && !string.IsNullOrEmpty(cat.FolderPath) && !Directory.Exists(cat.FolderPath))
+            {
+                cat.FolderPath    = string.Empty;
+                cat.FolderCreated = false;
+                dirty = true;
+            }
+        }
+        foreach (var task in CurrentProject.Tasks)
+        {
+            if (task.FolderCreated && !string.IsNullOrEmpty(task.FolderPath) && !Directory.Exists(task.FolderPath))
+            {
+                task.FolderPath    = string.Empty;
+                task.FolderCreated = false;
+                dirty = true;
+            }
+        }
+        return dirty;
+    }
+
+    /// <summary>プロジェクトフォルダ直下に残留しているPFTMP_*一時フォルダを削除する。</summary>
+    private void CleanupStaleTempFolders()
+    {
+        var projectPath = CurrentProject?.Settings.ProjectPath;
+        if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+
+        foreach (var dir in Directory.GetDirectories(projectPath, "PFTMP_*"))
+        {
+            try { Directory.Delete(dir, recursive: true); }
+            catch { /* 削除できなければ無視 */ }
+        }
     }
 
     // =====================================================
@@ -110,7 +186,8 @@ public class ProjectService
     public void SaveProject()
     {
         if (CurrentProject == null || ProjectFilePath == null) return;
-        CurrentProject.LastSaved = DateTime.Now;
+        CurrentProject.LastSaved            = DateTime.Now;
+        CurrentProject.Settings.UpdatedAt   = DateTime.Now;
 
         // バックアップ作成
         if (File.Exists(ProjectFilePath))
@@ -480,9 +557,9 @@ public class ProjectService
         var task = CurrentProject.Tasks.FirstOrDefault(t => t.Id == taskId);
         if (task == null) return;
 
-        if (deleteFolder && task.FolderCreated && Directory.Exists(task.FolderPath))
-            Directory.Delete(task.FolderPath, recursive: true);
-
+        // モデルから先に削除して保存し、保存成功後にフォルダを削除する。
+        // こうすることでフォルダ削除失敗時もモデルとの不整合を防ぐ。
+        var savedFolderPath = task.FolderPath;
         CurrentProject.Tasks.Remove(task);
         try
         {
@@ -493,6 +570,14 @@ public class ProjectService
             CurrentProject.Tasks.Add(task);
             throw;
         }
+
+        if (deleteFolder && task.FolderCreated && !string.IsNullOrEmpty(savedFolderPath) &&
+            Directory.Exists(savedFolderPath))
+        {
+            try { Directory.Delete(savedFolderPath, recursive: true); }
+            catch { /* フォルダ削除失敗は無視（モデルは既に保存済） */ }
+        }
+
         ProjectChanged?.Invoke(this, EventArgs.Empty);
     }
 

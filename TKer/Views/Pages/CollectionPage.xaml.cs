@@ -27,6 +27,7 @@ public partial class CollectionPage : Page, IRefreshable
     private string?                                 _editingId;
     private string                                  _coverImageData   = string.Empty;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
+    private Window? _keyDownWindow;
 
     /// <summary>コレクションページを初期化してデータを表示する。</summary>
     public CollectionPage(MainViewModel vm)
@@ -36,6 +37,22 @@ public partial class CollectionPage : Page, IRefreshable
         InitializeComponent();
         UpdateDisplayModeButtons();
         Refresh();
+
+        Loaded += (_, _) =>
+        {
+            if (Window.GetWindow(this) is { } win)
+            {
+                win.KeyDown -= Window_KeyDown;
+                win.KeyDown += Window_KeyDown;
+                _keyDownWindow = win;
+            }
+        };
+        Unloaded += (_, _) =>
+        {
+            if (_keyDownWindow is { } win)
+                win.KeyDown -= Window_KeyDown;
+            _keyDownWindow = null;
+        };
     }
 
     /// <summary>一覧・詳細・ツールバーを最新状態に更新する。</summary>
@@ -327,6 +344,60 @@ public partial class CollectionPage : Page, IRefreshable
         BtnToolbarDelete.IsEnabled = hasSel;
         BtnToolbarEdit.Opacity     = hasSel ? 1.0 : 0.35;
         BtnToolbarDelete.Opacity   = hasSel ? 1.0 : 0.35;
+    }
+
+    // ── キーボードショートカット ────────────────────────────
+
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (!IsVisible) return;
+
+        bool ctrl  = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        bool shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        bool alt   = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
+
+        if (ctrl && !shift && !alt)
+        {
+            switch (e.Key)
+            {
+                case Key.F:
+                    ToggleSearch_Click(this, new RoutedEventArgs());
+                    e.Handled = true; break;
+                case Key.OemMinus:
+                case Key.Subtract:
+                    DeleteCollection_Click(this, new RoutedEventArgs());
+                    e.Handled = true; break;
+            }
+        }
+        else if (ctrl && shift && !alt)
+        {
+            if (e.Key == Key.OemSemicolon)
+            {
+                NewCollection_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.None)
+        {
+            if (e.Key == Key.F2)
+            {
+                EditCollection_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && SearchSection.Visibility == Visibility.Visible)
+            {
+                ToggleSearch_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && DrawerContainer.ActualWidth > 0)
+            {
+                if (DetailDrawer.Visibility == Visibility.Visible)
+                    CloseDetailDrawer();
+                else
+                    CloseFormDrawer();
+                e.Handled = true;
+            }
+        }
     }
 
     // ── 詳細ドロワー ────────────────────────────────────────

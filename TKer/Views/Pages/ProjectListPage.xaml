@@ -110,7 +110,7 @@
                         </Button>
                         <Button x:Name="BtnOrganize" ToolTip="フォルダ整理 (Ctrl+M)" Style="{StaticResource VToolbarBtn}"
                                 Click="Organize_Click" IsEnabled="False">
-                            <Path Data="{StaticResource Bi.WrenchFill}" Style="{StaticResource BiIconLg}"/>
+                            <Path Data="{StaticResource Bi.Magic}" Style="{StaticResource BiIconLg}"/>
                         </Button>
                         <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
                         <Button ToolTip="検索 (Ctrl+F)" Style="{StaticResource VToolbarBtn}"

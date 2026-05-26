@@ -222,18 +222,16 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Bd" CornerRadius="6"
+                            Background="#E03E3E"
                             Padding="{TemplateBinding Padding}">
-                        <Border.Background>
-                            <SolidColorBrush x:Name="BdBrush" Color="#E03E3E"/>
-                        </Border.Background>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="BdBrush" Property="Color" Value="#C62828"/>
+                            <Setter TargetName="Bd" Property="Background" Value="#C62828"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="BdBrush" Property="Color" Value="#B71C1C"/>
+                            <Setter TargetName="Bd" Property="Background" Value="#B71C1C"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>

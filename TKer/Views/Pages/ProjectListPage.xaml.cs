@@ -252,7 +252,7 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>ドロワーを閉じて未選択状態にする。</summary>
     private void ShowEmptyPanel()
     {
-        if (_isDrawerOpen) CloseDrawer();
+        if (DrawerContainer.ActualWidth > 0) CloseDrawer();
     }
 
     /// <summary>プロジェクト詳細ドロワーを開いてプロジェクト情報を表示する。</summary>
@@ -443,18 +443,17 @@ public partial class ProjectListPage : Page, IRefreshable
     private void CloseDetailDrawer()
         => CloseDrawer(() => { _selectedPath = null; ApplyFilter(); });
 
-    private bool _isDrawerOpen = false;
-
     private void OpenDrawer(ScrollViewer target)
     {
+        bool wasOpen = DrawerContainer.ActualWidth > 0;
+
         AddDrawerScroll.Visibility    = target == AddDrawerScroll    ? Visibility.Visible : Visibility.Collapsed;
         EditDrawerScroll.Visibility   = target == EditDrawerScroll   ? Visibility.Visible : Visibility.Collapsed;
         DetailDrawerScroll.Visibility = target == DetailDrawerScroll ? Visibility.Visible : Visibility.Collapsed;
-        if (_isDrawerOpen) return;
-        _isDrawerOpen = true;
+
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 0, To = 500,
+            From = wasOpen ? DrawerContainer.ActualWidth : 0, To = 500,
             Duration       = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
                 { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
@@ -473,7 +472,6 @@ public partial class ProjectListPage : Page, IRefreshable
         };
         anim.Completed += (_, _) =>
         {
-            _isDrawerOpen = false;
             AddDrawerScroll.Visibility    = Visibility.Collapsed;
             EditDrawerScroll.Visibility   = Visibility.Collapsed;
             DetailDrawerScroll.Visibility = Visibility.Collapsed;
@@ -721,7 +719,7 @@ public partial class ProjectListPage : Page, IRefreshable
                 ToggleSearch_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
-            else if (e.Key == Key.Escape && _isDrawerOpen)
+            else if (e.Key == Key.Escape && DrawerContainer.ActualWidth > 0)
             {
                 if (DetailDrawerScroll.Visibility == Visibility.Visible)
                     CloseDetailDrawer();

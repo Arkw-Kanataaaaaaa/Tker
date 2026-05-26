@@ -316,10 +316,11 @@
             <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
                     Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
-                <Grid Width="500">
+                <Grid>
 
                     <!-- プロジェクト詳細パネル -->
-                    <ScrollViewer x:Name="DetailDrawerScroll" Visibility="Collapsed"
+                    <ScrollViewer x:Name="DetailDrawerScroll" Width="500" HorizontalAlignment="Left"
+                                  Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">
@@ -342,7 +343,8 @@
                     </ScrollViewer>
 
                     <!-- 新規作成パネル -->
-                    <ScrollViewer x:Name="AddDrawerScroll" Visibility="Collapsed"
+                    <ScrollViewer x:Name="AddDrawerScroll" Width="500" HorizontalAlignment="Left"
+                                  Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">
@@ -486,7 +488,8 @@
                     </ScrollViewer>
 
                     <!-- 編集パネル -->
-                    <ScrollViewer x:Name="EditDrawerScroll" Visibility="Collapsed"
+                    <ScrollViewer x:Name="EditDrawerScroll" Width="500" HorizontalAlignment="Left"
+                                  Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="24,20,24,24">

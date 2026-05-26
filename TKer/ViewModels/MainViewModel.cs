@@ -34,6 +34,8 @@ public partial class MainViewModel : ObservableObject
     public TodoService            TodoService            { get; }
     /// <summary>プロジェクトフォルダの整合性チェックを担うサービス。</summary>
     public FolderIntegrityService FolderIntegrityService { get; }
+    /// <summary>ユーザー定義カテゴリーテンプレートの読み書きを担うサービス。</summary>
+    public CategoryTemplateService CategoryTemplateService { get; }
 
     // ── ナビゲーション ────────────────────────────
     [ObservableProperty] private string _currentView = "Home";
@@ -89,7 +91,8 @@ public partial class MainViewModel : ObservableObject
         ArticleService         = new ArticleService();
         FileWatcherService     = new FileWatcherService();
         TodoService            = new TodoService();
-        FolderIntegrityService = new FolderIntegrityService(ProjectService);
+        FolderIntegrityService     = new FolderIntegrityService(ProjectService);
+        CategoryTemplateService    = new CategoryTemplateService();
 
         // ロガー設定の適用
         AppLogger.Instance.Configure(AppSettingsService.LogRotation);

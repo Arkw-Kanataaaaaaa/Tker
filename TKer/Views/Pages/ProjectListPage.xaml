@@ -117,7 +117,7 @@
                                 Click="ToggleSearch_Click">
                             <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconLg}"/>
                         </Button>
-                        <Button ToolTip="カテゴリテンプレート" Style="{StaticResource VToolbarBtn}"
+                        <Button ToolTip="カテゴリーテンプレート管理" Style="{StaticResource VToolbarBtn}"
                                 Click="CategoryTemplate_Click">
                             <Path Data="{StaticResource Bi.LayoutTextWindow}" Style="{StaticResource BiIconLg}"/>
                         </Button>

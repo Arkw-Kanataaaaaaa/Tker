@@ -315,7 +315,7 @@ public partial class ProjectListPage : Page, IRefreshable
                 ? string.Join("、", cats.Select(c => c.Name)) : "";
     }
 
-    /// <summary>カテゴリーテンプレートの表示名一覧（先頭=生成しない、組み込み＋カスタム）を構築する。</summary>
+    /// <summary>カテゴリーテンプレートの表示名一覧（先頭=生成しない、組み込み＋ユーザー作成）を構築する。</summary>
     private List<string> BuildCategoryTemplateItems()
     {
         _newProjTemplates.Clear();
@@ -330,7 +330,7 @@ public partial class ProjectListPage : Page, IRefreshable
                 Name = c.Name, Color = c.Color, Description = c.Description
             }).ToList();
         }
-        foreach (var p in _vm.AppSettingsService.Settings.CategoryPresets)
+        foreach (var p in _vm.CategoryTemplateService.UserPresets)
         {
             var key = $"[カスタム] {p.Name}";
             if (_newProjTemplates.ContainsKey(key)) continue;
@@ -1595,26 +1595,23 @@ public partial class ProjectListPage : Page, IRefreshable
         ShowOrganizeDialog(misplaced, project, rootPath);
     }
 
-    /// <summary>カテゴリテンプレート一覧ダイアログを表示し、選択されたカテゴリをプロジェクトに追加する。</summary>
+    /// <summary>カテゴリーテンプレート管理ダイアログを開く。</summary>
     private void CategoryTemplate_Click(object sender, RoutedEventArgs e)
     {
-        var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
-        var dlg = new TKer.Views.Dialogs.CategoryTemplateDialog(customPresets)
+        var dlg = new TKer.Views.Dialogs.CategoryTemplateManagerDialog(_vm.CategoryTemplateService)
         {
             Owner = Window.GetWindow(this)
         };
-        if (dlg.ShowDialog() != true) return;
+        dlg.ShowDialog();
 
-        if (_vm.ProjectService.CurrentProject == null)
+        // ダイアログ閉じ後に新規プロジェクトのテンプレートドロップダウンを再構築
+        if (CmbNewProjTemplate.IsVisible)
         {
-            AppDialog.ShowInfo("カテゴリを追加するにはプロジェクトをアクティブにしてください", "確認", Window.GetWindow(this));
-            return;
+            var selected = CmbNewProjTemplate.SelectedItem as string;
+            CmbNewProjTemplate.ItemsSource = BuildCategoryTemplateItems();
+            CmbNewProjTemplate.SelectedItem = selected ?? CmbNewProjTemplate.Items.Cast<string>().FirstOrDefault();
+            if (CmbNewProjTemplate.SelectedIndex < 0) CmbNewProjTemplate.SelectedIndex = 0;
         }
-
-        foreach (var item in dlg.SelectedCategories)
-            _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
-
-        Refresh();
     }
 
     /// <summary>フォルダ整理ダイアログを生成して表示する。</summary>

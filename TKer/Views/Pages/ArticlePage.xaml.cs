@@ -25,8 +25,8 @@ public partial class ArticlePage : Page, IRefreshable
     private Article?  _current;
     private bool      _loading = false;   // UI リフレッシュ中は変更通知を抑制
 
-    private static readonly MarkdownPIPELINE PIPELINE =
-        new MarkdownPIPELINEBuilder().UseAdvancedExtensions().Build();
+    private static readonly MarkdownPipeline PIPELINE =
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
     /// <summary>記事ページを初期化してサービスを設定する。</summary>
     public ArticlePage(MainViewModel vm)

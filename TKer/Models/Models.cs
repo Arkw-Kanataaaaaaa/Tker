@@ -402,8 +402,18 @@ public class ProjectSettings
     public string Description  { get; set; } = string.Empty;
     /// <summary>プロジェクト作成日時。</summary>
     public DateTime CreatedAt  { get; set; } = DateTime.Now;
+    /// <summary>プロジェクト最終更新日時。</summary>
+    public DateTime UpdatedAt  { get; set; } = DateTime.Now;
     /// <summary>プロジェクトデータのバージョン文字列。</summary>
     public string Version      { get; set; } = "1.0.0";
+    /// <summary>フォルダ構造をプロジェクトと統一して管理するかどうか。falseの場合はフォルダ表示が無効になる。</summary>
+    public bool UseFolderManagement { get; set; } = true;
+    /// <summary>表紙画像のBase64エンコード文字列。空文字の場合は未設定。</summary>
+    public string CoverImageData { get; set; } = string.Empty;
+    /// <summary>プロジェクト開始予定日。</summary>
+    public DateTime? ProjectStartDate { get; set; }
+    /// <summary>プロジェクト終了予定日。</summary>
+    public DateTime? ProjectEndDate { get; set; }
 }
 
 /// <summary>タスクを分類するカテゴリーを表す ObservableObject クラス。</summary>
@@ -636,6 +646,14 @@ public class ProjectSummary
     public int OverdueTasks     { get; set; }
     /// <summary>プロジェクトの作成日時。</summary>
     public DateTime CreatedAt   { get; set; }
+    /// <summary>プロジェクトの更新日時。</summary>
+    public DateTime UpdatedAt   { get; set; }
+    /// <summary>プロジェクト開始日。</summary>
+    public DateTime? ProjectStartDate { get; set; }
+    /// <summary>プロジェクト終了日。</summary>
+    public DateTime? ProjectEndDate   { get; set; }
+    /// <summary>フォルダ管理を行っているかどうか。</summary>
+    public bool UseFolderManagement   { get; set; }
     /// <summary>完了率（0〜100 のパーセンテージ）。</summary>
     public double ProgressRate  => TotalTasks > 0 ? (double)DoneTasks / TotalTasks * 100 : 0;
     /// <summary>完了率を整数パーセントで表したラベル。</summary>
@@ -898,6 +916,8 @@ public class Collection
     public List<CollectionField> Fields { get; set; } = new();
     /// <summary>コレクションに含まれるアイテムの一覧。</summary>
     public List<CollectionItem>  Items  { get; set; } = new();
+    /// <summary>表紙画像（Base64エンコード）。</summary>
+    public string CoverImageData { get; set; } = string.Empty;
     /// <summary>コレクションの作成日時。</summary>
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     /// <summary>コレクションの最終更新日時。</summary>

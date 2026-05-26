@@ -426,6 +426,13 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="32"/>
                                             </Grid.ColumnDefinitions>
+                                            <!-- 選択中テキスト（枠と同じ背景の上に表示） -->
+                                            <ContentPresenter Grid.Column="0"
+                                                              IsHitTestVisible="False"
+                                                              VerticalAlignment="Center"
+                                                              Margin="12,0,4,0"
+                                                              Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                              ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
                                             <!-- シェブロン（開閉で回転） -->
                                             <Path x:Name="Chevron" Grid.Column="1"
                                                   Data="M0,0 L4,4 L8,0"
@@ -491,7 +498,7 @@
                                     BorderBrush="{StaticResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="8" Padding="5"
                                     Margin="0,0,8,8"
-                                    MinWidth="{Binding ElementName=Root, Path=ActualWidth}">
+                                    Width="{Binding ElementName=Root, Path=ActualWidth}">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="16" ShadowDepth="3"
                                                       Direction="270" Color="#000000" Opacity="0.4"/>

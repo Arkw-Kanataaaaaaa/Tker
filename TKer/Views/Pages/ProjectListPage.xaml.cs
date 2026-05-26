@@ -832,9 +832,7 @@ public partial class ProjectListPage : Page, IRefreshable
                     LoadProject_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
                 case Key.F:
-                    if (SearchSection.Visibility != Visibility.Visible)
-                        ToggleSearch_Click(this, new RoutedEventArgs());
-                    else { SearchBox.Focus(); SearchBox.SelectAll(); }
+                    ToggleSearch_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
                 case Key.OemMinus:
                 case Key.Subtract:

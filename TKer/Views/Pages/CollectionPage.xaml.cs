@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using TKer.Helpers;
 using TKer.Models;
 using TKer.Services;
 using TKer.ViewModels;
@@ -20,7 +21,6 @@ public partial class CollectionPage : Page, IRefreshable
     private readonly CollectionService _svc;
     private string? _selectedId;
     private bool    _isGridMode = true;
-    private bool    _searchVisible;
 
     private readonly List<CollectionField>          _formFields       = new();
     private string?                                 _editingId;
@@ -442,10 +442,9 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
     {
-        _searchVisible = !_searchVisible;
-        SearchSection.Visibility = _searchVisible ? Visibility.Visible : Visibility.Collapsed;
-        if (_searchVisible) SearchBox.Focus();
-        else { SearchBox.Text = ""; ApplyFilter(); }
+        bool willClose = SearchSection.Visibility == Visibility.Visible;
+        SearchBarHelper.Toggle(SearchSection, SearchBox);
+        if (willClose) { SearchBox.Text = ""; ApplyFilter(); }
     }
 
     private void NewCollection_Click(object sender, RoutedEventArgs e) => ShowForm(null);

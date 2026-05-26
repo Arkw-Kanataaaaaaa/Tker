@@ -517,14 +517,26 @@ public partial class ProjectListPage : Page, IRefreshable
     private Point _previewTranslateStart;
     private bool _isPreviewDragging;
 
+    private const double PreviewMinScale  = 0.1;
+    private const double PreviewMaxScale  = 10.0;
+    private const double PreviewGaugeWidth = 160.0;
+
     /// <summary>表紙画像を全画面オーバーレイでプレビュー表示する。</summary>
     private void OpenPreviewOverlay(BitmapImage bmp)
     {
         PreviewImage.Source = bmp;
         PreviewScale.ScaleX = PreviewScale.ScaleY = 1;
         PreviewTranslate.X = PreviewTranslate.Y = 0;
-        PreviewZoomLabel.Text = "100%";
+        UpdateZoomGauge(1);
         PreviewOverlay.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>ズームゲージとラベルを現在の拡大率で更新する。</summary>
+    private void UpdateZoomGauge(double scale)
+    {
+        PreviewZoomLabel.Text = $"{(int)Math.Round(scale * 100)}%";
+        double ratio = Math.Clamp(scale / PreviewMaxScale, 0, 1);
+        PreviewZoomFill.Width = Math.Max(4, ratio * PreviewGaugeWidth);
     }
 
     private void ClosePreview_Click(object sender, RoutedEventArgs e) => ClosePreviewOverlay();
@@ -542,9 +554,9 @@ public partial class ProjectListPage : Page, IRefreshable
         if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
 
         double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
-        double newScale = Math.Clamp(PreviewScale.ScaleX * factor, 0.1, 10.0);
+        double newScale = Math.Clamp(PreviewScale.ScaleX * factor, PreviewMinScale, PreviewMaxScale);
         PreviewScale.ScaleX = PreviewScale.ScaleY = newScale;
-        PreviewZoomLabel.Text = $"{(int)Math.Round(newScale * 100)}%";
+        UpdateZoomGauge(newScale);
         e.Handled = true;
     }
 

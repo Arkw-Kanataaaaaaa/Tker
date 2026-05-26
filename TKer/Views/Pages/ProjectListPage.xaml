@@ -693,13 +693,22 @@
                     </TransformGroup>
                 </Image.RenderTransform>
             </Image>
-            <Button Width="44" Height="44" Content="×" FontSize="22" FontWeight="Bold"
-                    Foreground="White" Background="#64FFFFFF" BorderThickness="0" Cursor="Hand"
-                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0"
-                    Click="ClosePreview_Click"/>
-            <TextBlock x:Name="PreviewZoomLabel" Text="100%" FontSize="12" Foreground="White"
-                       Background="#78000000" Padding="8,4"
-                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,12"/>
+            <TextBlock Text="×" FontSize="26" FontWeight="Bold" Foreground="White" Cursor="Hand"
+                       Padding="8,2" HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Margin="0,8,16,0" MouseLeftButtonUp="ClosePreview_Click"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                        Margin="16,0,0,16">
+                <TextBlock Text="0" FontSize="11" Foreground="White" VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
+                <Border Width="160" Height="6" CornerRadius="3" Background="#55FFFFFF"
+                        VerticalAlignment="Center">
+                    <Border x:Name="PreviewZoomFill" Width="16" CornerRadius="3"
+                            Background="{StaticResource AccentCyanBrush}"
+                            HorizontalAlignment="Left"/>
+                </Border>
+                <TextBlock x:Name="PreviewZoomLabel" Text="100%" FontSize="11" Foreground="White"
+                           VerticalAlignment="Center" Margin="8,0,0,0"/>
+            </StackPanel>
         </Grid>
     </Grid>
 </Page>

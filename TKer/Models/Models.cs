@@ -652,6 +652,8 @@ public class ProjectSummary
     public DateTime? ProjectStartDate { get; set; }
     /// <summary>プロジェクト終了日。</summary>
     public DateTime? ProjectEndDate   { get; set; }
+    /// <summary>フォルダ管理を行っているかどうか。</summary>
+    public bool UseFolderManagement   { get; set; }
     /// <summary>完了率（0〜100 のパーセンテージ）。</summary>
     public double ProgressRate  => TotalTasks > 0 ? (double)DoneTasks / TotalTasks * 100 : 0;
     /// <summary>完了率を整数パーセントで表したラベル。</summary>

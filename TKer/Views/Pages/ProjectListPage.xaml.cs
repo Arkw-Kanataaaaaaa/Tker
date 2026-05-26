@@ -804,9 +804,12 @@ public partial class ProjectListPage : Page, IRefreshable
     private void UpdateProjectToolbarState()
     {
         bool hasSelection = !string.IsNullOrEmpty(_selectedPath);
+        bool folderManaged = hasSelection && _vm.AppSettingsService.CollectSummaries()
+            .FirstOrDefault(s => s.Entry.DataFilePath == _selectedPath)?.UseFolderManagement == true;
         BtnSetActive.IsEnabled      = hasSelection;
         BtnEditSettings.IsEnabled   = hasSelection;
         BtnRemoveSelected.IsEnabled = hasSelection;
+        BtnOrganize.IsEnabled       = folderManaged;
     }
 
 
@@ -830,6 +833,9 @@ public partial class ProjectListPage : Page, IRefreshable
                     e.Handled = true; break;
                 case Key.O:
                     LoadProject_Click(this, new RoutedEventArgs());
+                    e.Handled = true; break;
+                case Key.M:
+                    if (BtnOrganize.IsEnabled) Organize_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
                 case Key.F:
                     ToggleSearch_Click(this, new RoutedEventArgs());

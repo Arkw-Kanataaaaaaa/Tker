@@ -590,7 +590,8 @@ public class AppSettingsService
                         CreatedAt = project.Settings.CreatedAt,
                         UpdatedAt = project.Settings.UpdatedAt,
                         ProjectStartDate = project.Settings.ProjectStartDate,
-                        ProjectEndDate = project.Settings.ProjectEndDate
+                        ProjectEndDate = project.Settings.ProjectEndDate,
+                        UseFolderManagement = project.Settings.UseFolderManagement
                     });
                 }
                 catch { }

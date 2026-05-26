@@ -120,7 +120,7 @@
                 </Border>
 
                 <Border x:Name="ContentBorder" Grid.Row="1">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,8,8,8">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8,8,8">
                     <StackPanel>
                         <Border x:Name="NoProjectBanner" Visibility="Collapsed"
                                 Background="{StaticResource BgCardBrush}"

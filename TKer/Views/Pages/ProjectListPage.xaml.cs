@@ -334,35 +334,36 @@ public partial class ProjectListPage : Page, IRefreshable
         }
 
         // ── ローカルヘルパー ──
-        void AddSectionLine(Thickness margin) =>
+        void AddSectionLine() =>
             ProjectInfoContent.Children.Add(new Border
             {
-                Height = 1, Background = (Brush)FindResource("BorderBrush"), Margin = margin
+                Height = 1, Background = (Brush)FindResource("BorderBrush"),
+                Margin = new Thickness(0, 0, 0, 0)
             });
 
         void AddSectionTitle(string title) =>
             ProjectInfoContent.Children.Add(new TextBlock
             {
-                Text = title, FontSize = 11, FontWeight = FontWeights.SemiBold,
-                Foreground = (Brush)FindResource("TextDimBrush"),
-                Margin = new Thickness(0, 8, 0, 8)
+                Text = title, FontSize = 14, FontWeight = FontWeights.Bold,
+                Foreground = (Brush)FindResource("AccentCyanBrush"),
+                Margin = new Thickness(0, 10, 0, 10)
             });
 
         void AddHRow(string label, string value)
         {
             if (string.IsNullOrEmpty(value)) return;
             var g = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var lbl = new TextBlock
             {
-                Text = label, FontSize = 12,
+                Text = label, FontSize = 13,
                 Foreground = (Brush)FindResource("TextDimBrush"),
                 VerticalAlignment = VerticalAlignment.Top
             };
             var val = new TextBlock
             {
-                Text = value, FontSize = 12,
+                Text = value, FontSize = 13,
                 Foreground = (Brush)FindResource("TextPrimaryBrush"),
                 TextWrapping = TextWrapping.Wrap
             };
@@ -372,8 +373,50 @@ public partial class ProjectListPage : Page, IRefreshable
             ProjectInfoContent.Children.Add(g);
         }
 
+        void AddProgressRow(string label, int pct)
+        {
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var lbl = new TextBlock
+            {
+                Text = label, FontSize = 13,
+                Foreground = (Brush)FindResource("TextDimBrush"),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var valStack = new StackPanel();
+            valStack.Children.Add(new TextBlock
+            {
+                Text = $"{pct}%", FontSize = 13,
+                Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+            var track = new Border
+            {
+                Height = 6, CornerRadius = new CornerRadius(3),
+                Background = (Brush)FindResource("BgCardBrush")
+            };
+            var fill = new Border
+            {
+                Height = 6, CornerRadius = new CornerRadius(3),
+                Background = (Brush)FindResource("AccentCyanBrush"),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = 0  // set after layout via SizeChanged
+            };
+            var trackGrid = new Grid();
+            trackGrid.Children.Add(track);
+            trackGrid.Children.Add(fill);
+            track.SizeChanged += (_, e) =>
+                fill.Width = e.NewSize.Width * Math.Clamp(pct / 100.0, 0, 1);
+            valStack.Children.Add(trackGrid);
+            Grid.SetColumn(valStack, 1);
+            g.Children.Add(lbl);
+            g.Children.Add(valStack);
+            ProjectInfoContent.Children.Add(g);
+        }
+
         // ── 詳細情報セクション ──
-        AddSectionLine(new Thickness(0, 0, 0, 0));
+        AddSectionLine();
         AddSectionTitle("詳細情報");
         AddHRow("プロジェクト名", entry.ProjectName ?? "");
         if (!string.IsNullOrWhiteSpace(entry.Description))
@@ -386,9 +429,8 @@ public partial class ProjectListPage : Page, IRefreshable
             var end   = projectData?.Settings.ProjectEndDate?.ToString("yyyy/MM/dd")   ?? "─";
             AddHRow("プロジェクト期間", $"{start}  〜  {end}");
         }
-        AddSectionLine(new Thickness(0, 0, 0, 0));
 
-        // ── タスク統計セクション ──
+        // ── タスク統計セクション（セクション間の線は1本） ──
         if (projectData != null)
         {
             var tasks    = projectData.Tasks;
@@ -399,17 +441,20 @@ public partial class ProjectListPage : Page, IRefreshable
             int overdue  = tasks.Count(t => t.IsOverdue);
             int pct      = total > 0 ? (int)Math.Round(done * 100.0 / total) : 0;
 
-            ProjectInfoContent.Children.Add(new Border { Height = 8, Background = Brushes.Transparent });
-            AddSectionLine(new Thickness(0, 0, 0, 0));
+            AddSectionLine();   // 詳細情報下 = タスク統計上 を兼ねる1本線
             AddSectionTitle("タスク統計");
-            AddHRow("進捗率",   $"{pct}%");
+            AddProgressRow("進捗率", pct);
             AddHRow("合計",     $"{total} 件");
             AddHRow("完了",     $"{done} 件");
             AddHRow("進行中",   $"{wip} 件");
             AddHRow("未着手",   $"{todo} 件");
             if (overdue > 0)
                 AddHRow("期限超過", $"⚠ {overdue} 件");
-            AddSectionLine(new Thickness(0, 0, 0, 0));
+            AddSectionLine();
+        }
+        else
+        {
+            AddSectionLine();   // タスクデータなし時の詳細情報下線
         }
 
         OpenDetailDrawer();

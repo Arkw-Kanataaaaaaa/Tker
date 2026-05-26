@@ -15,18 +15,50 @@
         <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12" Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel>
-                <!-- グリッド/リスト切替ボタン（1つのアイコン、現在モードを表示） -->
+                <!-- グリッド/リスト切替ボタン -->
                 <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
                         Width="30" Height="30" CornerRadius="6" Cursor="Hand"
-                        Background="Transparent"
                         MouseLeftButtonUp="ToggleView_Click" ToolTip="リスト表示に切り替え"
                         Margin="0,0,4,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource BgCardBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <Grid Background="Transparent">
-                        <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconSm}"/>
-                        <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconSm}"
+                        <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconLg}"/>
+                        <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconLg}"
                               Visibility="Collapsed"/>
                     </Grid>
                 </Border>
+                <!-- ソートボタン + ラベル -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
+                    <Border x:Name="BtnSortToggle"
+                            Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                            MouseLeftButtonUp="SortButton_Click" ToolTip="ソート順を変更">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource BgCardBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid Background="Transparent">
+                            <Path Data="{StaticResource Bi.ArrowDownUp}" Style="{StaticResource BiIconLg}"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock x:Name="SortModeLabel" Text="最近" FontSize="12"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="6,0,0,0"/>
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="プロジェクト"
                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
@@ -714,5 +746,44 @@
                            VerticalAlignment="Center" Margin="10,0,0,0"/>
             </StackPanel>
         </Grid>
+
+        <!-- ソート選択ポップアップ -->
+        <Popup x:Name="SortPopup" StaysOpen="False" Placement="Bottom"
+               PlacementTarget="{Binding ElementName=BtnSortToggle}">
+            <Border Background="{DynamicResource BgCardBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="6" Padding="4" MinWidth="150">
+                <StackPanel>
+                    <Border x:Name="SortOptRecent" Padding="12,8" CornerRadius="4" Cursor="Hand"
+                            MouseLeftButtonUp="SortByRecent_Click">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource BgSecondaryBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock x:Name="SortOptRecentText" Text="最近のプロジェクト" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </Border>
+                    <Border x:Name="SortOptName" Padding="12,8" CornerRadius="4" Cursor="Hand"
+                            MouseLeftButtonUp="SortByName_Click">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource BgSecondaryBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock x:Name="SortOptNameText" Text="プロジェクト名" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Page>

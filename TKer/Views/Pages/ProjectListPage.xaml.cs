@@ -53,6 +53,8 @@ public partial class ProjectListPage : Page, IRefreshable
     private string? _editingProjectPath;
     private ProjectData? _editingProjectData;
     private bool _isGridMode = true;
+    private enum SortMode { Recent, Name }
+    private SortMode _sortMode = SortMode.Recent;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
 
     /// <summary>コンストラクタ。ViewModelを受け取り初期化する。</summary>
@@ -106,8 +108,10 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         UpdateProjectToolbarState();
 
-        var summaries = _vm.AppSettingsService.CollectSummaries()
-            .OrderByDescending(s => s.Entry.LastOpened)
+        var rawSummaries = _vm.AppSettingsService.CollectSummaries();
+        var summaries = (_sortMode == SortMode.Name
+            ? rawSummaries.OrderBy(s => s.Entry.ProjectName)
+            : rawSummaries.OrderByDescending(s => s.Entry.LastOpened))
             .ToList();
         var activeFilePath = _vm.ProjectService.ProjectFilePath;
 
@@ -182,6 +186,37 @@ public partial class ProjectListPage : Page, IRefreshable
         if (s.WipTasks > 0)      lines.Add($"進行中 {s.WipTasks} 件");
         if (s.OverdueTasks > 0)  lines.Add($"⚠ 期限超過 {s.OverdueTasks} 件");
         return string.Join("\n", lines);
+    }
+
+    // ── ソート ──────────────────────────────────────────────
+    private void SortButton_Click(object sender, MouseButtonEventArgs e)
+    {
+        UpdateSortPopupHighlight();
+        SortPopup.IsOpen = true;
+    }
+
+    private void SortByRecent_Click(object sender, MouseButtonEventArgs e)
+    {
+        _sortMode = SortMode.Recent;
+        SortModeLabel.Text = "最近";
+        SortPopup.IsOpen = false;
+        ApplyFilter();
+    }
+
+    private void SortByName_Click(object sender, MouseButtonEventArgs e)
+    {
+        _sortMode = SortMode.Name;
+        SortModeLabel.Text = "プロジェクト名";
+        SortPopup.IsOpen = false;
+        ApplyFilter();
+    }
+
+    private void UpdateSortPopupHighlight()
+    {
+        var active   = (Brush)FindResource("AccentCyanBrush");
+        var inactive = (Brush)FindResource("TextPrimaryBrush");
+        SortOptRecentText.Foreground = _sortMode == SortMode.Recent ? active : inactive;
+        SortOptNameText.Foreground   = _sortMode == SortMode.Name   ? active : inactive;
     }
 
     // ── グリッド/リスト表示モード切替 ──────────────────────

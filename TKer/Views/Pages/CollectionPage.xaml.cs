@@ -11,6 +11,7 @@ using TKer.Helpers;
 using TKer.Models;
 using TKer.Services;
 using TKer.ViewModels;
+using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
@@ -499,9 +500,13 @@ public partial class CollectionPage : Page, IRefreshable
         TxtFormDesc.Text   = existing?.Description ?? "";
         TxtFormFolder.Text = existing?.FolderPath  ?? "";
 
-        var fmt = existing?.ItemFormat ?? "文字列";
-        RbItemText.IsChecked = fmt != "ファイル";
-        RbItemFile.IsChecked = fmt == "ファイル";
+        var fmt    = existing?.ItemFormat ?? "文字列";
+        bool isFile = fmt == "ファイル";
+        RbItemText.IsChecked = !isFile;
+        RbItemFile.IsChecked = isFile;
+        FolderSection.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
+        if (CbFieldFile != null)
+            CbFieldFile.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
 
         if (existing != null)
             _formFields.AddRange(existing.Fields.Select(f => new CollectionField
@@ -558,7 +563,7 @@ public partial class CollectionPage : Page, IRefreshable
     {
         var (icon, label, badgeColor) = field.FieldType switch
         {
-            "画像"  => ("🖼", "画像",  Color.FromArgb(200, 120, 60, 200)),
+            "ファイル" => ("📁", "ファイル", Color.FromArgb(200, 120, 60, 200)),
             "リンク" => ("🔗", "リンク", Color.FromArgb(200, 30, 140, 80)),
             _       => ("📝", "文字列", Color.FromArgb(200, 35, 100, 200)),
         };
@@ -632,19 +637,37 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void BrowseFolder_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "コレクションフォルダを選択" };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "保存先フォルダを選択" };
         if (dlg.ShowDialog() == true)
             TxtFormFolder.Text = dlg.FolderName;
+    }
+
+    private void ItemFormat_Changed(object sender, RoutedEventArgs e)
+    {
+        if (FolderSection == null || CbFieldType == null) return;
+        bool isFile = RbItemFile.IsChecked == true;
+        FolderSection.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
+
+        CbFieldFile.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
+        if (!isFile && (CbFieldType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string == "ファイル")
+            CbFieldType.SelectedIndex = 0;
     }
 
     private void SaveForm_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtFormName.Text)) { TxtFormName.Focus(); return; }
 
+        var itemFormat = RbItemFile.IsChecked == true ? "ファイル" : "文字列";
+
+        if (itemFormat == "ファイル" && string.IsNullOrWhiteSpace(TxtFormFolder.Text))
+        {
+            AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            TxtFormFolder.Focus();
+            return;
+        }
+
         for (int i = 0; i < _formFields.Count; i++)
             _formFields[i].Order = i;
-
-        var itemFormat = RbItemFile.IsChecked == true ? "ファイル" : "文字列";
 
         if (_editingId == null)
         {
@@ -836,7 +859,7 @@ public partial class CollectionPage : Page, IRefreshable
         {
             var (icon, label, badgeColor) = field.FieldType switch
             {
-                "画像"  => ("🖼", "画像",  Color.FromArgb(180, 120, 60, 200)),
+                "ファイル" => ("📁", "ファイル", Color.FromArgb(180, 120, 60, 200)),
                 "リンク" => ("🔗", "リンク", Color.FromArgb(180, 30, 140, 80)),
                 _       => ("📝", "文字列", Color.FromArgb(180, 35, 100, 200)),
             };
@@ -893,17 +916,46 @@ public partial class CollectionPage : Page, IRefreshable
         BtnClearCoverImage.Visibility    = Visibility.Collapsed;
     }
 
-    private void BrowseCoverImage_Click(object sender, RoutedEventArgs e)
+    // BrowseCoverImage_Click is no longer wired in XAML (button removed), kept for internal use if needed
+
+    private void CoverImageArea_Click(object sender, MouseButtonEventArgs e) => OpenCoverImageDialog();
+
+    private void CoverImage_DragEnter(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void CoverImage_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void CoverImage_DragLeave(object sender, DragEventArgs e) { }
+
+    private void CoverImage_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+        if (files.Length > 0) LoadCoverImage(files[0]);
+    }
+
+    private void OpenCoverImageDialog()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Title  = "表紙画像を選択",
             Filter = "画像ファイル|*.jpg;*.jpeg;*.png;*.bmp;*.gif|すべてのファイル|*.*",
         };
-        if (dlg.ShowDialog() != true) return;
+        if (dlg.ShowDialog() == true) LoadCoverImage(dlg.FileName);
+    }
+
+    private void LoadCoverImage(string filePath)
+    {
         try
         {
-            var bytes = File.ReadAllBytes(dlg.FileName);
+            var bytes = File.ReadAllBytes(filePath);
             _coverImageData = Convert.ToBase64String(bytes);
 
             var bmp = new BitmapImage();
@@ -917,10 +969,7 @@ public partial class CollectionPage : Page, IRefreshable
             CoverImagePlaceholder.Visibility = Visibility.Collapsed;
             BtnClearCoverImage.Visibility    = Visibility.Visible;
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"画像の読み込みに失敗しました:\n{ex.Message}", "エラー");
-        }
+        catch { }
     }
 
     private void ClearCoverImage_Click(object sender, RoutedEventArgs e) => ClearCoverImageField();

@@ -85,7 +85,8 @@ public partial class CollectionItemsPage : Page
         {
             var f       = _col.Fields[i];
             var val     = item.FieldValues.TryGetValue(f.Id, out var v) ? v : "";
-            var display = f.FieldType == "画像" && !string.IsNullOrEmpty(val) ? "🖼 (画像)" : val;
+            var display = f.FieldType == "ファイル" && !string.IsNullOrEmpty(val)
+                ? $"📁 {Path.GetFileName(val)}" : val;
             AddCell(g, display, i + 1, isSel);
         }
         AddCell(g, item.AddedAt.ToString("yyyy/MM/dd"), _col.Fields.Count + 1, isSel);
@@ -272,75 +273,40 @@ public partial class CollectionItemsPage : Page
         {
             FormContentPanel.Children.Add(MakeFormLabel(field.Name));
 
-            if (field.FieldType == "画像")
+            if (field.FieldType == "ファイル" || field.FieldType == "画像")
             {
-                var hasVal = _editingValues.TryGetValue(field.Id, out var imgVal) && !string.IsNullOrEmpty(imgVal);
-                var preview = new Border
+                var capField = field;
+                var hasVal   = _editingValues.TryGetValue(field.Id, out var filePath) && !string.IsNullOrEmpty(filePath);
+
+                var pg = new Grid { Margin = new Thickness(0, 0, 0, 14) };
+                pg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                pg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var tb = new System.Windows.Controls.TextBox
                 {
-                    Height = 110, CornerRadius = new CornerRadius(6),
-                    Background = R<Brush>("BgCardBrush"),
-                    BorderBrush = R<Brush>("BorderBrush"), BorderThickness = new Thickness(1),
-                    ClipToBounds = true, Margin = new Thickness(0, 0, 0, 6),
+                    Text            = hasVal ? filePath : "",
+                    IsReadOnly      = true,
+                    Style           = R<Style>("DarkTextBox"),
                 };
+                _editingValues.TryAdd(field.Id, "");
+                Grid.SetColumn(tb, 0); pg.Children.Add(tb);
 
-                if (hasVal)
+                var browseBtn = new Button
                 {
-                    try
-                    {
-                        var bmp = new BitmapImage();
-                        bmp.BeginInit();
-                        bmp.StreamSource = new MemoryStream(Convert.FromBase64String(imgVal!));
-                        bmp.CacheOption  = BitmapCacheOption.OnLoad;
-                        bmp.EndInit();
-                        preview.Child = new Image { Source = bmp, Stretch = Stretch.UniformToFill };
-                    }
-                    catch
-                    {
-                        preview.Child = new TextBlock
-                        {
-                            Text = "読込エラー",
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment   = VerticalAlignment.Center,
-                            Foreground          = R<Brush>("TextDimBrush"),
-                        };
-                    }
-                }
-                else
+                    Content = "参照...",
+                    Style   = R<Style>("SecondaryButton"),
+                    Padding = new Thickness(10, 5, 10, 5),
+                    Margin  = new Thickness(6, 0, 0, 0),
+                };
+                browseBtn.Click += (_, _) =>
                 {
-                    preview.Child = new TextBlock
-                    {
-                        Text = "画像なし",
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment   = VerticalAlignment.Center,
-                        Foreground          = R<Brush>("TextDimBrush"),
-                    };
-                }
-
-                FormContentPanel.Children.Add(preview);
-
-                var capField  = field;
-                var imgBtns   = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 14) };
-                var selBtn    = new Button { Content = "画像を選択", Style = R<Style>("SecondaryButton"), Padding = new Thickness(10, 5, 10, 5) };
-                selBtn.Click += (_, _) =>
-                {
-                    var dlg = new Microsoft.Win32.OpenFileDialog
-                    {
-                        Title  = "画像を選択",
-                        Filter = "画像ファイル|*.jpg;*.jpeg;*.png;*.bmp;*.gif|すべてのファイル|*.*",
-                    };
+                    var dlg = new Microsoft.Win32.OpenFileDialog { Title = "ファイルを選択" };
                     if (dlg.ShowDialog() != true) return;
-                    try { _editingValues[capField.Id] = Convert.ToBase64String(File.ReadAllBytes(dlg.FileName)); BuildFormContent(); }
-                    catch { }
+                    _editingValues[capField.Id] = dlg.FileName;
+                    BuildFormContent();
                 };
-                imgBtns.Children.Add(selBtn);
-
-                if (hasVal)
-                {
-                    var clrBtn = new Button { Content = "クリア", Style = R<Style>("SecondaryButton"), Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(8, 0, 0, 0) };
-                    clrBtn.Click += (_, _) => { _editingValues.Remove(capField.Id); BuildFormContent(); };
-                    imgBtns.Children.Add(clrBtn);
-                }
-                FormContentPanel.Children.Add(imgBtns);
+                Grid.SetColumn(browseBtn, 1); pg.Children.Add(browseBtn);
+                FormContentPanel.Children.Add(pg);
             }
             else
             {

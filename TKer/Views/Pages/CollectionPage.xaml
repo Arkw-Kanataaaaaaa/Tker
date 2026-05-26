@@ -252,68 +252,48 @@
                                      Style="{StaticResource DarkTextBox}" Margin="0,0,0,16"/>
 
                             <!-- 表紙画像 -->
-                            <TextBlock Text="表紙画像（任意）" FontSize="12"
+                            <TextBlock Text="表紙画像" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <Border x:Name="CoverImagePreviewBorder" Height="150" CornerRadius="6"
+                            <Border x:Name="CoverImagePreviewBorder" Height="160" CornerRadius="6"
                                     Background="{StaticResource BgCardBrush}"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                    Margin="0,0,0,8" ClipToBounds="True">
+                                    Margin="0,0,0,8" ClipToBounds="True" Cursor="Hand"
+                                    AllowDrop="True"
+                                    MouseLeftButtonUp="CoverImageArea_Click"
+                                    DragEnter="CoverImage_DragEnter" DragOver="CoverImage_DragOver"
+                                    DragLeave="CoverImage_DragLeave" Drop="CoverImage_Drop">
                                 <Grid>
                                     <TextBlock x:Name="CoverImagePlaceholder"
-                                               Text="画像を選択してください"
+                                               Text="クリック、またはドラッグ＆ドロップで画像を選択"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextDimBrush}" FontSize="12"/>
                                     <Image x:Name="CoverImagePreview" Stretch="UniformToFill"
-                                           Visibility="Collapsed"/>
+                                           Visibility="Collapsed" IsHitTestVisible="False"/>
                                 </Grid>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                <Button Style="{StaticResource SecondaryButton}" Padding="10,5"
-                                        Click="BrowseCoverImage_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
-                                              Margin="0,0,4,0"/>
-                                        <TextBlock Text="画像を選択" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
                                 <Button x:Name="BtnClearCoverImage" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" Margin="8,0,0,0"
+                                        Padding="10,5"
                                         Click="ClearCoverImage_Click" Visibility="Collapsed">
                                     <TextBlock Text="クリア"/>
                                 </Button>
                             </StackPanel>
 
-                            <TextBlock Text="基本情報" FontSize="12" FontWeight="Bold"
-                                       Foreground="{StaticResource AccentCyanBrush}"
-                                       Margin="0,0,0,14"/>
-
-                            <TextBlock Text="説明（任意）" FontSize="12"
+                            <!-- 説明 -->
+                            <TextBlock Text="説明" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <TextBox x:Name="TxtFormDesc"
-                                     Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
+                                     Style="{StaticResource DarkTextBox}" Margin="0,0,0,16"/>
 
-                            <TextBlock Text="コレクションフォルダパス（任意）" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtFormFolder" Grid.Column="0"
-                                         Style="{StaticResource DarkTextBox}"/>
-                                <Button Grid.Column="1" Content="参照..."
-                                        Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" Margin="6,0,0,0"
-                                        Click="BrowseFolder_Click"/>
-                            </Grid>
-
+                            <!-- アイテム形式 -->
                             <TextBlock Text="アイテム形式" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,22">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                                 <RadioButton x:Name="RbItemText"
                                              GroupName="ItemFormat" IsChecked="True"
                                              Style="{StaticResource ItemFormatRadio}"
-                                             Margin="0,0,10,0">
+                                             Margin="0,0,10,0"
+                                             Checked="ItemFormat_Changed">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📝" FontSize="14" Margin="0,0,6,0"
                                                    VerticalAlignment="Center"/>
@@ -324,7 +304,8 @@
                                 </RadioButton>
                                 <RadioButton x:Name="RbItemFile"
                                              GroupName="ItemFormat"
-                                             Style="{StaticResource ItemFormatRadio}">
+                                             Style="{StaticResource ItemFormatRadio}"
+                                             Checked="ItemFormat_Changed">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="📁" FontSize="14" Margin="0,0,6,0"
                                                    VerticalAlignment="Center"/>
@@ -335,11 +316,35 @@
                                 </RadioButton>
                             </StackPanel>
 
+                            <!-- 保存先フォルダ（ファイル指定時のみ） -->
+                            <StackPanel x:Name="FolderSection" Visibility="Collapsed" Margin="0,0,0,16">
+                                <TextBlock Text="保存先フォルダ *" FontSize="12"
+                                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtFormFolder" Grid.Column="0"
+                                             Style="{StaticResource DarkTextBox}" IsReadOnly="True"/>
+                                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                                            Padding="10,5" Margin="6,0,0,0"
+                                            Click="BrowseFolder_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource Bi.FolderFill}" Style="{StaticResource BiIconSm}"
+                                                  Margin="0,0,4,0"/>
+                                            <TextBlock Text="参照" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
                             <Border Height="1" Background="{StaticResource BorderBrush}"
                                     Margin="0,0,0,18"/>
 
+                            <!-- データ付属情報 -->
                             <TextBlock Text="データ付属情報" FontSize="12" FontWeight="Bold"
-                                       Foreground="{StaticResource AccentCyanBrush}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
                                        Margin="0,0,0,4"/>
                             <TextBlock Text="アイテムに付属させる情報フィールドを定義します"
                                        FontSize="11" Foreground="{StaticResource TextDimBrush}"
@@ -374,7 +379,7 @@
                                                       Style="{StaticResource DarkComboBox}"
                                                       SelectedIndex="0">
                                                 <ComboBoxItem Tag="文字列">📝 文字列</ComboBoxItem>
-                                                <ComboBoxItem Tag="画像">🖼 画像</ComboBoxItem>
+                                                <ComboBoxItem x:Name="CbFieldFile" Tag="ファイル">📁 ファイル</ComboBoxItem>
                                                 <ComboBoxItem Tag="リンク">🔗 リンク</ComboBoxItem>
                                             </ComboBox>
                                         </StackPanel>

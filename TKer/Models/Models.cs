@@ -891,7 +891,7 @@ public class CollectionField
     public string Id        { get; set; } = Guid.NewGuid().ToString("N")[..8];
     /// <summary>フィールド名。</summary>
     public string Name      { get; set; } = "";
-    /// <summary>文字列 | 画像 | リンク</summary>
+    /// <summary>文字列 | ファイル | リンク</summary>
     public string FieldType { get; set; } = "文字列";
     /// <summary>フィールドの表示順序。</summary>
     public int    Order     { get; set; } = 0;

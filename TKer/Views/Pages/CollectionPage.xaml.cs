@@ -697,99 +697,137 @@ public partial class CollectionPage : Page, IRefreshable
     {
         DetailContentPanel.Children.Clear();
 
-        var coverBmp = TryGetCoverBitmap(col);
-        if (coverBmp != null)
+        // ── ローカルヘルパー（プロジェクト詳細と同じスタイル） ──
+        void AddSectionLine() =>
             DetailContentPanel.Children.Add(new Border
             {
-                Height       = 160,
-                CornerRadius = new CornerRadius(8),
-                ClipToBounds = true,
-                Margin       = new Thickness(0, 0, 0, 16),
-                Child        = new Image { Source = coverBmp, Stretch = Stretch.UniformToFill },
+                Height     = 1,
+                Background = Brush("BorderBrush"),
             });
 
-        var infoCard = new Border
-        {
-            Background      = Brush("BgCardBrush"),
-            BorderBrush     = Brush("BorderBrush"),
-            BorderThickness = new Thickness(1),
-            CornerRadius    = new CornerRadius(6),
-            Padding         = new Thickness(16, 14, 16, 14),
-            Margin          = new Thickness(0, 0, 0, 16),
-        };
-        var infoSp = new StackPanel();
+        void AddSectionTitle(string title) =>
+            DetailContentPanel.Children.Add(new TextBlock
+            {
+                Text       = title,
+                FontSize   = 14,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brush("AccentCyanBrush"),
+                Margin     = new Thickness(0, 10, 0, 10),
+            });
 
-        void AddInfoRow(string label, string value)
+        void AddHRow(string label, string value)
         {
             if (string.IsNullOrEmpty(value)) return;
-            infoSp.Children.Add(new StackPanel
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var lbl = new TextBlock
             {
-                Margin = new Thickness(0, 0, 0, 8),
-                Children =
+                Text              = label,
+                FontSize          = 13,
+                Foreground        = Brush("TextDimBrush"),
+                VerticalAlignment = VerticalAlignment.Top,
+            };
+            var val = new TextBlock
+            {
+                Text         = value,
+                FontSize     = 13,
+                Foreground   = Brush("TextPrimaryBrush"),
+                TextWrapping = TextWrapping.Wrap,
+            };
+            Grid.SetColumn(val, 1);
+
+            var copyIcon = new Border
+            {
+                Width             = 20, Height = 20,
+                Margin            = new Thickness(4, 0, 0, 0),
+                CornerRadius      = new CornerRadius(3),
+                Cursor            = Cursors.Hand,
+                Opacity           = 0,
+                VerticalAlignment = VerticalAlignment.Top,
+                Child             = new System.Windows.Shapes.Path
                 {
-                    new TextBlock { Text = label, FontSize = 11, Foreground = Brush("TextDimBrush"), Margin = new Thickness(0, 0, 0, 2) },
-                    new TextBlock { Text = value, FontSize = 13, Foreground = Brush("TextPrimaryBrush"), TextWrapping = TextWrapping.Wrap },
+                    Data                = Application.Current.Resources["Bi.ClipboardFill"] as Geometry,
+                    Fill                = Brush("TextDimBrush"),
+                    Stretch             = Stretch.Uniform,
+                    Width               = 12, Height = 12,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment   = VerticalAlignment.Center,
+                },
+            };
+            Grid.SetColumn(copyIcon, 2);
+            var captured = value;
+            copyIcon.MouseLeftButtonUp += (_, _) => { Clipboard.SetText(captured); copyIcon.Opacity = 1; };
+            g.MouseEnter += (_, _) => copyIcon.Opacity = 0.45;
+            g.MouseLeave += (_, _) => copyIcon.Opacity = 0;
+
+            g.Children.Add(lbl);
+            g.Children.Add(val);
+            g.Children.Add(copyIcon);
+            DetailContentPanel.Children.Add(g);
+        }
+
+        // 表紙画像
+        var coverBmp = TryGetCoverBitmap(col);
+        if (coverBmp != null)
+        {
+            DetailContentPanel.Children.Add(new Border
+            {
+                Height      = 180,
+                CornerRadius = new CornerRadius(8),
+                ClipToBounds = true,
+                Margin      = new Thickness(0, 0, 0, 4),
+                Background  = Brush("BgCardBrush"),
+                Child       = new Image { Source = coverBmp, Stretch = Stretch.Uniform },
+            });
+        }
+        else
+        {
+            DetailContentPanel.Children.Add(new Border
+            {
+                Height          = 60,
+                CornerRadius    = new CornerRadius(8),
+                Background      = Brush("BgCardBrush"),
+                BorderBrush     = Brush("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                Margin          = new Thickness(0, 0, 0, 4),
+                Child           = new TextBlock
+                {
+                    Text                = "表紙画像は設定されていません",
+                    FontSize            = 12,
+                    Foreground          = Brush("TextDimBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment   = VerticalAlignment.Center,
                 },
             });
         }
 
+        // 詳細情報セクション
+        AddSectionLine();
+        AddSectionTitle("詳細情報");
+        AddHRow("コレクション名", col.Name ?? "");
         if (!string.IsNullOrEmpty(col.Description))
-            AddInfoRow("説明", col.Description);
+            AddHRow("説明", col.Description);
+        AddHRow("アイテム形式", col.ItemFormat == "ファイル" ? "📁 ファイル指定" : "📝 文字列");
+        if (col.ItemFormat == "ファイル" && !string.IsNullOrEmpty(col.FolderPath))
+            AddHRow("フォルダパス", col.FolderPath);
+        AddHRow("作成日時", col.CreatedAt.ToString("yyyy/MM/dd HH:mm"));
+        AddHRow("更新日時", col.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
 
-        var fmtRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-        fmtRow.Children.Add(new TextBlock
-        {
-            Text              = "アイテム形式", FontSize = 11,
-            Foreground        = Brush("TextDimBrush"),
-            Margin            = new Thickness(0, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        fmtRow.Children.Add(new Border
-        {
-            Background   = new SolidColorBrush(Color.FromArgb(60, 35, 131, 226)),
-            CornerRadius = new CornerRadius(4),
-            Padding      = new Thickness(8, 3, 8, 3),
-            Child        = new TextBlock
-            {
-                Text       = col.ItemFormat == "ファイル" ? "📁 ファイル指定" : "📝 文字列",
-                FontSize   = 12,
-                Foreground = Brush("AccentCyanBrush"),
-            },
-        });
-        infoSp.Children.Add(fmtRow);
-
-        if (!string.IsNullOrEmpty(col.FolderPath))
-            AddInfoRow("フォルダパス", col.FolderPath);
-
-        AddInfoRow("作成日", col.CreatedAt.ToString("yyyy/MM/dd"));
-
-        if (infoSp.Children.Count == 0)
-            infoSp.Children.Add(new TextBlock
-            {
-                Text       = "説明・フォルダパスは未設定です",
-                FontSize   = 12,
-                Foreground = Brush("TextDimBrush"),
-            });
-
-        infoCard.Child = infoSp;
-        DetailContentPanel.Children.Add(infoCard);
-
-        DetailContentPanel.Children.Add(new TextBlock
-        {
-            Text       = "データ付属情報フィールド",
-            FontSize   = 12,
-            FontWeight = FontWeights.Bold,
-            Foreground = Brush("AccentCyanBrush"),
-            Margin     = new Thickness(0, 0, 0, 10),
-        });
+        // データ付属情報フィールドセクション
+        AddSectionLine();
+        AddSectionTitle("データ付属情報フィールド");
 
         if (col.Fields.Count == 0)
         {
             DetailContentPanel.Children.Add(new TextBlock
             {
-                Text       = "フィールドが定義されていません。「編集」から追加できます。",
-                FontSize   = 12,
-                Foreground = Brush("TextDimBrush"),
+                Text         = "フィールドが定義されていません。ツールバーの「編集」から追加できます。",
+                FontSize     = 12,
+                Foreground   = Brush("TextDimBrush"),
+                TextWrapping = TextWrapping.Wrap,
             });
             return;
         }
@@ -813,10 +851,11 @@ public partial class CollectionPage : Page, IRefreshable
 
             var fn = new TextBlock
             {
-                Text = field.Name, FontSize = 13,
-                Foreground = Brush("TextPrimaryBrush"),
+                Text              = field.Name,
+                FontSize          = 13,
+                Foreground        = Brush("TextPrimaryBrush"),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(6, 0, 0, 0),
+                Margin            = new Thickness(6, 0, 0, 0),
             };
             Grid.SetColumn(fn, 1); g.Children.Add(fn);
 

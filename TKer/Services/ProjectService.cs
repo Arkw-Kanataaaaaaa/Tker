@@ -57,9 +57,25 @@ public class ProjectService
         DateTime? projectStartDate = null,
         DateTime? projectEndDate   = null)
     {
-        var projectPath = Path.Combine(basePath, projectName);
-        Directory.CreateDirectory(projectPath);
-        Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER_NAME));
+        string projectPath;
+        string dataFilePath;
+        if (useFolderManagement)
+        {
+            projectPath = Path.Combine(basePath, projectName);
+            Directory.CreateDirectory(projectPath);
+            Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER_NAME));
+            dataFilePath = Path.Combine(projectPath, DATA_FILE_NAME);
+        }
+        else
+        {
+            // フォルダ管理しない場合は ドキュメント\TKer 配下に "プロジェクト名_project.json" で保持する
+            var tkerDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TKer");
+            Directory.CreateDirectory(tkerDir);
+            var safeName = string.Concat(projectName.Split(Path.GetInvalidFileNameChars()));
+            projectPath  = "";
+            dataFilePath = Path.Combine(tkerDir, $"{safeName}_project.json");
+        }
 
         CurrentProject = new ProjectData
         {
@@ -77,7 +93,7 @@ public class ProjectService
             }
         };
 
-        ProjectFilePath = Path.Combine(projectPath, DATA_FILE_NAME);
+        ProjectFilePath = dataFilePath;
         SaveProject();
         _autoSaveTimer.Start();
         ProjectChanged?.Invoke(this, EventArgs.Empty);

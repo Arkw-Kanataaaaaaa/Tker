@@ -805,7 +805,6 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         bool hasSelection = !string.IsNullOrEmpty(_selectedPath);
         BtnSetActive.IsEnabled      = hasSelection;
-        BtnOpenFolder.IsEnabled     = hasSelection;
         BtnEditSettings.IsEnabled   = hasSelection;
         BtnRemoveSelected.IsEnabled = hasSelection;
     }

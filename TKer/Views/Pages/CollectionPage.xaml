@@ -86,6 +86,15 @@
                         ToolTip="コレクション削除 (Ctrl+-)" Click="DeleteCollection_Click">
                     <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                 </Button>
+                <Button Style="{StaticResource VToolbarBtn}"
+                        ToolTip="コレクション読み込み (Ctrl+O)" Click="LoadCollection_Click">
+                    <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconLg}"/>
+                </Button>
+                <Button x:Name="BtnToolbarOpen" Style="{StaticResource VToolbarBtn}"
+                        ToolTip="コレクションを開く (Ctrl+A)" Click="OpenCollection_Click"
+                        IsEnabled="False">
+                    <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconLg}"/>
+                </Button>
                 <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
                 <Button x:Name="BtnToolbarSearch" Style="{StaticResource VToolbarBtn}"
                         ToolTip="検索 (Ctrl+F)" Click="ToggleSearch_Click">

@@ -342,8 +342,10 @@ public partial class CollectionPage : Page, IRefreshable
         bool hasSel = _selectedId != null;
         BtnToolbarEdit.IsEnabled   = hasSel;
         BtnToolbarDelete.IsEnabled = hasSel;
+        BtnToolbarOpen.IsEnabled   = hasSel;
         BtnToolbarEdit.Opacity     = hasSel ? 1.0 : 0.35;
         BtnToolbarDelete.Opacity   = hasSel ? 1.0 : 0.35;
+        BtnToolbarOpen.Opacity     = hasSel ? 1.0 : 0.35;
     }
 
     // ── キーボードショートカット ────────────────────────────
@@ -366,6 +368,13 @@ public partial class CollectionPage : Page, IRefreshable
                 case Key.OemMinus:
                 case Key.Subtract:
                     DeleteCollection_Click(this, new RoutedEventArgs());
+                    e.Handled = true; break;
+                case Key.O:
+                    LoadCollection_Click(this, new RoutedEventArgs());
+                    e.Handled = true; break;
+                case Key.A:
+                    if (e.OriginalSource is TextBox) break;
+                    OpenCollection_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
             }
         }
@@ -549,6 +558,47 @@ public partial class CollectionPage : Page, IRefreshable
         _selectedId = null;
         ApplyFilter();
         UpdateToolbarState();
+    }
+
+    private void LoadCollection_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "コレクションファイルを選択",
+            Filter = "コレクションファイル|*_collection.json|すべてのファイル|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var json = File.ReadAllText(dlg.FileName);
+            var col  = Newtonsoft.Json.JsonConvert.DeserializeObject<Collection>(json);
+            if (col == null) { AppDialog.ShowError("ファイルの読み込みに失敗しました", "エラー", Window.GetWindow(this)); return; }
+
+            if (_svc.Collections.Any(c => c.Id == col.Id))
+            {
+                AppDialog.ShowWarning("このコレクションはすでに読み込まれています", "確認", Window.GetWindow(this));
+                return;
+            }
+
+            _svc.Add(col);
+            _selectedId = col.Id;
+            ApplyFilter();
+            UpdateToolbarState();
+        }
+        catch
+        {
+            AppDialog.ShowError("ファイルの読み込みに失敗しました", "エラー", Window.GetWindow(this));
+        }
+    }
+
+    private void OpenCollection_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedId == null) return;
+        var col = _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
+        if (col == null) return;
+        _vm.SelectedCollection = col;
+        _vm.NavigateToCommand.Execute("CollectionItems");
     }
 
     // ── インラインフォーム ──────────────────────────────────

@@ -504,6 +504,22 @@ public partial class ProjectListPage : Page, IRefreshable
             AddSectionLine();   // タスクデータなし時の詳細情報下線
         }
 
+        // ── エクスプローラーで開くボタン ──
+        bool folderEnabled = projectData?.Settings.UseFolderManagement == true
+                             && !string.IsNullOrEmpty(entry.ProjectPath);
+        var btnExplorer = new Button
+        {
+            Content    = "エクスプローラーで開く",
+            Style      = (Style)FindResource("SecondaryButton"),
+            Padding    = new Thickness(14, 7, 14, 7),
+            Margin     = new Thickness(0, 12, 0, 4),
+            IsEnabled  = folderEnabled,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            ToolTip    = folderEnabled ? null : "フォルダ管理が無効のため使用できません"
+        };
+        btnExplorer.Click += (_, _) => OpenFolder_Click(btnExplorer, new RoutedEventArgs());
+        ProjectInfoContent.Children.Add(btnExplorer);
+
         OpenDetailDrawer();
     }
 

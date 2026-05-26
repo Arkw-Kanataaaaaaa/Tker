@@ -45,7 +45,7 @@
         <StackPanel Grid.Row="1" Margin="28,20,28,24">
 
             <!-- アイコン + プロジェクト名 -->
-            <DockPanel Margin="0,0,0,16">
+            <DockPanel Margin="0,0,0,12">
                 <TextBlock DockPanel.Dock="Left" Text="🗑" FontSize="22"
                            VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <TextBlock x:Name="ProjectNameText"
@@ -58,29 +58,38 @@
             <TextBlock Text="このプロジェクトを一覧から削除しますか？"
                        FontFamily="Yu Gothic UI" FontSize="13"
                        Foreground="{StaticResource TextSecondaryBrush}"
-                       TextWrapping="Wrap" Margin="0,0,0,16"/>
+                       TextWrapping="Wrap" Margin="0,0,0,20"/>
 
             <!-- フォルダ削除トグル（フォルダ管理時のみ表示） -->
-            <StackPanel x:Name="FolderDeletePanel" Visibility="Collapsed" Margin="0,0,0,20">
-                <CheckBox x:Name="ChkDeleteFolder"
-                          Content="プロジェクトフォルダも削除する"
-                          Foreground="{StaticResource TextPrimaryBrush}"
-                          FontFamily="Yu Gothic UI" FontSize="12"
-                          Margin="0,0,0,4"/>
-                <TextBlock x:Name="FolderPathText"
-                           FontFamily="Consolas" FontSize="10"
-                           Foreground="{StaticResource TextSecondaryBrush}"
-                           TextTrimming="CharacterEllipsis"
-                           Margin="22,0,0,0"/>
-            </StackPanel>
+            <DockPanel x:Name="FolderDeletePanel" Visibility="Collapsed" Margin="0,0,0,20">
+                <!-- トグルスイッチ -->
+                <Border x:Name="ToggleTrack" DockPanel.Dock="Right"
+                        Width="44" Height="24" CornerRadius="12"
+                        Cursor="Hand" MouseLeftButtonUp="ToggleDeleteFolder_Click">
+                    <Grid>
+                        <Border x:Name="ToggleThumb" Width="20" Height="20" CornerRadius="10"
+                                Background="White" HorizontalAlignment="Left"
+                                Margin="2,0,0,0" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="プロジェクトフォルダも削除する"
+                               FontFamily="Yu Gothic UI" FontSize="12"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock x:Name="FolderPathText"
+                               FontFamily="Consolas" FontSize="10"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </DockPanel>
 
             <!-- ボタン -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="BtnCancel" Content="キャンセル"
+                <Button Content="キャンセル"
                         Style="{StaticResource SecondaryButton}"
                         Padding="14,6" Margin="0,0,8,0"
                         Click="Cancel_Click"/>
-                <Button x:Name="BtnDelete" Content="削除"
+                <Button Content="削除"
                         Style="{StaticResource DangerButton}"
                         Padding="20,6"
                         Click="Delete_Click"/>

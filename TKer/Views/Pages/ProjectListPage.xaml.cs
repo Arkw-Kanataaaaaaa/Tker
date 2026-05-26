@@ -555,6 +555,7 @@ public partial class ProjectListPage : Page, IRefreshable
         {
             AddHRow("作成日時", projectData.Settings.CreatedAt.ToString("yyyy/MM/dd HH:mm"));
             AddHRow("更新日時", projectData.Settings.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
+            AddHRow("最終オープン", entry.LastOpened.ToString("yyyy/MM/dd HH:mm"));
         }
 
         // ── タスク統計セクション（セクション間の線は1本） ──

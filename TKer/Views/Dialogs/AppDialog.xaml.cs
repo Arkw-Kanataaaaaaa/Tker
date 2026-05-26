@@ -13,11 +13,12 @@ public partial class AppDialog : Window
 
     /// <summary>ダイアログの種類と内容を指定して初期化する。</summary>
     private AppDialog(string title, string message, AppDialogType type, bool showCancel,
-                      string confirmLabel = "", bool dangerConfirm = false)
+                      string confirmLabel = "", bool dangerConfirm = false, string heading = "")
     {
         InitializeComponent();
         Title = title;
-        TitleText.Text = title;
+        TitleBarText.Text = title;
+        TitleText.Text = !string.IsNullOrEmpty(heading) ? heading : title;
         MessageText.Text = message;
 
         (IconText.Text, IconText.Foreground) = type switch
@@ -65,10 +66,11 @@ public partial class AppDialog : Window
 
     /// <summary>確認ダイアログを表示し、ユーザーの選択結果を返す。</summary>
     public static bool Confirm(string message, string title = "確認", Window? owner = null,
-                               string confirmLabel = "", bool dangerConfirm = false)
+                               string confirmLabel = "", bool dangerConfirm = false,
+                               string heading = "")
     {
         var dlg = new AppDialog(title, message, AppDialogType.Confirm, showCancel: true,
-                                confirmLabel, dangerConfirm);
+                                confirmLabel, dangerConfirm, heading);
         if (owner != null) dlg.Owner = owner;
         dlg.ShowDialog();
         return dlg.Confirmed;

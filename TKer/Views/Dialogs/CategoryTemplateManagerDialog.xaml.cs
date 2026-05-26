@@ -149,9 +149,12 @@ public partial class CategoryTemplateManagerDialog : Window
         e.Handled = true;
 
         if (sender is not FrameworkElement fe || fe.Tag is not string id) return;
+        var name = (fe.DataContext as TemplateListItem)?.Name ?? "";
 
-        if (!AppDialog.Confirm("このテンプレートを削除しますか？", "削除の確認", this,
-                               confirmLabel: "削除", dangerConfirm: true)) return;
+        if (!AppDialog.Confirm("このカスタムテンプレートを削除しますか？",
+                               "カテゴリーテンプレートの削除", this,
+                               confirmLabel: "削除", dangerConfirm: true,
+                               heading: $"「{name}」 削除の確認")) return;
 
         _service.Delete(id);
         RefreshList();

@@ -261,19 +261,19 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="プロジェクト名" Grid.Column="0"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
                                     <TextBlock Text="プロジェクト期間" Grid.Column="1"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Center"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
                                     <TextBlock Text="進捗率" Grid.Column="2"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Center"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
                                     <TextBlock Text="作成日時" Grid.Column="3"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
                                     <TextBlock Text="更新日時" Grid.Column="4"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Right"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
                                 </Grid>
                             </Border>
                             <!-- リスト行 -->
@@ -288,7 +288,7 @@
                                                     <Setter Property="Background" Value="Transparent"/>
                                                     <Style.Triggers>
                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                                            <Setter Property="Background" Value="{StaticResource BgHoverBrush}"/>
                                                         </Trigger>
                                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                             <Setter Property="Background" Value="{StaticResource BgSecondaryBrush}"/>
@@ -318,11 +318,11 @@
                                                 <!-- プロジェクト期間列 -->
                                                 <TextBlock Grid.Column="1" Text="{Binding PeriodLabel}"
                                                            FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           HorizontalAlignment="Left" VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <!-- 進捗率列 -->
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal"
-                                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                            HorizontalAlignment="Left" VerticalAlignment="Center">
                                                     <Grid Width="50" Height="4" VerticalAlignment="Center" Margin="0,0,6,0">
                                                         <Border CornerRadius="2" Background="{StaticResource BorderBrush}"/>
                                                         <Border CornerRadius="2" Background="{StaticResource AccentGreenBrush}"
@@ -339,11 +339,11 @@
                                                 <!-- 作成日時列 -->
                                                 <TextBlock Grid.Column="3" Text="{Binding CreatedAtLabel}"
                                                            FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
                                                 <!-- 更新日時列 -->
                                                 <TextBlock Grid.Column="4" Text="{Binding UpdatedAtLabel}"
                                                            FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>

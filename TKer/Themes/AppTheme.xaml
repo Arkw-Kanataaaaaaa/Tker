@@ -431,6 +431,7 @@
                         <!-- クリック領域（透明 ToggleButton で全体を覆う） -->
                         <ToggleButton x:Name="PART_ToggleButton"
                                       Focusable="False" Cursor="Hand"
+                                      ClickMode="Press"
                                       Background="Transparent"
                                       BorderThickness="0"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,

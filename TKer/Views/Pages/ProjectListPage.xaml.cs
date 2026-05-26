@@ -289,6 +289,41 @@ public partial class ProjectListPage : Page, IRefreshable
                 bmp.CacheOption  = BitmapCacheOption.OnLoad;
                 bmp.EndInit();
 
+                var capturedBmp = bmp;
+
+                // プレビューアイコン（右下）
+                var previewIcon = new Border
+                {
+                    Width = 32,
+                    Height = 32,
+                    CornerRadius = new CornerRadius(4),
+                    Background = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin = new Thickness(0, 0, 6, 6),
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Child = new System.Windows.Shapes.Path
+                    {
+                        Data = (Geometry)FindResource("Bi.ArrowsFullscreen"),
+                        Width = 16,
+                        Height = 16,
+                        Stretch = Stretch.Uniform,
+                        Fill = Brushes.White,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                };
+                previewIcon.MouseLeftButtonUp += (_, _) =>
+                {
+                    var win = new TKer.Views.Dialogs.ImagePreviewWindow(capturedBmp);
+                    win.Owner = Window.GetWindow(this);
+                    win.Show();
+                };
+
+                var coverGrid = new Grid();
+                coverGrid.Children.Add(new Image { Source = bmp, Stretch = Stretch.Uniform });
+                coverGrid.Children.Add(previewIcon);
+
                 ProjectInfoContent.Children.Add(new Border
                 {
                     Height        = 180,
@@ -297,7 +332,7 @@ public partial class ProjectListPage : Page, IRefreshable
                     Margin        = new Thickness(0, 0, 0, 16),
                     Background     = (Brush)FindResource("BgCardBrush"),
                     HorizontalAlignment = HorizontalAlignment.Stretch,
-                    Child         = new Image { Source = bmp, Stretch = Stretch.Uniform }
+                    Child         = coverGrid
                 });
             }
             catch { /* 画像デコード失敗は無視 */ }

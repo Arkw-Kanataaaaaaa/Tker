@@ -235,7 +235,8 @@
                          Foreground="{StaticResource TextPrimaryBrush}"
                          CaretBrush="{StaticResource TextPrimaryBrush}"
                          FontFamily="Yu Gothic UI" FontSize="13"
-                         Padding="10,8" Height="36"/>
+                         VerticalContentAlignment="Center"
+                         Padding="10,0" Height="36"/>
             </StackPanel>
 
             <!-- カテゴリー表ヘッダー -->
@@ -288,7 +289,8 @@
                                              Foreground="{StaticResource TextPrimaryBrush}"
                                              CaretBrush="{StaticResource TextPrimaryBrush}"
                                              FontFamily="Yu Gothic UI" FontSize="12"
-                                             Padding="7,5" Height="30"/>
+                                             VerticalContentAlignment="Center"
+                                             Padding="7,0" Height="32"/>
 
                                     <TextBox Grid.Column="2"
                                              Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
@@ -297,7 +299,8 @@
                                              Foreground="{StaticResource TextPrimaryBrush}"
                                              CaretBrush="{StaticResource TextPrimaryBrush}"
                                              FontFamily="Yu Gothic UI" FontSize="12"
-                                             Padding="7,5" Height="30"/>
+                                             VerticalContentAlignment="Center"
+                                             Padding="7,0" Height="32"/>
 
                                     <!-- カラープレビュー -->
                                     <Border Grid.Column="4" Width="24" Height="24"
@@ -314,7 +317,8 @@
                                              Foreground="{StaticResource TextPrimaryBrush}"
                                              CaretBrush="{StaticResource TextPrimaryBrush}"
                                              FontFamily="Yu Gothic UI" FontSize="12"
-                                             Padding="7,5" Height="30"/>
+                                             VerticalContentAlignment="Center"
+                                             Padding="7,0" Height="32"/>
 
                                     <Button Grid.Column="8"
                                             Style="{StaticResource SecondaryButton}"

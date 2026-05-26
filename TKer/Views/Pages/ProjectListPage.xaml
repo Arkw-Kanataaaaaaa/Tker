@@ -527,7 +527,6 @@
                             <TextBlock Text="カテゴリーテンプレート" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <ComboBox x:Name="CmbNewProjTemplate" Style="{StaticResource DarkComboBox}"
-                                      DisplayMemberPath="Name"
                                       SelectionChanged="CmbNewProjTemplate_SelectionChanged"/>
                             <TextBlock x:Name="NewProjTemplateSummary" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap"

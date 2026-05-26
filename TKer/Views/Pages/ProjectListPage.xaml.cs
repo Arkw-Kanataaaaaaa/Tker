@@ -41,15 +41,9 @@ public partial class ProjectListPage : Page, IRefreshable
         public string UpdatedAtLabel     { get; init; } = "";
     }
 
-    // 新規プロジェクト作成時のカテゴリーテンプレート選択用
-    private sealed class NewProjectTemplateItem
-    {
-        public string Name { get; init; } = "";
-        public string Summary { get; init; } = "";
-        public List<CategoryPresetItem> Categories { get; init; } = new();
-    }
-
     private readonly MainViewModel _vm;
+    // 新規プロジェクト作成時のカテゴリーテンプレート（表示名 → カテゴリー一覧）
+    private readonly Dictionary<string, List<CategoryPresetItem>> _newProjTemplates = new();
     private string? _selectedPath;
     private string _coverImageData = string.Empty;
     private bool _isFolderManagementEnabled = true;
@@ -317,41 +311,36 @@ public partial class ProjectListPage : Page, IRefreshable
     {
         if (NewProjTemplateSummary == null) return;
         NewProjTemplateSummary.Text =
-            CmbNewProjTemplate.SelectedItem is NewProjectTemplateItem item ? item.Summary : "";
+            CmbNewProjTemplate.SelectedItem is string key && _newProjTemplates.TryGetValue(key, out var cats)
+                ? string.Join("、", cats.Select(c => c.Name)) : "";
     }
 
-    /// <summary>カテゴリーテンプレート一覧（先頭=生成しない、組み込み＋カスタム）を構築する。</summary>
-    private List<NewProjectTemplateItem> BuildCategoryTemplateItems()
+    /// <summary>カテゴリーテンプレートの表示名一覧（先頭=生成しない、組み込み＋カスタム）を構築する。</summary>
+    private List<string> BuildCategoryTemplateItems()
     {
-        var items = new List<NewProjectTemplateItem>
-        {
-            new() { Name = "（生成しない）", Summary = "" }
-        };
+        _newProjTemplates.Clear();
+        var names = new List<string> { "（生成しない）" };
+        _newProjTemplates["（生成しない）"] = new();
+
         foreach (var kv in CategoryTemplateDialog.BuiltInTemplates)
         {
-            items.Add(new NewProjectTemplateItem
+            names.Add(kv.Key);
+            _newProjTemplates[kv.Key] = kv.Value.Select(c => new CategoryPresetItem
             {
-                Name       = kv.Key,
-                Summary    = string.Join("、", kv.Value.Select(c => c.Name)),
-                Categories = kv.Value.Select(c => new CategoryPresetItem
-                {
-                    Name = c.Name, Color = c.Color, Description = c.Description
-                }).ToList()
-            });
+                Name = c.Name, Color = c.Color, Description = c.Description
+            }).ToList();
         }
         foreach (var p in _vm.AppSettingsService.Settings.CategoryPresets)
         {
-            items.Add(new NewProjectTemplateItem
+            var key = $"[カスタム] {p.Name}";
+            if (_newProjTemplates.ContainsKey(key)) continue;
+            names.Add(key);
+            _newProjTemplates[key] = p.Categories.Select(c => new CategoryPresetItem
             {
-                Name       = $"[カスタム] {p.Name}",
-                Summary    = string.Join("、", p.Categories.Select(c => c.Name)),
-                Categories = p.Categories.Select(c => new CategoryPresetItem
-                {
-                    Name = c.Name, Color = c.Color, Description = c.Description
-                }).ToList()
-            });
+                Name = c.Name, Color = c.Color, Description = c.Description
+            }).ToList();
         }
-        return items;
+        return names;
     }
 
     // ── 右パネル制御 ─────────────────────────────────────
@@ -1173,9 +1162,9 @@ public partial class ProjectListPage : Page, IRefreshable
         _vm.ProjectService.CreateProject(path, name, desc, useFolder, _coverImageData, startDate, endDate);
 
         // テンプレートが選択されていれば、そのカテゴリーを自動生成する
-        if (CmbNewProjTemplate.SelectedItem is NewProjectTemplateItem tmpl)
+        if (CmbNewProjTemplate.SelectedItem is string tmplKey && _newProjTemplates.TryGetValue(tmplKey, out var tmplCats))
         {
-            foreach (var cat in tmpl.Categories)
+            foreach (var cat in tmplCats)
                 _vm.ProjectService.AddCategory(cat.Name, cat.Description, cat.Color);
         }
 

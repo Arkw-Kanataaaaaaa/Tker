@@ -622,27 +622,6 @@
                                          Style="{StaticResource DarkTextBox}" Tag="yyyy/MM/dd"/>
                             </Grid>
 
-                            <!-- バージョン / PM -->
-                            <Grid Margin="0,0,0,24">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="バージョン" FontSize="12"
-                                               Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                                    <TextBox x:Name="TxtEditProjVersion" Style="{StaticResource DarkTextBox}"
-                                             Tag="1.0.0"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="PM / 管理者" FontSize="12"
-                                               Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                                    <TextBox x:Name="TxtEditProjManager" Style="{StaticResource DarkTextBox}"
-                                             Tag="担当者名"/>
-                                </StackPanel>
-                            </Grid>
-
                             <!-- ボタン群 -->
                             <StackPanel Orientation="Horizontal">
                                 <Button Content="保存" Style="{StaticResource PrimaryButton}"

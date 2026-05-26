@@ -332,6 +332,25 @@ public partial class ProjectListPage : Page, IRefreshable
             }
             catch { /* 画像デコード失敗は無視 */ }
         }
+        else
+        {
+            // 表紙画像未設定時のプレースホルダー
+            ProjectInfoContent.Children.Add(new Border
+            {
+                Height = 60, CornerRadius = new CornerRadius(8),
+                Background = (Brush)FindResource("BgCardBrush"),
+                BorderBrush = (Brush)FindResource("BorderBrush"), BorderThickness = new Thickness(1),
+                Margin = new Thickness(0, 0, 0, 16),
+                Child = new TextBlock
+                {
+                    Text = "表紙画像は設定されていません",
+                    FontSize = 12,
+                    Foreground = (Brush)FindResource("TextDimBrush"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            });
+        }
 
         // ── ローカルヘルパー ──
         void AddSectionLine() =>
@@ -355,6 +374,8 @@ public partial class ProjectListPage : Page, IRefreshable
             var g = new Grid { Margin = new Thickness(0, 0, 0, 8) };
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
             var lbl = new TextBlock
             {
                 Text = label, FontSize = 13,
@@ -368,8 +389,34 @@ public partial class ProjectListPage : Page, IRefreshable
                 TextWrapping = TextWrapping.Wrap
             };
             Grid.SetColumn(val, 1);
+
+            var copyIcon = new Border
+            {
+                Width = 20, Height = 20, Margin = new Thickness(4, 0, 0, 0),
+                CornerRadius = new CornerRadius(3), Cursor = System.Windows.Input.Cursors.Hand,
+                Opacity = 0, VerticalAlignment = VerticalAlignment.Top,
+                Child = new System.Windows.Shapes.Path
+                {
+                    Data = (Geometry)FindResource("Bi.ClipboardFill"),
+                    Fill = (Brush)FindResource("TextDimBrush"),
+                    Stretch = Stretch.Uniform, Width = 12, Height = 12,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            Grid.SetColumn(copyIcon, 2);
+            copyIcon.MouseLeftButtonUp += (_, _) =>
+            {
+                System.Windows.Clipboard.SetText(value);
+                copyIcon.Opacity = 1;
+            };
+
+            g.MouseEnter += (_, _) => copyIcon.Opacity = 0.45;
+            g.MouseLeave += (_, _) => copyIcon.Opacity = 0;
+
             g.Children.Add(lbl);
             g.Children.Add(val);
+            g.Children.Add(copyIcon);
             ProjectInfoContent.Children.Add(g);
         }
 
@@ -779,8 +826,7 @@ public partial class ProjectListPage : Page, IRefreshable
         if (e.ClickCount == 2)
         {
             _selectedPath = path;
-            _vm.SwitchProjectCommand.Execute(_selectedPath);
-            ApplyFilter();
+            SetActive_Click(this, new RoutedEventArgs());
             return;
         }
 
@@ -1062,8 +1108,7 @@ public partial class ProjectListPage : Page, IRefreshable
         TxtEditProjPath.Text    = project.Settings.ProjectPath ?? "";
         TxtEditProjStartDate.Text = project.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "";
         TxtEditProjEndDate.Text   = project.Settings.ProjectEndDate?.ToString("yyyy/MM/dd") ?? "";
-        TxtEditProjVersion.Text   = project.ProjectVersion;
-        TxtEditProjManager.Text   = project.Manager;
+
 
         // 表紙画像
         _editCoverImageData = project.Settings.CoverImageData ?? "";
@@ -1192,8 +1237,6 @@ public partial class ProjectListPage : Page, IRefreshable
         project.Settings.UseFolderManagement = _isEditFolderManagementEnabled;
         project.Settings.ProjectPath        = TxtEditProjPath.Text.Trim();
         project.Settings.CoverImageData     = _editCoverImageData;
-        project.ProjectVersion              = TxtEditProjVersion.Text.Trim();
-        project.Manager                     = TxtEditProjManager.Text.Trim();
 
         if (DateTime.TryParse(TxtEditProjStartDate.Text.Trim(), out var sd)) project.Settings.ProjectStartDate = sd;
         else project.Settings.ProjectStartDate = null;

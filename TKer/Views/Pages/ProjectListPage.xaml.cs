@@ -185,31 +185,21 @@ public partial class ProjectListPage : Page, IRefreshable
     }
 
     // ── グリッド/リスト表示モード切替 ──────────────────────
-    /// <summary>グリッド表示に切り替える。</summary>
-    private void SetGridView_Click(object sender, MouseButtonEventArgs e)
+    /// <summary>グリッド/リスト表示をトグルする。</summary>
+    private void ToggleView_Click(object sender, MouseButtonEventArgs e)
     {
-        _isGridMode = true;
-        ProjectGridControl.Visibility = Visibility.Visible;
-        ProjectListSection.Visibility = Visibility.Collapsed;
+        _isGridMode = !_isGridMode;
+        ProjectGridControl.Visibility = _isGridMode ? Visibility.Visible  : Visibility.Collapsed;
+        ProjectListSection.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
         UpdateDisplayModeButtons();
     }
 
-    /// <summary>リスト表示に切り替える。</summary>
-    private void SetListView_Click(object sender, MouseButtonEventArgs e)
-    {
-        _isGridMode = false;
-        ProjectGridControl.Visibility = Visibility.Collapsed;
-        ProjectListSection.Visibility = Visibility.Visible;
-        UpdateDisplayModeButtons();
-    }
-
-    /// <summary>グリッド/リスト切替ボタンの背景色を現在のモードに合わせて更新する。</summary>
+    /// <summary>グリッド/リスト切替アイコンを現在のモードに合わせて更新する。</summary>
     private void UpdateDisplayModeButtons()
     {
-        var activeBg   = (Brush)FindResource("BgCardBrush");
-        var inactiveBg = (Brush)FindResource("BgSecondaryBrush");
-        BtnViewGrid.Background = _isGridMode ? activeBg : inactiveBg;
-        BtnViewList.Background = _isGridMode ? inactiveBg : activeBg;
+        ViewIconGrid.Visibility = _isGridMode ? Visibility.Visible   : Visibility.Collapsed;
+        ViewIconList.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
+        BtnViewToggle.ToolTip   = _isGridMode ? "リスト表示に切り替え" : "グリッド表示に切り替え";
     }
 
     /// <summary>フォルダ管理トグルのクリックで有効/無効を切り替える。</summary>

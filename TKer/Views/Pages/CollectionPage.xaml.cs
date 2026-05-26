@@ -405,10 +405,14 @@ public partial class CollectionPage : Page, IRefreshable
     private void OpenFormDrawer()
     {
         if (FormDrawer.Visibility == Visibility.Visible) return;
+
+        // 切替前にドロワーが開いているか判定（詳細→フォームではしまわず内容だけ差し替える）
+        bool wasOpen = DetailDrawer.Visibility == Visibility.Visible || DrawerContainer.ActualWidth > 0;
+
         FormDrawer.Visibility   = Visibility.Visible;
         DetailDrawer.Visibility = Visibility.Collapsed;
 
-        double from = DetailDrawer.Visibility == Visibility.Visible ? DrawerContainer.ActualWidth : 0;
+        double from = wasOpen ? DrawerContainer.ActualWidth : 0;
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
             From = from, To = 500,
@@ -475,6 +479,13 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void ShowForm(Collection? existing)
     {
+        // 新規作成時は選択中コレクションを解除する
+        if (existing == null)
+        {
+            _selectedId = null;
+            ApplyFilter();
+        }
+
         _editingId = existing?.Id;
         _formFields.Clear();
 

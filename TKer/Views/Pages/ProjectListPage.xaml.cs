@@ -453,6 +453,10 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>新規プロジェクト作成フォームをドロワーとして表示する。</summary>
     private void ShowAddProjectPanel()
     {
+        // 選択中プロジェクトがあれば解除する
+        _selectedPath = null;
+        ApplyFilter();
+
         TxtNewProjName.Clear();
         TxtNewProjDesc.Clear();
         TxtNewProjPath.Clear();

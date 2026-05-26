@@ -362,6 +362,12 @@
                                 </DockPanel>
                             </Border>
 
+                            <!-- プロジェクト名 -->
+                            <TextBlock Text="プロジェクト名 *" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtNewProjName" Style="{StaticResource DarkTextBox}"
+                                     Margin="0,0,0,16"/>
+
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
@@ -393,12 +399,6 @@
                                     <TextBlock Text="クリア"/>
                                 </Button>
                             </StackPanel>
-
-                            <!-- プロジェクト名 -->
-                            <TextBlock Text="プロジェクト名 *" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtNewProjName" Style="{StaticResource DarkTextBox}"
-                                     Margin="0,0,0,16"/>
 
                             <!-- 説明 -->
                             <TextBlock Text="説明（任意）" FontSize="12"
@@ -503,6 +503,12 @@
                                 </DockPanel>
                             </Border>
 
+                            <!-- プロジェクト名 -->
+                            <TextBlock Text="プロジェクト名 *" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtEditProjName" Style="{StaticResource DarkTextBox}"
+                                     Margin="0,0,0,16"/>
+
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
@@ -534,12 +540,6 @@
                                     <TextBlock Text="クリア"/>
                                 </Button>
                             </StackPanel>
-
-                            <!-- プロジェクト名 -->
-                            <TextBlock Text="プロジェクト名 *" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtEditProjName" Style="{StaticResource DarkTextBox}"
-                                     Margin="0,0,0,16"/>
 
                             <!-- 説明 -->
                             <TextBlock Text="説明（任意）" FontSize="12"

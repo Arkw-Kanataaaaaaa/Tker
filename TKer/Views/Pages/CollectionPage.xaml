@@ -258,6 +258,12 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="24,20,24,20">
 
+                            <!-- コレクション名 -->
+                            <TextBlock Text="コレクション名 *" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtFormName"
+                                     Style="{StaticResource DarkTextBox}" Margin="0,0,0,16"/>
+
                             <!-- 表紙画像 -->
                             <TextBlock Text="表紙画像（任意）" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
@@ -293,11 +299,6 @@
                             <TextBlock Text="基本情報" FontSize="12" FontWeight="Bold"
                                        Foreground="{StaticResource AccentCyanBrush}"
                                        Margin="0,0,0,14"/>
-
-                            <TextBlock Text="コレクション名 *" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtFormName"
-                                     Style="{StaticResource DarkTextBox}" Margin="0,0,0,12"/>
 
                             <TextBlock Text="説明（任意）" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>

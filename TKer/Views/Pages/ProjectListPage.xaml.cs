@@ -534,7 +534,7 @@ public partial class ProjectListPage : Page, IRefreshable
     private void CloseDetailDrawer()
         => CloseDrawer(() => { _selectedPath = null; ApplyFilter(); });
 
-    private void OpenDrawer(ScrollViewer target)
+    private void OpenDrawer(FrameworkElement target)
     {
         bool wasOpen = DrawerContainer.ActualWidth > 0;
 

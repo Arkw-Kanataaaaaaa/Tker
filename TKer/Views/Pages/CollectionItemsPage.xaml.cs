@@ -20,6 +20,8 @@ public partial class CollectionItemsPage : Page
     private readonly Collection    _col;
     private string? _selectedItemId;
     private string? _editingItemId;
+    private string  _searchFieldId = "";   // "" = すべて
+    private Window? _keyDownWindow;
     private readonly Dictionary<string, string> _editingValues = new();
 
     public CollectionItemsPage(MainViewModel vm)
@@ -28,27 +30,88 @@ public partial class CollectionItemsPage : Page
         _col = vm.SelectedCollection!;
         InitializeComponent();
         TxtHeaderName.Text = _col.Name;
+        PopulateSearchFields();
         BuildColumnHeader();
         RefreshList();
+
+        Loaded += (_, _) =>
+        {
+            if (Window.GetWindow(this) is { } win)
+            {
+                win.KeyDown -= Window_KeyDown;
+                win.KeyDown += Window_KeyDown;
+                _keyDownWindow = win;
+            }
+        };
+        Unloaded += (_, _) =>
+        {
+            if (_keyDownWindow is { } win)
+                win.KeyDown -= Window_KeyDown;
+            _keyDownWindow = null;
+        };
     }
 
     // ── ヘッダー ────────────────────────────────────────────
 
-    private void Back_Click(object sender, RoutedEventArgs e)
-        => _vm.NavigateToCommand.Execute("Collection");
-
     private void CollectionCrumb_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         => _vm.NavigateToCommand.Execute("Collection");
 
+    // ── 検索 ────────────────────────────────────────────────
+
+    private void PopulateSearchFields()
+    {
+        CbSearchField.Items.Clear();
+        CbSearchField.Items.Add(new ComboBoxItem { Content = "すべて", Tag = "" });
+        foreach (var f in _col.Fields.OrderBy(x => x.Order))
+            CbSearchField.Items.Add(new ComboBoxItem { Content = f.Name, Tag = f.Id });
+        CbSearchField.SelectedIndex = 0;
+    }
+
+    private void ToggleSearch_Click(object sender, RoutedEventArgs e)
+        => SearchBarHelper.Toggle(SearchSection, SearchBox);
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshList();
+
+    private void SearchField_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        _searchFieldId = (CbSearchField.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+        RefreshList();
+    }
+
+    private bool MatchesSearch(CollectionItem item, string query)
+    {
+        bool Contains(string? s) => (s ?? "").Contains(query, StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(_searchFieldId))
+            return item.FieldValues.Values.Any(Contains);
+        return item.FieldValues.TryGetValue(_searchFieldId, out var v) && Contains(v);
+    }
+
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (!IsVisible) return;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key == Key.F)
+        {
+            ToggleSearch_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.Escape
+                 && SearchSection.Visibility == Visibility.Visible)
+        {
+            ToggleSearch_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+    }
+
     // ── 列ヘッダー（動的生成） ──────────────────────────────
+
+    private int DateColumn => _col.Fields.Count == 0 ? 1 : _col.Fields.Count;
 
     private void BuildColumnHeader()
     {
         var g = MakeRowGrid();
-        AddHeaderCell(g, "名前", 0);
         for (int i = 0; i < _col.Fields.Count; i++)
-            AddHeaderCell(g, _col.Fields[i].Name, i + 1);
-        AddHeaderCell(g, "追加日", _col.Fields.Count + 1);
+            AddHeaderCell(g, _col.Fields[i].Name, i);
+        AddHeaderCell(g, "追加日", DateColumn);
 
         ItemsListHeader.Child = new Border
         {
@@ -64,12 +127,18 @@ public partial class CollectionItemsPage : Page
 
     private void RefreshList()
     {
-        TxtItemCount.Text = $"{_col.Items.Count} 件";
-        EmptyStatePanel.Visibility = _col.Items.Count == 0
+        var query = SearchBox?.Text?.Trim() ?? "";
+        var seq   = _col.Items.OrderBy(x => x.AddedAt).AsEnumerable();
+        if (!string.IsNullOrEmpty(query))
+            seq = seq.Where(it => MatchesSearch(it, query));
+        var list = seq.ToList();
+
+        TxtItemCount.Text = $"{list.Count} 件";
+        EmptyStatePanel.Visibility = list.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
 
         ItemsListPanel.Children.Clear();
-        foreach (var item in _col.Items.OrderBy(x => x.AddedAt))
+        foreach (var item in list)
             ItemsListPanel.Children.Add(BuildItemRow(item));
 
         UpdateToolbarState();
@@ -82,16 +151,15 @@ public partial class CollectionItemsPage : Page
         var hoverBg = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
 
         var g = MakeRowGrid();
-        AddCell(g, item.Name, 0, isSel);
         for (int i = 0; i < _col.Fields.Count; i++)
         {
             var f       = _col.Fields[i];
             var val     = item.FieldValues.TryGetValue(f.Id, out var v) ? v : "";
             var display = f.FieldType == "ファイル" && !string.IsNullOrEmpty(val)
                 ? $"📁 {Path.GetFileName(val)}" : val;
-            AddCell(g, display, i + 1, isSel);
+            AddCell(g, display, i, isSel && i == 0);
         }
-        AddCell(g, item.AddedAt.ToString("yyyy/MM/dd"), _col.Fields.Count + 1, isSel);
+        AddCell(g, item.AddedAt.ToString("yyyy/MM/dd"), DateColumn, false);
 
         var row = new Border
         {
@@ -123,10 +191,19 @@ public partial class CollectionItemsPage : Page
     private Grid MakeRowGrid()
     {
         var g = new Grid();
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        foreach (var _ in _col.Fields)
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        if (_col.Fields.Count == 0)
+        {
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
+        else
+        {
+            for (int i = 0; i < _col.Fields.Count; i++)
+                g.ColumnDefinitions.Add(new ColumnDefinition
+                {
+                    Width = i == 0 ? new GridLength(1, GridUnitType.Star) : new GridLength(150),
+                });
+        }
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) }); // 追加日
         return g;
     }
 
@@ -184,32 +261,14 @@ public partial class CollectionItemsPage : Page
         if (_selectedItemId == null) return;
         var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemId);
         if (item == null) return;
-        if (MessageBox.Show($"「{item.Name}」を削除しますか？",
+        var label = string.IsNullOrWhiteSpace(item.Name) ? "このアイテム" : $"「{item.Name}」";
+        if (MessageBox.Show($"{label}を削除しますか？",
                 "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         _col.Items.Remove(item);
         _col.UpdatedAt = DateTime.Now;
         _vm.CollectionService.Save(_col);
         _selectedItemId = null;
         RefreshList();
-    }
-
-    private void OrganizeFolder_Click(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(_col.FolderPath))
-        {
-            MessageBox.Show(
-                "このコレクションにはフォルダパスが設定されていません。\n" +
-                "コレクション一覧の編集からフォルダパスを設定してください。",
-                "フォルダ整理", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        if (!Directory.Exists(_col.FolderPath))
-        {
-            MessageBox.Show("設定されたフォルダが見つかりません。", "フォルダ整理",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        ShellHelper.OpenInExplorer(_col.FolderPath);
     }
 
     // ── フォームドロワー ────────────────────────────────────
@@ -224,7 +283,6 @@ public partial class CollectionItemsPage : Page
 
         if (existing != null)
         {
-            _editingValues["__name__"] = existing.Name;
             foreach (var kv in existing.FieldValues)
                 _editingValues[kv.Key] = kv.Value;
         }
@@ -237,37 +295,16 @@ public partial class CollectionItemsPage : Page
     {
         FormContentPanel.Children.Clear();
 
-        // ── 名前 / ファイルパス ──
-        FormContentPanel.Children.Add(MakeFormLabel(
-            _col.ItemFormat == "ファイル" ? "ファイルパス *" : "名前 *"));
-
-        if (_col.ItemFormat == "ファイル")
+        if (_col.Fields.Count == 0)
         {
-            var pg = new Grid();
-            pg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            pg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var tb = MakeFormTextBox("__name__");
-            Grid.SetColumn(tb, 0); pg.Children.Add(tb);
-
-            var browse = new Button
+            FormContentPanel.Children.Add(new TextBlock
             {
-                Content = "参照...",
-                Style   = R<Style>("SecondaryButton"),
-                Padding = new Thickness(10, 5, 10, 5),
-                Margin  = new Thickness(6, 0, 0, 0),
-            };
-            browse.Click += (_, _) =>
-            {
-                var dlg = new Microsoft.Win32.OpenFileDialog { Title = "ファイルを選択" };
-                if (dlg.ShowDialog() == true) { _editingValues["__name__"] = dlg.FileName; BuildFormContent(); }
-            };
-            Grid.SetColumn(browse, 1); pg.Children.Add(browse);
-            FormContentPanel.Children.Add(new Border { Margin = new Thickness(0, 0, 0, 14), Child = pg });
-        }
-        else
-        {
-            FormContentPanel.Children.Add(MakeFormTextBox("__name__", new Thickness(0, 0, 0, 14)));
+                Text         = "このコレクションにはデータ付属情報が定義されていません。\nコレクション一覧の編集からフィールドを追加してください。",
+                FontSize     = 12,
+                Foreground   = R<Brush>("TextDimBrush"),
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return;
         }
 
         // ── 動的フィールド ──
@@ -384,16 +421,18 @@ public partial class CollectionItemsPage : Page
 
     private void SaveForm_Click(object sender, RoutedEventArgs e)
     {
-        _editingValues.TryGetValue("__name__", out var name);
-        if (string.IsNullOrWhiteSpace(name))
+        // 表示用ラベルは先頭フィールドの値から導出する（ファイルパスはファイル名のみ）
+        string DeriveLabel()
         {
-            MessageBox.Show("名前を入力してください", "入力エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            var first = _col.Fields.OrderBy(f => f.Order).FirstOrDefault();
+            if (first == null) return "";
+            if (!_editingValues.TryGetValue(first.Id, out var v) || string.IsNullOrWhiteSpace(v)) return "";
+            return first.FieldType == "ファイル" ? Path.GetFileName(v) : v.Trim();
         }
 
         if (_editingItemId == null)
         {
-            var item = new CollectionItem { Name = name.Trim(), AddedAt = DateTime.Now };
+            var item = new CollectionItem { Name = DeriveLabel(), AddedAt = DateTime.Now };
             foreach (var field in _col.Fields)
                 if (_editingValues.TryGetValue(field.Id, out var v) && !string.IsNullOrEmpty(v))
                     item.FieldValues[field.Id] = v;
@@ -403,11 +442,11 @@ public partial class CollectionItemsPage : Page
         {
             var item = _col.Items.FirstOrDefault(x => x.Id == _editingItemId);
             if (item == null) return;
-            item.Name = name.Trim();
             item.FieldValues.Clear();
             foreach (var field in _col.Fields)
                 if (_editingValues.TryGetValue(field.Id, out var v) && !string.IsNullOrEmpty(v))
                     item.FieldValues[field.Id] = v;
+            item.Name = DeriveLabel();
         }
 
         _col.UpdatedAt = DateTime.Now;

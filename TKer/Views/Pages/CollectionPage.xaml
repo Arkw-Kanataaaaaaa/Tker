@@ -162,7 +162,7 @@
                     <!-- リストヘッダー -->
                     <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
                             BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="0,0,0,1" Padding="16,7">
+                            BorderThickness="0,0,0,1" Padding="16,8,16,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -170,14 +170,18 @@
                                 <ColumnDefinition Width="120"/>
                                 <ColumnDefinition Width="120"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="コレクション名" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="1" Text="アイテム形式" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="2" Text="作成日時" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="3" Text="更新日時" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
+                            <TextBlock Grid.Column="0" Text="コレクション名" FontSize="11"
+                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
+                                       HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Column="1" Text="アイテム形式" FontSize="11"
+                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
+                                       HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Column="2" Text="作成日時" FontSize="11"
+                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
+                                       HorizontalAlignment="Left"/>
+                            <TextBlock Grid.Column="3" Text="更新日時" FontSize="11"
+                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
+                                       HorizontalAlignment="Left"/>
                         </Grid>
                     </Border>
 

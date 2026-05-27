@@ -257,36 +257,42 @@ public partial class CollectionPage : Page, IRefreshable
 
     private UIElement BuildCollectionRow(Collection col)
     {
-        bool isSel  = col.Id == _selectedId;
-        var selBg   = new SolidColorBrush(Color.FromArgb(50, 35, 131, 226));
-        var hoverBg = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
+        bool isSel = col.Id == _selectedId;
 
-        var g = new Grid { Margin = new Thickness(16, 0, 16, 0) };
+        var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
 
         var namePanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        namePanel.Children.Add(new TextBlock { Text = col.Icon ?? "📁", FontSize = 16, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
         namePanel.Children.Add(new TextBlock
         {
-            Text       = col.Name,
-            FontSize   = 13,
-            FontWeight = isSel ? FontWeights.Bold : FontWeights.Normal,
-            Foreground = Brush("TextPrimaryBrush"),
+            Text              = col.Icon ?? "📁",
+            FontSize          = 16,
+            Margin            = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        namePanel.Children.Add(new TextBlock
+        {
+            Text              = col.Name,
+            FontFamily        = new FontFamily("Yu Gothic UI"),
+            FontSize          = 13,
+            FontWeight        = FontWeights.SemiBold,
+            Foreground        = Brush("TextPrimaryBrush"),
+            TextTrimming      = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         });
         Grid.SetColumn(namePanel, 0); g.Children.Add(namePanel);
 
         var fmtBadge = new Border
         {
-            Background        = new SolidColorBrush(Color.FromArgb(55, 35, 131, 226)),
-            CornerRadius      = new CornerRadius(4),
-            Padding           = new Thickness(8, 3, 8, 3),
-            VerticalAlignment = VerticalAlignment.Center,
+            Background          = new SolidColorBrush(Color.FromArgb(55, 35, 131, 226)),
+            CornerRadius        = new CornerRadius(4),
+            Padding             = new Thickness(8, 3, 8, 3),
+            VerticalAlignment   = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Child             = new TextBlock
+            Child               = new TextBlock
             {
                 Text       = col.ItemFormat == "ファイル" ? "📁 ファイル" : "📝 文字列",
                 FontSize   = 11,
@@ -297,32 +303,34 @@ public partial class CollectionPage : Page, IRefreshable
 
         var createdTb = new TextBlock
         {
-            Text              = col.CreatedAt.ToString("yyyy/MM/dd"),
-            FontSize          = 12,
-            Foreground        = Brush("TextDimBrush"),
+            Text              = col.CreatedAt.ToString("yyyy/MM/dd HH:mm"),
+            FontSize          = 11,
+            Foreground        = Brush("TextSecondaryBrush"),
+            HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
         Grid.SetColumn(createdTb, 2); g.Children.Add(createdTb);
 
         var updatedTb = new TextBlock
         {
-            Text              = col.UpdatedAt.ToString("yyyy/MM/dd"),
-            FontSize          = 12,
-            Foreground        = Brush("TextDimBrush"),
+            Text              = col.UpdatedAt.ToString("yyyy/MM/dd HH:mm"),
+            FontSize          = 11,
+            Foreground        = Brush("TextSecondaryBrush"),
+            HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
         Grid.SetColumn(updatedTb, 3); g.Children.Add(updatedTb);
 
         var row = new Border
         {
-            Background      = isSel ? selBg : Brushes.Transparent,
-            Padding         = new Thickness(0, 10, 0, 10),
+            Background      = isSel ? Brush("BgSecondaryBrush") : Brushes.Transparent,
+            Padding         = new Thickness(16, 10, 16, 10),
             Cursor          = Cursors.Hand,
             BorderBrush     = Brush("BorderBrush"),
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child           = g,
         };
-        row.MouseEnter        += (_, _) => { if (col.Id != _selectedId) row.Background = hoverBg; };
+        row.MouseEnter        += (_, _) => { if (col.Id != _selectedId) row.Background = Brush("BgHoverBrush"); };
         row.MouseLeave        += (_, _) => { if (col.Id != _selectedId) row.Background = Brushes.Transparent; };
         row.MouseLeftButtonUp += (_, _) =>
         {

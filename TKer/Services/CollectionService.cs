@@ -153,15 +153,23 @@ public class CollectionService
         _appSettings.AddCollectionFilePath(jsonPath);
     }
 
-    /// <summary>指定 ID のコレクションを削除してファイルと settings から除去する。</summary>
-    public void Delete(string id)
+    /// <summary>
+    /// 指定 ID のコレクションを削除してファイルと settings から除去する。
+    /// deleteFolder が true かつファイル形式の場合はコレクションフォルダごと削除する。
+    /// </summary>
+    public void Delete(string id, bool deleteFolder = false)
     {
         var col = _collections.FirstOrDefault(x => x.Id == id);
         if (col != null)
         {
             var path = JsonPathFor(col);
             _appSettings.RemoveCollectionFilePath(path);
-            TryDeleteFile(path);
+
+            if (deleteFolder && IsFileFormat(col) && !string.IsNullOrEmpty(col.FolderPath)
+                && Directory.Exists(col.FolderPath))
+                TryDeleteDirectory(col.FolderPath);
+            else
+                TryDeleteFile(path);
         }
         _collections.RemoveAll(x => x.Id == id);
     }
@@ -225,6 +233,11 @@ public class CollectionService
     private static void TryDeleteFile(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); } catch { }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try { if (Directory.Exists(path)) Directory.Delete(path, true); } catch { }
     }
 
     private static bool PathsEqual(string? a, string? b)

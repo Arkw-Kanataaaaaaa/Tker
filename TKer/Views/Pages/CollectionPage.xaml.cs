@@ -516,13 +516,26 @@ public partial class CollectionPage : Page, IRefreshable
         if (_selectedId == null) return;
         var col = _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
         if (col == null) return;
-        if (!AppDialog.Confirm($"「{col.Name}」を削除しますか？", "削除確認",
-                Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
+        var (confirmed, deleteFolder) = ShowDeleteDialog(col);
+        if (!confirmed) return;
         DetailDrawer.Visibility = Visibility.Collapsed;
-        _svc.Delete(_selectedId);
+        _svc.Delete(_selectedId, deleteFolder);
         _selectedId = null;
         ApplyFilter();
         UpdateToolbarState();
+    }
+
+    /// <summary>コレクション削除ダイアログを表示し、（実行するか, フォルダも削除するか）を返す。</summary>
+    private (bool confirmed, bool deleteFolder) ShowDeleteDialog(Collection col)
+    {
+        bool hasFolder = col.Fields.Any(f => f.FieldType == "ファイル")
+                         && !string.IsNullOrEmpty(col.FolderPath);
+        var dlg = new CollectionDeleteDialog(col.Name ?? "", hasFolder ? col.FolderPath : null)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        bool confirmed = dlg.ShowDialog() == true;
+        return (confirmed, confirmed && dlg.DeleteFolder);
     }
 
     // ── フォームドロワー ────────────────────────────────────
@@ -589,11 +602,11 @@ public partial class CollectionPage : Page, IRefreshable
         if (_selectedId == null) return;
         var col = _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
         if (col == null) return;
-        if (!AppDialog.Confirm($"「{col.Name}」を削除しますか？", "削除確認",
-                Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
+        var (confirmed, deleteFolder) = ShowDeleteDialog(col);
+        if (!confirmed) return;
         if (DetailDrawer.Visibility == Visibility.Visible)
             DetailDrawer.Visibility = Visibility.Collapsed;
-        _svc.Delete(_selectedId);
+        _svc.Delete(_selectedId, deleteFolder);
         _selectedId = null;
         ApplyFilter();
         UpdateToolbarState();

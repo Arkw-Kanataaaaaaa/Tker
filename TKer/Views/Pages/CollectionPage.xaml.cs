@@ -587,9 +587,8 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void ToggleSearch_Click(object sender, RoutedEventArgs e)
     {
-        bool willClose = SearchSection.Visibility == Visibility.Visible;
+        // 検索欄を閉じても入力内容・検索結果は保持する
         SearchBarHelper.Toggle(SearchSection, SearchBox);
-        if (willClose) { SearchBox.Text = ""; ApplyFilter(); }
     }
 
     private void NewCollection_Click(object sender, RoutedEventArgs e) => ShowForm(null);

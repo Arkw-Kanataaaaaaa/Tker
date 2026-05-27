@@ -516,8 +516,8 @@ public partial class CollectionPage : Page, IRefreshable
         if (_selectedId == null) return;
         var col = _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
         if (col == null) return;
-        if (MessageBox.Show($"「{col.Name}」を削除しますか？",
-                "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!AppDialog.Confirm($"「{col.Name}」を削除しますか？", "削除確認",
+                Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
         DetailDrawer.Visibility = Visibility.Collapsed;
         _svc.Delete(_selectedId);
         _selectedId = null;
@@ -589,8 +589,8 @@ public partial class CollectionPage : Page, IRefreshable
         if (_selectedId == null) return;
         var col = _svc.Collections.FirstOrDefault(c => c.Id == _selectedId);
         if (col == null) return;
-        if (MessageBox.Show($"「{col.Name}」を削除しますか？",
-                "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!AppDialog.Confirm($"「{col.Name}」を削除しますか？", "削除確認",
+                Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
         if (DetailDrawer.Visibility == Visibility.Visible)
             DetailDrawer.Visibility = Visibility.Collapsed;
         _svc.Delete(_selectedId);
@@ -654,7 +654,7 @@ public partial class CollectionPage : Page, IRefreshable
         _editingId = existing?.Id;
         _formFields.Clear();
 
-        TxtFormTitle.Text   = existing == null ? "新規コレクション" : "コレクションを編集";
+        TxtFormTitle.Text   = existing == null ? "コレクション追加" : "コレクション編集";
         BtnFormSave.Content = existing == null ? "作成" : "保存";
         TxtFormName.Text   = existing?.Name        ?? "";
         TxtFormDesc.Text   = existing?.Description ?? "";

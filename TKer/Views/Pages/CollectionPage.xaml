@@ -86,7 +86,7 @@
                     <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
                 </Button>
                 <Button Style="{StaticResource VToolbarBtn}"
-                        ToolTip="新規コレクション (Ctrl+Shift+;)" Click="NewCollection_Click">
+                        ToolTip="コレクション追加 (Ctrl+Shift+;)" Click="NewCollection_Click">
                     <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
                 </Button>
                 <Button x:Name="BtnToolbarDelete" Style="{StaticResource VToolbarBtn}"
@@ -236,7 +236,7 @@
                                     Click="CancelForm_Click" ToolTip="閉じる">
                                 <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                             </Button>
-                            <TextBlock x:Name="TxtFormTitle" Text="新規コレクション"
+                            <TextBlock x:Name="TxtFormTitle" Text="コレクション追加"
                                        FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                        Foreground="{StaticResource TextPrimaryBrush}"
                                        VerticalAlignment="Center"/>

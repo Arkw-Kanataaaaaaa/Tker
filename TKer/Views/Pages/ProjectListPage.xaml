@@ -412,7 +412,7 @@
                                             ToolTip="閉じる" Click="CancelAddProject_Click">
                                         <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                                     </Button>
-                                    <TextBlock Text="新規プロジェクト"
+                                    <TextBlock Text="プロジェクト追加"
                                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                VerticalAlignment="Center"/>
@@ -563,7 +563,7 @@
                                             ToolTip="閉じる" Click="CancelEditProject_Click">
                                         <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                                     </Button>
-                                    <TextBlock Text="プロジェクトを編集"
+                                    <TextBlock Text="プロジェクト編集"
                                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                VerticalAlignment="Center"/>

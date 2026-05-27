@@ -18,10 +18,14 @@ namespace TKer.Views.Pages;
 /// <summary>コレクションの一覧・詳細・作成・編集を管理するページ。</summary>
 public partial class CollectionPage : Page, IRefreshable
 {
+    private enum SortMode { Name, Created, Updated }
+
     private readonly MainViewModel     _vm;
     private readonly CollectionService _svc;
-    private string? _selectedId;
-    private bool    _isGridMode = true;
+    private string?  _selectedId;
+    private bool     _isGridMode    = true;
+    private SortMode _sortMode      = SortMode.Updated;
+    private bool     _sortDescending = true;
 
     private readonly List<CollectionField>          _formFields       = new();
     private string?                                 _editingId;
@@ -47,6 +51,7 @@ public partial class CollectionPage : Page, IRefreshable
         _svc = vm.CollectionService;
         InitializeComponent();
         UpdateDisplayModeButtons();
+        UpdateSortLabel();
         Refresh();
 
         Loaded += (_, _) =>
@@ -89,6 +94,57 @@ public partial class CollectionPage : Page, IRefreshable
         BtnViewToggle.ToolTip   = _isGridMode ? "リスト表示に切り替え" : "グリッド表示に切り替え";
     }
 
+    // ── ソート ──────────────────────────────────────────────
+
+    private static string SortModeName(SortMode mode) => mode switch
+    {
+        SortMode.Name    => "コレクション名",
+        SortMode.Created => "作成日時",
+        _                => "更新日時",
+    };
+
+    private void SortButton_Click(object sender, MouseButtonEventArgs e)
+    {
+        UpdateSortPopupHighlight();
+        SortPopup.IsOpen = true;
+    }
+
+    private void SetSortMode(SortMode mode)
+    {
+        _sortMode = mode;
+        UpdateSortLabel();
+        SortPopup.IsOpen = false;
+        ApplyFilter();
+    }
+
+    private void SortByName_Click(object sender, MouseButtonEventArgs e)    => SetSortMode(SortMode.Name);
+    private void SortByCreated_Click(object sender, MouseButtonEventArgs e) => SetSortMode(SortMode.Created);
+    private void SortByUpdated_Click(object sender, MouseButtonEventArgs e) => SetSortMode(SortMode.Updated);
+
+    private void ToggleSortDirection_Click(object sender, MouseButtonEventArgs e)
+    {
+        _sortDescending = !_sortDescending;
+        UpdateSortLabel();
+        UpdateSortPopupHighlight();
+        SortPopup.IsOpen = false;
+        ApplyFilter();
+    }
+
+    private void UpdateSortLabel()
+    {
+        SortModeLabel.Text = $"{SortModeName(_sortMode)} {(_sortDescending ? "↓" : "↑")}";
+    }
+
+    private void UpdateSortPopupHighlight()
+    {
+        var active   = (Brush)Application.Current.Resources["AccentCyanBrush"];
+        var inactive = (Brush)Application.Current.Resources["TextPrimaryBrush"];
+        SortOptNameText.Foreground    = _sortMode == SortMode.Name    ? active : inactive;
+        SortOptCreatedText.Foreground = _sortMode == SortMode.Created ? active : inactive;
+        SortOptUpdatedText.Foreground = _sortMode == SortMode.Updated ? active : inactive;
+        SortDirectionText.Text = _sortDescending ? "降順 ↓" : "昇順 ↑";
+    }
+
     // ── フィルタ・描画 ──────────────────────────────────────
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
@@ -103,6 +159,14 @@ public partial class CollectionPage : Page, IRefreshable
                 .Where(c => (c.Name ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase) ||
                             (c.Description ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .ToList();
+
+        IEnumerable<Collection> ordered = _sortMode switch
+        {
+            SortMode.Name    => _sortDescending ? list.OrderByDescending(c => c.Name)      : list.OrderBy(c => c.Name),
+            SortMode.Created => _sortDescending ? list.OrderByDescending(c => c.CreatedAt) : list.OrderBy(c => c.CreatedAt),
+            _                => _sortDescending ? list.OrderByDescending(c => c.UpdatedAt) : list.OrderBy(c => c.UpdatedAt),
+        };
+        list = ordered.ToList();
 
         EmptyStatePanel.Visibility     = list.Count == 0            ? Visibility.Visible : Visibility.Collapsed;
         GridScrollViewer.Visibility    = list.Count > 0 && _isGridMode  ? Visibility.Visible : Visibility.Collapsed;

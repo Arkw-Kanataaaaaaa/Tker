@@ -228,9 +228,6 @@
                     <TextBlock Text="コレクションがありません"
                                FontSize="15" Foreground="{StaticResource TextDimBrush}"
                                HorizontalAlignment="Center"/>
-                    <TextBlock Text="ツールバーの「＋」から作成できます"
-                               FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                               HorizontalAlignment="Center" Margin="0,6,0,0"/>
                 </StackPanel>
             </Grid>
         </Grid>

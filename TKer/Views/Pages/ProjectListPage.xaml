@@ -155,17 +155,12 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8,8,8">
                     <StackPanel>
                         <Border x:Name="NoProjectBanner" Visibility="Collapsed"
-                                Background="{StaticResource BgCardBrush}"
-                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                CornerRadius="10" Padding="24,20" Margin="0,0,0,12">
+                                Background="Transparent" Margin="0,80,0,0">
                             <StackPanel HorizontalAlignment="Center">
                                 <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
-                                      HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                      HorizontalAlignment="Center" Margin="0,0,0,14"/>
                                 <TextBlock Text="プロジェクトがありません"
-                                           FontSize="14" Foreground="{StaticResource TextSecondaryBrush}"
-                                           HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                                <TextBlock Text="左のツールバーから新規作成または既存を開いてください"
-                                           FontSize="12" Foreground="{StaticResource TextDimBrush}"
+                                           FontSize="15" Foreground="{StaticResource TextDimBrush}"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>

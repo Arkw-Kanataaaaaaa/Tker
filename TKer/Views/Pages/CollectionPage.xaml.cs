@@ -274,6 +274,7 @@ public partial class CollectionPage : Page, IRefreshable
             { CloseDetailDrawer(); return; }
             _selectedId = col.Id;
             ApplyFilter();
+            UpdateToolbarState();
             OpenDetailDrawer();
         };
         card.MouseLeftButtonDown += (_, e) =>
@@ -371,6 +372,7 @@ public partial class CollectionPage : Page, IRefreshable
             { CloseDetailDrawer(); return; }
             _selectedId = col.Id;
             ApplyFilter();
+            UpdateToolbarState();
             OpenDetailDrawer();
         };
         row.MouseLeftButtonDown += (_, e) =>

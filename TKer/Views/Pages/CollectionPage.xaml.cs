@@ -78,17 +78,15 @@ public partial class CollectionPage : Page, IRefreshable
     private void ToggleViewMode_Click(object sender, MouseButtonEventArgs e)
     {
         _isGridMode = !_isGridMode;
-        UpdateDisplayModeButtons();
         ApplyFilter();
+        UpdateDisplayModeButtons();
     }
 
     private void UpdateDisplayModeButtons()
     {
-        // 現在モードのアイコンを表示（グリッド中→グリッドアイコン、リスト中→リストアイコン）
-        var iconKey = _isGridMode ? "Bi.Grid3x3Gap" : "Bi.ListUl";
-        if (TryFindResource(iconKey) is Geometry geo)
-            ViewToggleIcon.Data = geo;
-        BtnViewToggle.ToolTip = _isGridMode ? "グリッド表示中（クリックでリスト）" : "リスト表示中（クリックでグリッド）";
+        ViewIconGrid.Visibility = _isGridMode ? Visibility.Visible   : Visibility.Collapsed;
+        ViewIconList.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
+        BtnViewToggle.ToolTip   = _isGridMode ? "リスト表示に切り替え" : "グリッド表示に切り替え";
     }
 
     // ── フィルタ・描画 ──────────────────────────────────────

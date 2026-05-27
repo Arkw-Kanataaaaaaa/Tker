@@ -49,11 +49,24 @@
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <DockPanel>
                 <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
-                        Width="30" Height="30" CornerRadius="6"
-                        Cursor="Hand" VerticalAlignment="Center" Margin="0,0,4,0"
-                        MouseLeftButtonUp="ToggleViewMode_Click">
-                    <Path x:Name="ViewToggleIcon"
-                          Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconSm}"/>
+                        Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                        MouseLeftButtonUp="ToggleViewMode_Click" ToolTip="リスト表示に切り替え"
+                        VerticalAlignment="Center" Margin="0,0,4,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource BgCardBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid Background="Transparent">
+                        <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconLg}"/>
+                        <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconLg}"
+                              Visibility="Collapsed"/>
+                    </Grid>
                 </Border>
                 <TextBlock Text="コレクション"
                            FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"

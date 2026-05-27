@@ -451,52 +451,52 @@
                     </ScrollViewer>
                 </DockPanel>
 
-                <!-- ─── 画像プレビュー オーバーレイ ─── -->
-                <Grid x:Name="PreviewOverlay" Panel.ZIndex="1000"
-                      Visibility="Collapsed" Background="#DC000000"
-                      MouseWheel="PreviewOverlay_MouseWheel"
-                      MouseLeftButtonDown="PreviewOverlay_MouseDown"
-                      MouseMove="PreviewOverlay_MouseMove"
-                      MouseLeftButtonUp="PreviewOverlay_MouseUp">
-                    <Image x:Name="PreviewImage" Stretch="Uniform"
-                           MaxWidth="1200" MaxHeight="800"
-                           RenderTransformOrigin="0.5,0.5"
-                           HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Image.RenderTransform>
-                            <TransformGroup>
-                                <ScaleTransform x:Name="PreviewScale" ScaleX="1" ScaleY="1"/>
-                                <TranslateTransform x:Name="PreviewTranslate" X="0" Y="0"/>
-                            </TransformGroup>
-                        </Image.RenderTransform>
-                    </Image>
-                    <TextBlock Text="×" FontSize="26" FontWeight="Bold" Foreground="White" Cursor="Hand"
-                               Padding="8,2" HorizontalAlignment="Right" VerticalAlignment="Top"
-                               Margin="0,8,16,0" MouseLeftButtonUp="ClosePreview_Click"/>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left"
-                                Margin="16,0,0,16">
-                        <Border x:Name="ZoomTrack" Width="160" Height="16" Background="Transparent" Cursor="Hand"
-                                VerticalAlignment="Center"
-                                MouseLeftButtonDown="ZoomTrack_MouseDown"
-                                MouseMove="ZoomTrack_MouseMove"
-                                MouseLeftButtonUp="ZoomTrack_MouseUp">
-                            <Grid>
-                                <Border Height="6" CornerRadius="3" Background="#55FFFFFF" VerticalAlignment="Center"/>
-                                <Border x:Name="PreviewZoomFill" Height="6" Width="0" CornerRadius="3"
-                                        Background="{StaticResource AccentCyanBrush}"
-                                        HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                <Ellipse x:Name="ZoomThumb" Width="14" Height="14" Fill="White"
-                                         HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                        <TextBlock x:Name="PreviewZoomLabel" Text="0%" FontSize="11" Foreground="White"
-                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                    </StackPanel>
-                </Grid>
-
             </Grid>
 
         </Border>
 
+        </Grid>
+
+        <!-- ─── 画像プレビュー オーバーレイ ─── -->
+        <Grid x:Name="PreviewOverlay" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="1000"
+              Visibility="Collapsed" Background="#DC000000"
+              MouseWheel="PreviewOverlay_MouseWheel"
+              MouseLeftButtonDown="PreviewOverlay_MouseDown"
+              MouseMove="PreviewOverlay_MouseMove"
+              MouseLeftButtonUp="PreviewOverlay_MouseUp">
+            <Image x:Name="PreviewImage" Stretch="Uniform"
+                   MaxWidth="1200" MaxHeight="800"
+                   RenderTransformOrigin="0.5,0.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Image.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="PreviewScale" ScaleX="1" ScaleY="1"/>
+                        <TranslateTransform x:Name="PreviewTranslate" X="0" Y="0"/>
+                    </TransformGroup>
+                </Image.RenderTransform>
+            </Image>
+            <TextBlock Text="×" FontSize="26" FontWeight="Bold" Foreground="White" Cursor="Hand"
+                       Padding="8,2" HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Margin="0,8,16,0" MouseLeftButtonUp="ClosePreview_Click"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                        Margin="16,0,0,16">
+                <Border x:Name="ZoomTrack" Width="160" Height="16" Background="Transparent" Cursor="Hand"
+                        VerticalAlignment="Center"
+                        MouseLeftButtonDown="ZoomTrack_MouseDown"
+                        MouseMove="ZoomTrack_MouseMove"
+                        MouseLeftButtonUp="ZoomTrack_MouseUp">
+                    <Grid>
+                        <Border Height="6" CornerRadius="3" Background="#55FFFFFF" VerticalAlignment="Center"/>
+                        <Border x:Name="PreviewZoomFill" Height="6" Width="0" CornerRadius="3"
+                                Background="{StaticResource AccentCyanBrush}"
+                                HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <Ellipse x:Name="ZoomThumb" Width="14" Height="14" Fill="White"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <TextBlock x:Name="PreviewZoomLabel" Text="0%" FontSize="11" Foreground="White"
+                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </StackPanel>
         </Grid>
 
         <!-- ソート選択ポップアップ -->

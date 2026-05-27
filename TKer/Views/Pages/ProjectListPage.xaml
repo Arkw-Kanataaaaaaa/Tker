@@ -152,18 +152,9 @@
                 </Border>
 
                 <Border x:Name="ContentBorder" Grid.Row="1">
+                <Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8,8,8">
                     <StackPanel>
-                        <Border x:Name="NoProjectBanner" Visibility="Collapsed"
-                                Background="Transparent" Margin="0,80,0,0">
-                            <StackPanel HorizontalAlignment="Center">
-                                <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
-                                      HorizontalAlignment="Center" Margin="0,0,0,14"/>
-                                <TextBlock Text="プロジェクトがありません"
-                                           FontSize="15" Foreground="{StaticResource TextDimBrush}"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <!-- グリッド表示 -->
                         <ItemsControl x:Name="ProjectGridControl">
@@ -347,6 +338,18 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- 空状態（領域中央） -->
+                <StackPanel x:Name="NoProjectBanner" Visibility="Collapsed"
+                            VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
+                          Fill="{StaticResource TextDimBrush}"
+                          HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                    <TextBlock Text="プロジェクトがありません"
+                               FontSize="15" Foreground="{StaticResource TextDimBrush}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
 

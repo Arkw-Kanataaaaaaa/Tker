@@ -223,8 +223,9 @@
                 <!-- 空状態 -->
                 <StackPanel x:Name="EmptyStatePanel" Visibility="Collapsed"
                             VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock Text="📦" FontSize="56"
-                               HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                    <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconXl}"
+                          Fill="{StaticResource TextDimBrush}"
+                          HorizontalAlignment="Center" Margin="0,0,0,14"/>
                     <TextBlock Text="コレクションがありません"
                                FontSize="15" Foreground="{StaticResource TextDimBrush}"
                                HorizontalAlignment="Center"/>

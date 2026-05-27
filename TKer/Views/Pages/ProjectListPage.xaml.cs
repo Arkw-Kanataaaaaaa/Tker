@@ -1227,7 +1227,10 @@ public partial class ProjectListPage : Page, IRefreshable
         // フィールドを既存値で初期化
         TxtEditProjName.Text    = project.Settings.ProjectName;
         TxtEditProjDesc.Text    = project.Settings.Description;
-        TxtEditProjPath.Text    = project.Settings.ProjectPath ?? "";
+        // 保存先フォルダ欄には「親フォルダ」を表示する（保存時に 親/プロジェクト名 を生成・移動する）
+        TxtEditProjPath.Text    = project.Settings.UseFolderManagement && !string.IsNullOrEmpty(project.Settings.ProjectPath)
+            ? (System.IO.Path.GetDirectoryName(project.Settings.ProjectPath) ?? "")
+            : "";
         TxtEditProjStartDate.Text = project.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "";
         TxtEditProjEndDate.Text   = project.Settings.ProjectEndDate?.ToString("yyyy/MM/dd") ?? "";
 
@@ -1360,33 +1363,57 @@ public partial class ProjectListPage : Page, IRefreshable
             return;
         }
 
-        project.Settings.ProjectName        = name;
-        project.Settings.Description        = TxtEditProjDesc.Text.Trim();
+        // 変更前の状態を控える
+        var  oldDataFilePath = path;
+        var  oldProjectPath  = project.Settings.ProjectPath ?? "";
+        bool oldUseFolder    = project.Settings.UseFolderManagement;
+        bool wasLoaded       = path == _vm.ProjectService.ProjectFilePath;
+        var  newParentFolder = TxtEditProjPath.Text.Trim();
+
+        // 入力内容を反映
+        project.Settings.ProjectName         = name;
+        project.Settings.Description         = TxtEditProjDesc.Text.Trim();
         project.Settings.UseFolderManagement = _isEditFolderManagementEnabled;
-        project.Settings.ProjectPath        = TxtEditProjPath.Text.Trim();
-        project.Settings.CoverImageData     = _editCoverImageData;
-        project.Settings.UpdatedAt          = DateTime.Now;
+        project.Settings.CoverImageData      = _editCoverImageData;
+        project.Settings.UpdatedAt           = DateTime.Now;
+        project.Settings.ProjectPath         = _isEditFolderManagementEnabled
+            ? System.IO.Path.Combine(newParentFolder, name) : "";
 
         if (DateTime.TryParse(TxtEditProjStartDate.Text.Trim(), out var sd)) project.Settings.ProjectStartDate = sd;
         else project.Settings.ProjectStartDate = null;
         if (DateTime.TryParse(TxtEditProjEndDate.Text.Trim(), out var ed)) project.Settings.ProjectEndDate = ed;
         else project.Settings.ProjectEndDate = null;
 
-        if (path == _vm.ProjectService.ProjectFilePath)
+        // フォルダ・データファイルを再配置
+        string newDataFilePath;
+        try
         {
-            _vm.ProjectService.SaveProject();
+            newDataFilePath = _vm.ProjectService.RelocateProject(
+                oldDataFilePath, oldProjectPath, oldUseFolder,
+                _isEditFolderManagementEnabled, newParentFolder, name);
         }
-        else
+        catch (Exception ex)
         {
-            try
-            {
-                File.WriteAllText(path, JsonConvert.SerializeObject(project, Formatting.Indented));
-                _vm.AppSettingsService.RegisterProject(path, name, project.Settings.ProjectPath, name);
-                _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
-            }
-            catch { }
+            AppDialog.ShowError($"保存先フォルダの変更に失敗しました\n{ex.Message}", "エラー", Window.GetWindow(this));
+            return;
         }
 
+        try
+        {
+            File.WriteAllText(newDataFilePath, JsonConvert.SerializeObject(project, Formatting.Indented));
+
+            if (!string.Equals(oldDataFilePath, newDataFilePath, StringComparison.OrdinalIgnoreCase))
+                _vm.AppSettingsService.RemoveProject(oldDataFilePath);
+            _vm.AppSettingsService.RegisterProject(newDataFilePath, name, project.Settings.ProjectPath, name);
+            _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
+        }
+        catch { }
+
+        // ロード中だった場合は新しいパスから読み直して整合性を保つ
+        if (wasLoaded)
+            _vm.ProjectService.LoadProject(newDataFilePath);
+
+        _editingProjectPath = newDataFilePath;
         _coverBitmapCache.Clear();
         Refresh();
         HideEditProjectPanel();

@@ -1037,9 +1037,10 @@ public partial class ProjectPage : Page, IRefreshable
                           Path.GetFullPath(project.Settings.ProjectPath),
                           StringComparison.OrdinalIgnoreCase)) return !allowRenameRoot;
 
-        // project_data.json / .bak は常に保護
+        // プロジェクトデータ (project_data.json / プロジェクト名_project.json) / .bak は常に保護
         var name = Path.GetFileName(fullPath);
         if (name.EndsWith("project_data.json", StringComparison.OrdinalIgnoreCase)) return true;
+        if (name.EndsWith("_project.json",     StringComparison.OrdinalIgnoreCase)) return true;
         if (name.EndsWith(".json.bak",         StringComparison.OrdinalIgnoreCase)) return true;
 
         // 作業完了フォルダは保護

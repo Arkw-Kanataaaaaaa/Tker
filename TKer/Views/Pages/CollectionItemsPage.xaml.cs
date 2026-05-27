@@ -186,7 +186,7 @@ public partial class CollectionItemsPage : Page
                 "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         _col.Items.Remove(item);
         _col.UpdatedAt = DateTime.Now;
-        _vm.CollectionService.Update(_col);
+        _vm.CollectionService.Save(_col);
         _selectedItemId = null;
         RefreshList();
     }
@@ -409,7 +409,7 @@ public partial class CollectionItemsPage : Page
         }
 
         _col.UpdatedAt = DateTime.Now;
-        _vm.CollectionService.Update(_col);
+        _vm.CollectionService.Save(_col);
         _editingItemId = null;
         _editingValues.Clear();
         CloseFormDrawer();

@@ -638,7 +638,7 @@ public partial class CollectionPage : Page, IRefreshable
                 return;
             }
 
-            _svc.Add(col);
+            _svc.AddImported(col, dlg.FileName);
             _selectedId = col.Id;
             ApplyFilter();
             UpdateToolbarState();
@@ -676,7 +676,10 @@ public partial class CollectionPage : Page, IRefreshable
         BtnFormSave.Content = existing == null ? "作成" : "保存";
         TxtFormName.Text   = existing?.Name        ?? "";
         TxtFormDesc.Text   = existing?.Description ?? "";
-        TxtFormFolder.Text = existing?.FolderPath  ?? "";
+        // 保存先フォルダ欄には「親フォルダ」を表示する（保存時に 親/コレクション名 を生成・移動する）
+        TxtFormFolder.Text = existing != null && existing.ItemFormat == "ファイル" && !string.IsNullOrEmpty(existing.FolderPath)
+            ? (Path.GetDirectoryName(existing.FolderPath) ?? "")
+            : "";
 
         var fmt    = existing?.ItemFormat ?? "文字列";
         bool isFile = fmt == "ファイル";
@@ -847,6 +850,9 @@ public partial class CollectionPage : Page, IRefreshable
         for (int i = 0; i < _formFields.Count; i++)
             _formFields[i].Order = i;
 
+        // 保存先フォルダ欄は「親フォルダ」。実際の生成先はサービスが 親/コレクション名 を組み立てる。
+        var parentFolder = TxtFormFolder.Text.Trim();
+
         if (_editingId == null)
         {
             var col = new Collection
@@ -854,12 +860,16 @@ public partial class CollectionPage : Page, IRefreshable
                 Name          = TxtFormName.Text.Trim(),
                 Icon          = "📁",
                 Description   = TxtFormDesc.Text.Trim(),
-                FolderPath    = TxtFormFolder.Text.Trim(),
                 ItemFormat    = itemFormat,
                 Fields        = _formFields.ToList(),
                 CoverImageData = _coverImageData,
             };
-            _svc.Add(col);
+            try { _svc.Add(col, parentFolder); }
+            catch (Exception ex)
+            {
+                AppDialog.ShowError($"保存先フォルダの作成に失敗しました\n{ex.Message}", "エラー", Window.GetWindow(this));
+                return;
+            }
             _selectedId = col.Id;
             _coverBitmapCache.Remove(col.Id);
         }
@@ -867,14 +877,34 @@ public partial class CollectionPage : Page, IRefreshable
         {
             var existing = _svc.Collections.FirstOrDefault(c => c.Id == _editingId);
             if (existing == null) return;
-            existing.Name          = TxtFormName.Text.Trim();
-            existing.Description   = TxtFormDesc.Text.Trim();
-            existing.FolderPath    = TxtFormFolder.Text.Trim();
-            existing.ItemFormat    = itemFormat;
-            existing.Fields        = _formFields.ToList();
-            existing.CoverImageData = _coverImageData;
-            existing.UpdatedAt     = DateTime.Now;
-            _svc.Update(existing);
+
+            // 再配置判定用に変更前の状態を控える
+            var oldSnapshot = new Collection
+            {
+                Id = existing.Id, Name = existing.Name,
+                ItemFormat = existing.ItemFormat, FolderPath = existing.FolderPath,
+            };
+
+            var updated = new Collection
+            {
+                Id             = existing.Id,
+                Name           = TxtFormName.Text.Trim(),
+                Icon           = existing.Icon,
+                Description    = TxtFormDesc.Text.Trim(),
+                ItemFormat     = itemFormat,
+                Fields         = _formFields.ToList(),
+                Items          = existing.Items,
+                CoverImageData = _coverImageData,
+                CreatedAt      = existing.CreatedAt,
+                UpdatedAt      = DateTime.Now,
+            };
+
+            try { _svc.Update(updated, parentFolder, oldSnapshot); }
+            catch (Exception ex)
+            {
+                AppDialog.ShowError($"保存先フォルダの変更に失敗しました\n{ex.Message}", "エラー", Window.GetWindow(this));
+                return;
+            }
             _selectedId = _editingId;
             _coverBitmapCache.Remove(_editingId);
         }

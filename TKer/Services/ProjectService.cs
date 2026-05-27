@@ -170,22 +170,14 @@ public class ProjectService
             var currentOldData = oldUseFolder
                 ? Path.Combine(newProjectPath, Path.GetFileName(oldDataFilePath))
                 : oldDataFilePath;
-            if (File.Exists(currentOldData) && !PathsEqual(currentOldData, newDataFilePath))
-            {
-                if (File.Exists(newDataFilePath)) File.Delete(newDataFilePath);
-                File.Move(currentOldData, newDataFilePath);
-            }
+            MoveDataFile(currentOldData, newDataFilePath);
         }
         else
         {
             // フォルダ管理なし → ドキュメント\TKerEmptyLibrary\Project に配置
             Directory.CreateDirectory(NoFolderProjectDir);
             newDataFilePath = Path.Combine(NoFolderProjectDir, ProjectDataFileName(newName));
-            if (File.Exists(oldDataFilePath) && !PathsEqual(oldDataFilePath, newDataFilePath))
-            {
-                if (File.Exists(newDataFilePath)) File.Delete(newDataFilePath);
-                File.Move(oldDataFilePath, newDataFilePath);
-            }
+            MoveDataFile(oldDataFilePath, newDataFilePath);
         }
 
         // 現在ロード中のプロジェクトなら参照パスを更新
@@ -193,6 +185,27 @@ public class ProjectService
             ProjectFilePath = newDataFilePath;
 
         return newDataFilePath;
+    }
+
+    /// <summary>データファイルを移動・改名し、隣接するバックアップ (.bak) も追従させる。</summary>
+    private static void MoveDataFile(string src, string dst)
+    {
+        if (PathsEqual(src, dst)) return;
+
+        if (File.Exists(src))
+        {
+            if (File.Exists(dst)) File.Delete(dst);
+            File.Move(src, dst);
+        }
+
+        // バックアップ (.bak) も一緒に移動（残骸を残さない）
+        var srcBak = src + BACKUP_SUFFIX;
+        var dstBak = dst + BACKUP_SUFFIX;
+        if (File.Exists(srcBak))
+        {
+            if (File.Exists(dstBak)) File.Delete(dstBak);
+            File.Move(srcBak, dstBak);
+        }
     }
 
     // =====================================================

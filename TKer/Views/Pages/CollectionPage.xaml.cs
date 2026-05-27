@@ -29,6 +29,17 @@ public partial class CollectionPage : Page, IRefreshable
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
     private Window? _keyDownWindow;
 
+    // ── 画像プレビューオーバーレイ ──
+    private Point _previewDragStart;
+    private Point _previewTranslateStart;
+    private bool  _isPreviewDragging;
+    private bool  _previewPressedBackground;
+    private bool  _zoomDragging;
+    private const double PreviewMinScale   = 1.0;
+    private const double PreviewMaxScale   = 4.0;
+    private const double PreviewGaugeWidth = 160.0;
+    private const double PreviewThumbSize  = 14.0;
+
     /// <summary>コレクションページを初期化してデータを表示する。</summary>
     public CollectionPage(MainViewModel vm)
     {
@@ -391,6 +402,11 @@ public partial class CollectionPage : Page, IRefreshable
             if (e.Key == Key.F2)
             {
                 EditCollection_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && PreviewOverlay.Visibility == Visibility.Visible)
+            {
+                ClosePreviewOverlay();
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape && SearchSection.Visibility == Visibility.Visible)
@@ -917,6 +933,34 @@ public partial class CollectionPage : Page, IRefreshable
         var coverBmp = TryGetCoverBitmap(col);
         if (coverBmp != null)
         {
+            var capturedBmp = coverBmp;
+            var previewIcon = new Border
+            {
+                Width               = 32,
+                Height              = 32,
+                CornerRadius        = new CornerRadius(4),
+                Background          = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment   = VerticalAlignment.Bottom,
+                Margin              = new Thickness(0, 0, 6, 6),
+                Cursor              = Cursors.Hand,
+                Child               = new System.Windows.Shapes.Path
+                {
+                    Data                = (Geometry)FindResource("Bi.ArrowsFullscreen"),
+                    Width               = 16,
+                    Height              = 16,
+                    Stretch             = Stretch.Uniform,
+                    Fill                = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment   = VerticalAlignment.Center,
+                },
+            };
+            previewIcon.MouseLeftButtonUp += (_, _) => OpenPreviewOverlay(capturedBmp);
+
+            var coverGrid = new Grid();
+            coverGrid.Children.Add(new Image { Source = coverBmp, Stretch = Stretch.Uniform });
+            coverGrid.Children.Add(previewIcon);
+
             DetailContentPanel.Children.Add(new Border
             {
                 Height      = 180,
@@ -924,7 +968,7 @@ public partial class CollectionPage : Page, IRefreshable
                 ClipToBounds = true,
                 Margin      = new Thickness(0, 0, 0, 4),
                 Background  = Brush("BgCardBrush"),
-                Child       = new Image { Source = coverBmp, Stretch = Stretch.Uniform },
+                Child       = coverGrid,
             });
         }
         else
@@ -1113,6 +1157,118 @@ public partial class CollectionPage : Page, IRefreshable
             return bmp;
         }
         catch { _coverBitmapCache[col.Id] = null; return null; }
+    }
+
+    // ── 画像プレビューオーバーレイ ──────────────────────────
+
+    private void OpenPreviewOverlay(BitmapImage bmp)
+    {
+        PreviewImage.Source = bmp;
+        PreviewScale.ScaleX = PreviewScale.ScaleY = 1;
+        PreviewTranslate.X = PreviewTranslate.Y = 0;
+        UpdateZoomGauge(1);
+        PreviewOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void ClosePreviewOverlay()
+    {
+        _isPreviewDragging        = false;
+        _previewPressedBackground = false;
+        PreviewOverlay.ReleaseMouseCapture();
+        PreviewOverlay.Visibility = Visibility.Collapsed;
+        PreviewImage.Source       = null;
+    }
+
+    private void UpdateZoomGauge(double scale)
+    {
+        double ratio = Math.Clamp((scale - PreviewMinScale) / (PreviewMaxScale - PreviewMinScale), 0, 1);
+        PreviewZoomLabel.Text = $"{(int)Math.Round(ratio * 100)}%";
+        PreviewZoomFill.Width = ratio * PreviewGaugeWidth;
+        ZoomThumb.Margin      = new Thickness(ratio * (PreviewGaugeWidth - PreviewThumbSize), 0, 0, 0);
+    }
+
+    private void SetZoomFromPoint(double x)
+    {
+        double ratio = Math.Clamp(x / PreviewGaugeWidth, 0, 1);
+        double scale = PreviewMinScale + ratio * (PreviewMaxScale - PreviewMinScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = scale;
+        UpdateZoomGauge(scale);
+    }
+
+    private void ClosePreview_Click(object sender, RoutedEventArgs e)
+    {
+        ClosePreviewOverlay();
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
+        double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
+        double newScale = Math.Clamp(PreviewScale.ScaleX * factor, PreviewMinScale, PreviewMaxScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = newScale;
+        UpdateZoomGauge(newScale);
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is Image)
+        {
+            _isPreviewDragging     = true;
+            _previewDragStart      = e.GetPosition(PreviewOverlay);
+            _previewTranslateStart = new Point(PreviewTranslate.X, PreviewTranslate.Y);
+            PreviewOverlay.CaptureMouse();
+        }
+        else
+        {
+            _previewPressedBackground = true;
+        }
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPreviewDragging) return;
+        var pos = e.GetPosition(PreviewOverlay);
+        PreviewTranslate.X = _previewTranslateStart.X + (pos.X - _previewDragStart.X);
+        PreviewTranslate.Y = _previewTranslateStart.Y + (pos.Y - _previewDragStart.Y);
+    }
+
+    private void PreviewOverlay_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isPreviewDragging)
+        {
+            _isPreviewDragging = false;
+            PreviewOverlay.ReleaseMouseCapture();
+        }
+        else if (_previewPressedBackground)
+        {
+            _previewPressedBackground = false;
+            ClosePreviewOverlay();
+        }
+        e.Handled = true;
+    }
+
+    private void ZoomTrack_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = true;
+        ZoomTrack.CaptureMouse();
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+        e.Handled = true;
+    }
+
+    private void ZoomTrack_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_zoomDragging) return;
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+    }
+
+    private void ZoomTrack_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = false;
+        ZoomTrack.ReleaseMouseCapture();
+        e.Handled = true;
     }
 
     // ── ユーティリティ ──────────────────────────────────────

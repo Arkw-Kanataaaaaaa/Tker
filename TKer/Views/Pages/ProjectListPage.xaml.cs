@@ -1011,16 +1011,9 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>新規プロジェクト作成フォームの保存先フォルダ参照ダイアログを開く。</summary>
     private void BrowseNewProjPath_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Title           = "保存先フォルダを選択（そのままOKを押してください）",
-            ValidateNames   = false,
-            CheckFileExists = false,
-            FileName        = "ここを変更せずOKを押してください",
-            Filter          = "フォルダ|*.none"
-        };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "保存先フォルダを選択" };
         if (dlg.ShowDialog() == true)
-            TxtNewProjPath.Text = System.IO.Path.GetDirectoryName(dlg.FileName) ?? "";
+            TxtNewProjPath.Text = dlg.FolderName;
     }
 
     private static readonly string[] _imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };

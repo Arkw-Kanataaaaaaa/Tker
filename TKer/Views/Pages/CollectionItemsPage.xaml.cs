@@ -27,7 +27,6 @@ public partial class CollectionItemsPage : Page
         _vm  = vm;
         _col = vm.SelectedCollection!;
         InitializeComponent();
-        TxtHeaderIcon.Text = _col.Icon;
         TxtHeaderName.Text = _col.Name;
         BuildColumnHeader();
         RefreshList();
@@ -36,6 +35,9 @@ public partial class CollectionItemsPage : Page
     // ── ヘッダー ────────────────────────────────────────────
 
     private void Back_Click(object sender, RoutedEventArgs e)
+        => _vm.NavigateToCommand.Execute("Collection");
+
+    private void CollectionCrumb_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         => _vm.NavigateToCommand.Execute("Collection");
 
     // ── 列ヘッダー（動的生成） ──────────────────────────────

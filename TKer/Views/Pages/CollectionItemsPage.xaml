@@ -19,14 +19,16 @@
                            FontSize="13" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,4,0"/>
 
-                <!-- 左: 戻るボタン + アイコン + 名前 -->
+                <!-- 左: パンくずリスト（コレクション > コレクション名） -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource VToolbarBtn}" ToolTip="コレクション一覧へ戻る"
-                            Click="Back_Click" Margin="0,0,8,0">
-                        <Path Data="{StaticResource Bi.ChevronLeft}" Style="{StaticResource BiIconLg}"/>
-                    </Button>
-                    <TextBlock x:Name="TxtHeaderIcon" FontSize="20" VerticalAlignment="Center"
-                               Margin="0,0,8,0"/>
+                    <TextBlock Text="コレクション" FontWeight="Bold" FontSize="18"
+                               Foreground="{StaticResource TextDimBrush}"
+                               VerticalAlignment="Center" Cursor="Hand"
+                               ToolTip="コレクション一覧へ戻る"
+                               MouseLeftButtonUp="CollectionCrumb_Click"/>
+                    <TextBlock Text="›" FontWeight="Bold" FontSize="18"
+                               Foreground="{StaticResource TextDimBrush}"
+                               VerticalAlignment="Center" Margin="10,0,10,0"/>
                     <TextBlock x:Name="TxtHeaderName" FontWeight="Bold" FontSize="18"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>

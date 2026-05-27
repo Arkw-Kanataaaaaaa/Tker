@@ -32,6 +32,7 @@ public partial class CollectionPage : Page, IRefreshable
     private string                                  _coverImageData   = string.Empty;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
     private Window? _keyDownWindow;
+    private CollectionField? _dragField;
 
     // ── 画像プレビューオーバーレイ ──
     private Point _previewDragStart;
@@ -296,7 +297,6 @@ public partial class CollectionPage : Page, IRefreshable
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
 
         var namePanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         namePanel.Children.Add(new TextBlock
@@ -318,22 +318,6 @@ public partial class CollectionPage : Page, IRefreshable
         });
         Grid.SetColumn(namePanel, 0); g.Children.Add(namePanel);
 
-        var fmtBadge = new Border
-        {
-            Background          = new SolidColorBrush(Color.FromArgb(55, 35, 131, 226)),
-            CornerRadius        = new CornerRadius(4),
-            Padding             = new Thickness(8, 3, 8, 3),
-            VerticalAlignment   = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Child               = new TextBlock
-            {
-                Text       = col.ItemFormat == "ファイル" ? "📁 ファイル" : "📝 文字列",
-                FontSize   = 11,
-                Foreground = Brush("AccentCyanBrush"),
-            },
-        };
-        Grid.SetColumn(fmtBadge, 1); g.Children.Add(fmtBadge);
-
         var createdTb = new TextBlock
         {
             Text              = col.CreatedAt.ToString("yyyy/MM/dd HH:mm"),
@@ -342,7 +326,7 @@ public partial class CollectionPage : Page, IRefreshable
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        Grid.SetColumn(createdTb, 2); g.Children.Add(createdTb);
+        Grid.SetColumn(createdTb, 1); g.Children.Add(createdTb);
 
         var updatedTb = new TextBlock
         {
@@ -352,7 +336,7 @@ public partial class CollectionPage : Page, IRefreshable
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        Grid.SetColumn(updatedTb, 3); g.Children.Add(updatedTb);
+        Grid.SetColumn(updatedTb, 2); g.Children.Add(updatedTb);
 
         var row = new Border
         {
@@ -675,17 +659,9 @@ public partial class CollectionPage : Page, IRefreshable
         TxtFormName.Text   = existing?.Name        ?? "";
         TxtFormDesc.Text   = existing?.Description ?? "";
         // 保存先フォルダ欄には「親フォルダ」を表示する（保存時に 親/コレクション名 を生成・移動する）
-        TxtFormFolder.Text = existing != null && existing.ItemFormat == "ファイル" && !string.IsNullOrEmpty(existing.FolderPath)
+        TxtFormFolder.Text = existing != null && !string.IsNullOrEmpty(existing.FolderPath)
             ? (Path.GetDirectoryName(existing.FolderPath) ?? "")
             : "";
-
-        var fmt    = existing?.ItemFormat ?? "文字列";
-        bool isFile = fmt == "ファイル";
-        RbItemText.IsChecked = !isFile;
-        RbItemFile.IsChecked = isFile;
-        FolderSection.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
-        if (CbFieldFile != null)
-            CbFieldFile.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
 
         if (existing != null)
             _formFields.AddRange(existing.Fields.Select(f => new CollectionField
@@ -717,7 +693,30 @@ public partial class CollectionPage : Page, IRefreshable
         }
 
         RefreshFormFieldList();
+        RefreshFolderSectionVisibility();
         OpenFormDrawer();
+    }
+
+    /// <summary>付属情報に「ファイル」型フィールドがあるかどうかを返す。</summary>
+    private bool HasFileField() => _formFields.Any(f => f.FieldType == "ファイル");
+
+    /// <summary>
+    /// 「ファイル」型フィールドの有無に応じて保存先フォルダ欄の表示と、
+    /// データ形式コンボの「ファイル」選択肢の有効/無効を切り替える。
+    /// </summary>
+    private void RefreshFolderSectionVisibility()
+    {
+        if (FolderSection == null) return;
+        bool hasFile = HasFileField();
+        FolderSection.Visibility = hasFile ? Visibility.Visible : Visibility.Collapsed;
+
+        // ファイルフィールドは最大1つ。既にある場合は選択肢を隠す。
+        if (CbFieldFile != null)
+        {
+            CbFieldFile.Visibility = hasFile ? Visibility.Collapsed : Visibility.Visible;
+            if (hasFile && (CbFieldType.SelectedItem as ComboBoxItem)?.Tag as string == "ファイル")
+                CbFieldType.SelectedIndex = 0;
+        }
     }
 
     private void RefreshFormFieldList()
@@ -748,13 +747,24 @@ public partial class CollectionPage : Page, IRefreshable
         };
 
         var g = new Grid();
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
 
+        var dragHandle = new TextBlock
+        {
+            Text              = "⋮⋮",
+            FontSize          = 13,
+            Foreground        = Brush("TextDimBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Cursor            = Cursors.SizeAll,
+        };
+        Grid.SetColumn(dragHandle, 0); g.Children.Add(dragHandle);
+
         var iconTb = new TextBlock { Text = icon, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(iconTb, 0); g.Children.Add(iconTb);
+        Grid.SetColumn(iconTb, 1); g.Children.Add(iconTb);
 
         var nameTb = new TextBlock
         {
@@ -763,7 +773,7 @@ public partial class CollectionPage : Page, IRefreshable
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 0, 0, 0),
         };
-        Grid.SetColumn(nameTb, 1); g.Children.Add(nameTb);
+        Grid.SetColumn(nameTb, 2); g.Children.Add(nameTb);
 
         var badge = new Border
         {
@@ -774,7 +784,7 @@ public partial class CollectionPage : Page, IRefreshable
             VerticalAlignment = VerticalAlignment.Center,
             Child             = new TextBlock { Text = label, FontSize = 11, Foreground = Brushes.White },
         };
-        Grid.SetColumn(badge, 2); g.Children.Add(badge);
+        Grid.SetColumn(badge, 3); g.Children.Add(badge);
 
         var del = new Button
         {
@@ -788,10 +798,10 @@ public partial class CollectionPage : Page, IRefreshable
             VerticalAlignment = VerticalAlignment.Center,
         };
         var cap = field;
-        del.Click += (_, _) => { _formFields.Remove(cap); RefreshFormFieldList(); };
-        Grid.SetColumn(del, 3); g.Children.Add(del);
+        del.Click += (_, _) => { _formFields.Remove(cap); RefreshFormFieldList(); RefreshFolderSectionVisibility(); };
+        Grid.SetColumn(del, 4); g.Children.Add(del);
 
-        return new Border
+        var rowBorder = new Border
         {
             Background      = Brush("BgSecondaryBrush"),
             BorderBrush     = Brush("BorderBrush"),
@@ -800,7 +810,42 @@ public partial class CollectionPage : Page, IRefreshable
             Padding         = new Thickness(10, 7, 10, 7),
             Margin          = new Thickness(0, 0, 0, 5),
             Child           = g,
+            AllowDrop       = true,
+            Tag             = field,
         };
+
+        // ドラッグ＆ドロップによる並べ替え
+        rowBorder.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            if (e.GetPosition(rowBorder).X <= 24) _dragField = field;
+        };
+        rowBorder.MouseMove += (s, e) =>
+        {
+            if (e.LeftButton == MouseButtonState.Pressed && _dragField == field)
+                DragDrop.DoDragDrop(rowBorder, field, DragDropEffects.Move);
+        };
+        rowBorder.DragOver += (_, e) =>
+        {
+            e.Effects = _dragField != null ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        };
+        rowBorder.Drop += (_, e) =>
+        {
+            if (_dragField == null || _dragField == field) { _dragField = null; return; }
+            int from = _formFields.IndexOf(_dragField);
+            int to   = _formFields.IndexOf(field);
+            if (from >= 0 && to >= 0)
+            {
+                _formFields.RemoveAt(from);
+                _formFields.Insert(to, _dragField);
+                for (int i = 0; i < _formFields.Count; i++) _formFields[i].Order = i;
+                RefreshFormFieldList();
+            }
+            _dragField = null;
+            e.Handled = true;
+        };
+
+        return rowBorder;
     }
 
     private void AddFormField_Click(object sender, RoutedEventArgs e)
@@ -808,10 +853,19 @@ public partial class CollectionPage : Page, IRefreshable
         var name = TxtNewFieldName.Text.Trim();
         if (string.IsNullOrEmpty(name)) { TxtNewFieldName.Focus(); return; }
         var type = (CbFieldType.SelectedItem as ComboBoxItem)?.Tag as string ?? "文字列";
+
+        // ファイル型フィールドは1つのみ
+        if (type == "ファイル" && HasFileField())
+        {
+            AppDialog.ShowWarning("ファイル形式の付属情報は1つまでしか追加できません", "確認", Window.GetWindow(this));
+            return;
+        }
+
         _formFields.Add(new CollectionField { Name = name, FieldType = type, Order = _formFields.Count });
         TxtNewFieldName.Text = "";
         TxtNewFieldName.Focus();
         RefreshFormFieldList();
+        RefreshFolderSectionVisibility();
     }
 
     private void BrowseFolder_Click(object sender, RoutedEventArgs e)
@@ -821,24 +875,15 @@ public partial class CollectionPage : Page, IRefreshable
             TxtFormFolder.Text = dlg.FolderName;
     }
 
-    private void ItemFormat_Changed(object sender, RoutedEventArgs e)
-    {
-        if (FolderSection == null || CbFieldType == null) return;
-        bool isFile = RbItemFile.IsChecked == true;
-        FolderSection.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
-
-        CbFieldFile.Visibility = isFile ? Visibility.Visible : Visibility.Collapsed;
-        if (!isFile && (CbFieldType.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string == "ファイル")
-            CbFieldType.SelectedIndex = 0;
-    }
-
     private void SaveForm_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(TxtFormName.Text)) { TxtFormName.Focus(); return; }
 
-        var itemFormat = RbItemFile.IsChecked == true ? "ファイル" : "文字列";
+        // 付属情報に「ファイル」型フィールドがある場合のみファイル形式扱い
+        bool hasFile   = HasFileField();
+        var itemFormat = hasFile ? "ファイル" : "文字列";
 
-        if (itemFormat == "ファイル" && string.IsNullOrWhiteSpace(TxtFormFolder.Text))
+        if (hasFile && string.IsNullOrWhiteSpace(TxtFormFolder.Text))
         {
             AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
             TxtFormFolder.Focus();
@@ -876,11 +921,15 @@ public partial class CollectionPage : Page, IRefreshable
             var existing = _svc.Collections.FirstOrDefault(c => c.Id == _editingId);
             if (existing == null) return;
 
-            // 再配置判定用に変更前の状態を控える
+            // 再配置判定用に変更前の状態を控える（Fields はファイル形式判定に使う）
             var oldSnapshot = new Collection
             {
                 Id = existing.Id, Name = existing.Name,
                 ItemFormat = existing.ItemFormat, FolderPath = existing.FolderPath,
+                Fields = existing.Fields.Select(f => new CollectionField
+                {
+                    Id = f.Id, Name = f.Name, FieldType = f.FieldType, Order = f.Order,
+                }).ToList(),
             };
 
             var updated = new Collection
@@ -1067,8 +1116,7 @@ public partial class CollectionPage : Page, IRefreshable
         AddHRow("コレクション名", col.Name ?? "");
         if (!string.IsNullOrEmpty(col.Description))
             AddHRow("説明", col.Description);
-        AddHRow("アイテム形式", col.ItemFormat == "ファイル" ? "📁 ファイル指定" : "📝 文字列");
-        if (col.ItemFormat == "ファイル" && !string.IsNullOrEmpty(col.FolderPath))
+        if (col.Fields.Any(f => f.FieldType == "ファイル") && !string.IsNullOrEmpty(col.FolderPath))
             AddHRow("フォルダパス", col.FolderPath);
         AddHRow("作成日時", col.CreatedAt.ToString("yyyy/MM/dd HH:mm"));
         AddHRow("更新日時", col.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));

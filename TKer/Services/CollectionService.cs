@@ -46,7 +46,7 @@ public class CollectionService
     {
         string jsonPath;
 
-        if (c.ItemFormat == "ファイル" && !string.IsNullOrWhiteSpace(parentFolder))
+        if (IsFileFormat(c) && !string.IsNullOrWhiteSpace(parentFolder))
         {
             var sub = Path.Combine(parentFolder, ProjectService.SanitizeFileName(c.Name));
             Directory.CreateDirectory(sub);
@@ -89,11 +89,11 @@ public class CollectionService
         var oldJson = JsonPathFor(old);
         string newJson;
 
-        if (c.ItemFormat == "ファイル" && !string.IsNullOrWhiteSpace(parentFolder))
+        if (IsFileFormat(c) && !string.IsNullOrWhiteSpace(parentFolder))
         {
             var newSub = Path.Combine(parentFolder, ProjectService.SanitizeFileName(c.Name));
 
-            if (old.ItemFormat == "ファイル" && !string.IsNullOrWhiteSpace(old.FolderPath)
+            if (IsFileFormat(old) && !string.IsNullOrWhiteSpace(old.FolderPath)
                 && Directory.Exists(old.FolderPath) && !PathsEqual(old.FolderPath, newSub))
             {
                 // 既存フォルダを新しい親フォルダ配下へ移動（リネーム含む）
@@ -111,7 +111,7 @@ public class CollectionService
             newJson = JsonPathFor(c);
 
             // 旧 json の現在位置（移動後）を解決して新名へリネーム
-            var currentOld = old.ItemFormat == "ファイル"
+            var currentOld = IsFileFormat(old)
                 ? Path.Combine(newSub, Path.GetFileName(oldJson))
                 : oldJson;
             if (File.Exists(currentOld) && !PathsEqual(currentOld, newJson))
@@ -195,12 +195,19 @@ public class CollectionService
         return result;
     }
 
+    /// <summary>
+    /// ファイル形式（保存先フォルダ管理あり）かどうかを判定する。
+    /// 付属情報に「ファイル」型フィールドが含まれる場合にファイル形式とみなす。
+    /// </summary>
+    private static bool IsFileFormat(Collection c) =>
+        c.Fields != null && c.Fields.Any(f => f.FieldType == "ファイル");
+
     /// <summary>コレクションの現在の保存先に基づく JSON ファイルパスを返す。</summary>
     private static string JsonPathFor(Collection c)
     {
         var safe     = ProjectService.SanitizeFileName(c.Name);
         var fileName = $"{safe}_collection.json";
-        return c.ItemFormat == "ファイル" && !string.IsNullOrWhiteSpace(c.FolderPath)
+        return IsFileFormat(c) && !string.IsNullOrWhiteSpace(c.FolderPath)
             ? Path.Combine(c.FolderPath, fileName)
             : Path.Combine(NoFolderDir, fileName);
     }

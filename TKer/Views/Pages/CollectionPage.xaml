@@ -3,41 +3,6 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Background="Transparent">
 
-    <Page.Resources>
-        <!-- アイテム形式トグル用 RadioButton -->
-        <Style x:Key="ItemFormatRadio" TargetType="RadioButton">
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bd"
-                                Background="{StaticResource BgSecondaryBrush}"
-                                BorderBrush="{StaticResource BorderBrush}"
-                                BorderThickness="1" CornerRadius="6"
-                                Padding="16,8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="BorderBrush"
-                                        Value="{StaticResource AccentCyanBrush}"/>
-                                <Setter TargetName="Bd" Property="Background">
-                                    <Setter.Value>
-                                        <SolidColorBrush Color="{StaticResource AccentCyanColor}" Opacity="0.12"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background"
-                                        Value="{StaticResource BgHoverBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Page.Resources>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -197,18 +162,14 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="120"/>
                                 <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="120"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="コレクション名" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
                                        HorizontalAlignment="Left"/>
-                            <TextBlock Grid.Column="1" Text="アイテム形式" FontSize="11"
+                            <TextBlock Grid.Column="1" Text="作成日時" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
                                        HorizontalAlignment="Left"/>
-                            <TextBlock Grid.Column="2" Text="作成日時" FontSize="11"
-                                       Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
-                                       HorizontalAlignment="Left"/>
-                            <TextBlock Grid.Column="3" Text="更新日時" FontSize="11"
+                            <TextBlock Grid.Column="2" Text="更新日時" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
                                        HorizontalAlignment="Left"/>
                         </Grid>
@@ -338,38 +299,7 @@
                             <TextBox x:Name="TxtFormDesc"
                                      Style="{StaticResource DarkTextBox}" Margin="0,0,0,16"/>
 
-                            <!-- アイテム形式 -->
-                            <TextBlock Text="アイテム形式" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                <RadioButton x:Name="RbItemText"
-                                             GroupName="ItemFormat" IsChecked="True"
-                                             Style="{StaticResource ItemFormatRadio}"
-                                             Margin="0,0,10,0"
-                                             Checked="ItemFormat_Changed">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📝" FontSize="14" Margin="0,0,6,0"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Text="文字列" FontSize="13"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                                   VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </RadioButton>
-                                <RadioButton x:Name="RbItemFile"
-                                             GroupName="ItemFormat"
-                                             Style="{StaticResource ItemFormatRadio}"
-                                             Checked="ItemFormat_Changed">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📁" FontSize="14" Margin="0,0,6,0"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Text="ファイル指定" FontSize="13"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                                   VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </RadioButton>
-                            </StackPanel>
-
-                            <!-- 保存先フォルダ（ファイル指定時のみ） -->
+                            <!-- 保存先フォルダ（ファイルフィールドがある時のみ） -->
                             <StackPanel x:Name="FolderSection" Visibility="Collapsed" Margin="0,0,0,16">
                                 <TextBlock Text="保存先フォルダ *" FontSize="12"
                                            Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>

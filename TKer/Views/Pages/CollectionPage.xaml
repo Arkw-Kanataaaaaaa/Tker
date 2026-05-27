@@ -249,7 +249,7 @@
                                 <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                             </Button>
                             <TextBlock x:Name="TxtFormTitle" Text="新規コレクション"
-                                       FontSize="16" FontWeight="Bold"
+                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                        Foreground="{StaticResource TextPrimaryBrush}"
                                        VerticalAlignment="Center"/>
                         </DockPanel>

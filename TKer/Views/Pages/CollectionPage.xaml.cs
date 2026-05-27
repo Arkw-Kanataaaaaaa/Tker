@@ -170,10 +170,10 @@ public partial class CollectionPage : Page, IRefreshable
                 CornerRadius    = new CornerRadius(12),
                 BorderThickness = new Thickness(3),
                 Background      = Brushes.Transparent,
-                BorderBrush     = new SolidColorBrush(Color.FromRgb(35, 131, 226)),
+                BorderBrush     = Brush("AccentCyanBrush"),
             });
 
-        // プロジェクト名オーバーレイ（下部）
+        // コレクション名オーバーレイ（下部）
         grid.Children.Add(new Border
         {
             VerticalAlignment = VerticalAlignment.Bottom,
@@ -190,45 +190,14 @@ public partial class CollectionPage : Page, IRefreshable
             },
         });
 
+        // ホバー時の白オーバーレイ（プロジェクト画面と同じ薄い輝き効果）
         var hoverOverlay = new Border
         {
-            Background   = new SolidColorBrush(Color.FromArgb(0xAA, 0, 0, 0)),
-            CornerRadius = new CornerRadius(12),
-            Visibility   = Visibility.Collapsed,
+            CornerRadius      = new CornerRadius(12),
+            Background        = new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF)),
+            IsHitTestVisible  = false,
+            Visibility        = Visibility.Collapsed,
         };
-        var hoverSp = new StackPanel
-        {
-            VerticalAlignment   = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin              = new Thickness(12),
-        };
-        if (!string.IsNullOrEmpty(col.Description))
-            hoverSp.Children.Add(new TextBlock
-            {
-                Text             = col.Description,
-                FontSize         = 11,
-                Foreground       = new SolidColorBrush(Color.FromRgb(200, 200, 200)),
-                TextWrapping     = TextWrapping.Wrap,
-                TextAlignment    = TextAlignment.Center,
-                Margin           = new Thickness(0, 0, 0, 8),
-            });
-        hoverSp.Children.Add(new TextBlock
-        {
-            Text                = col.ItemFormat == "ファイル" ? "📁 ファイル指定" : "📝 文字列",
-            FontSize            = 12,
-            Foreground          = Brushes.White,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin              = new Thickness(0, 0, 0, 4),
-        });
-        if (col.Fields.Count > 0)
-            hoverSp.Children.Add(new TextBlock
-            {
-                Text                = $"{col.Fields.Count} フィールド",
-                FontSize            = 11,
-                Foreground          = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
-                HorizontalAlignment = HorizontalAlignment.Center,
-            });
-        hoverOverlay.Child = hoverSp;
         grid.Children.Add(hoverOverlay);
 
         card.Child = grid;
@@ -972,7 +941,7 @@ public partial class CollectionPage : Page, IRefreshable
                 Height      = 180,
                 CornerRadius = new CornerRadius(8),
                 ClipToBounds = true,
-                Margin      = new Thickness(0, 0, 0, 4),
+                Margin      = new Thickness(0, 0, 0, 16),
                 Background  = Brush("BgCardBrush"),
                 Child       = coverGrid,
             });
@@ -986,7 +955,7 @@ public partial class CollectionPage : Page, IRefreshable
                 Background      = Brush("BgCardBrush"),
                 BorderBrush     = Brush("BorderBrush"),
                 BorderThickness = new Thickness(1),
-                Margin          = new Thickness(0, 0, 0, 4),
+                Margin          = new Thickness(0, 0, 0, 16),
                 Child           = new TextBlock
                 {
                     Text                = "表紙画像は設定されていません",

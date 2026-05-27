@@ -22,7 +22,7 @@ public partial class CollectionDeleteDialog : Window
         CommandBindings.Add(new CommandBinding(
             SystemCommands.CloseWindowCommand, (_, _) => { DialogResult = false; }));
 
-        CollectionNameText.Text = $"「{collectionName}」 削除の確認";
+        CollectionNameText.Text = $"「{collectionName}」 削除確認";
         ToggleTrack.Background  = _trackBrush;
 
         if (!string.IsNullOrEmpty(folderPath))

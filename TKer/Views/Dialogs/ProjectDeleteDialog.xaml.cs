@@ -22,7 +22,7 @@ public partial class ProjectDeleteDialog : Window
         CommandBindings.Add(new System.Windows.Input.CommandBinding(
             SystemCommands.CloseWindowCommand, (_, _) => { DialogResult = false; }));
 
-        ProjectNameText.Text   = $"「{projectName}」 削除の確認";
+        ProjectNameText.Text   = $"「{projectName}」 削除確認";
         ToggleTrack.Background = _trackBrush;
 
         if (isFolderManaged && !string.IsNullOrEmpty(folderPath))

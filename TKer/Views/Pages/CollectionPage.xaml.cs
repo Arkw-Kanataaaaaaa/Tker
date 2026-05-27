@@ -218,17 +218,11 @@ public partial class CollectionPage : Page, IRefreshable
         }
         else
         {
-            // 表紙画像なし時のプレースホルダー（プロジェクト画面のグリッドと同じ外観）
+            // 表紙画像なし時のプレースホルダー（プロジェクト画面のグリッドと同じ Style を適用）
             grid.Children.Add(new System.Windows.Shapes.Path
             {
-                Data                = Application.Current.Resources["Bi.Folder2Open"] as Geometry,
-                Width               = 36,
-                Height              = 36,
-                Stretch             = Stretch.Uniform,
-                Fill                = Brush("TextSecondaryBrush"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment   = VerticalAlignment.Center,
-                IsHitTestVisible    = false,
+                Data  = Application.Current.Resources["Bi.Folder2Open"] as Geometry,
+                Style = Application.Current.Resources["BiIconXl"] as Style,
             });
         }
 

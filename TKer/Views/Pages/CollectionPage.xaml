@@ -501,7 +501,8 @@
 
         <!-- ソート選択ポップアップ -->
         <Popup x:Name="SortPopup" StaysOpen="False" Placement="Bottom"
-               PlacementTarget="{Binding ElementName=BtnSortToggle}">
+               PlacementTarget="{Binding ElementName=BtnSortToggle}"
+               AllowsTransparency="True">
             <Border Background="{DynamicResource BgCardBrush}"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                     CornerRadius="6" Padding="4" MinWidth="150">

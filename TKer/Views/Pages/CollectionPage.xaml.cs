@@ -264,8 +264,8 @@ public partial class CollectionPage : Page, IRefreshable
         var g = new Grid { Margin = new Thickness(16, 0, 16, 0) };
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
 
         var namePanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         namePanel.Children.Add(new TextBlock { Text = col.Icon ?? "📁", FontSize = 16, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
@@ -295,14 +295,14 @@ public partial class CollectionPage : Page, IRefreshable
         };
         Grid.SetColumn(fmtBadge, 1); g.Children.Add(fmtBadge);
 
-        var fieldCntTb = new TextBlock
+        var createdTb = new TextBlock
         {
-            Text              = col.Fields.Count.ToString(),
-            FontSize          = 13,
-            Foreground        = Brush("TextSecondaryBrush"),
+            Text              = col.CreatedAt.ToString("yyyy/MM/dd"),
+            FontSize          = 12,
+            Foreground        = Brush("TextDimBrush"),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        Grid.SetColumn(fieldCntTb, 2); g.Children.Add(fieldCntTb);
+        Grid.SetColumn(createdTb, 2); g.Children.Add(createdTb);
 
         var updatedTb = new TextBlock
         {

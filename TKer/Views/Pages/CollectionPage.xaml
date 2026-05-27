@@ -167,16 +167,16 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="90"/>
-                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="120"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="コレクション名" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
                             <TextBlock Grid.Column="1" Text="アイテム形式" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="2" Text="フィールド数" FontSize="12"
+                            <TextBlock Grid.Column="2" Text="作成日時" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
-                            <TextBlock Grid.Column="3" Text="最終更新" FontSize="12"
+                            <TextBlock Grid.Column="3" Text="更新日時" FontSize="12"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"/>
                         </Grid>
                     </Border>

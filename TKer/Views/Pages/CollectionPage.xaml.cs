@@ -218,12 +218,17 @@ public partial class CollectionPage : Page, IRefreshable
         }
         else
         {
-            grid.Children.Add(new TextBlock
+            // 表紙画像なし時のプレースホルダー（プロジェクト画面のグリッドと同じ外観）
+            grid.Children.Add(new System.Windows.Shapes.Path
             {
-                Text                = col.Icon ?? "📁",
-                FontSize            = 52,
+                Data                = Application.Current.Resources["Bi.Folder2Open"] as Geometry,
+                Width               = 36,
+                Height              = 36,
+                Stretch             = Stretch.Uniform,
+                Fill                = Brush("TextSecondaryBrush"),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center,
+                IsHitTestVisible    = false,
             });
         }
 

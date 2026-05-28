@@ -316,8 +316,12 @@ public partial class MainWindow : Window
     private void ProjectAdd_Click(object sender, System.Windows.RoutedEventArgs e)
         => RunLibraryAction("ProjectList", "add");
 
-    /// <summary>プロジェクトファイルの読み込みダイアログをそのまま表示する。</summary>
+    /// <summary>プロジェクト一覧へ遷移し、読み込みダイアログを表示する。</summary>
     private void ProjectLoad_Click(object sender, System.Windows.RoutedEventArgs e)
+        => RunLibraryAction("ProjectList", "load");
+
+    /// <summary>プロジェクトファイルの読み込みダイアログを表示し、選択時にプロジェクトを切り替える。</summary>
+    private void ShowProjectLoadDialog()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
@@ -354,12 +358,15 @@ public partial class MainWindow : Window
     }
 
     /// <summary>ページ種別に応じて保留アクション（"add" / "load"）を適用する。</summary>
-    private static void ApplyPageAction(Page page, string action)
+    private void ApplyPageAction(Page page, string action)
     {
         switch (page)
         {
             case ProjectListPage plp when action == "add":
                 plp.RequestShowAddPanel();
+                break;
+            case ProjectListPage when action == "load":
+                ShowProjectLoadDialog();
                 break;
             case CollectionPage cpAdd when action == "add":
                 cpAdd.RequestShowAddForm();

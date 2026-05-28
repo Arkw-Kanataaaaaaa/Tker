@@ -589,6 +589,15 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void NewCollection_Click(object sender, RoutedEventArgs e) => ShowForm(null);
 
+    /// <summary>トップメニューから遷移した直後に追加フォームを開くための公開エントリ。</summary>
+    public void RequestShowAddForm()
+        => Dispatcher.InvokeAsync(() => ShowForm(null), System.Windows.Threading.DispatcherPriority.Loaded);
+
+    /// <summary>トップメニューから遷移した直後に読み込みダイアログを開くための公開エントリ。</summary>
+    public void RequestLoadCollection()
+        => Dispatcher.InvokeAsync(() => LoadCollection_Click(this, new RoutedEventArgs()),
+                                  System.Windows.Threading.DispatcherPriority.Loaded);
+
     private void EditCollection_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedId == null) return;

@@ -670,6 +670,10 @@ public partial class ProjectListPage : Page, IRefreshable
         DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
+    /// <summary>トップメニューから遷移した直後に追加フォームを開くための公開エントリ。</summary>
+    public void RequestShowAddPanel()
+        => Dispatcher.InvokeAsync(ShowAddProjectPanel, System.Windows.Threading.DispatcherPriority.Loaded);
+
     /// <summary>新規プロジェクト作成フォームをドロワーとして表示する。</summary>
     private void ShowAddProjectPanel()
     {

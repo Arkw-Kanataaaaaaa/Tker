@@ -24,6 +24,9 @@ public partial class MainWindow : Window
     // 遷移のたびに新しいインスタンスに更新される
     private TaskListPage _taskListPage = null!;
 
+    // トップメニューから遷移直後に実行する保留アクション（"add" / "load"）
+    private string? _pendingPageAction;
+
     // ── ウィジェット ────────────────────────────────────────
     private BookmarkWidget?  _bookmarkWidget;
 
@@ -169,6 +172,24 @@ public partial class MainWindow : Window
                 (page as IRefreshable)?.Refresh();
                 MainFrame.Navigate(page);
 
+                // トップメニューから遷移した場合の保留アクションを適用
+                if (_pendingPageAction is { } action)
+                {
+                    switch (page)
+                    {
+                        case ProjectListPage plp when action == "add":
+                            plp.RequestShowAddPanel();
+                            break;
+                        case CollectionPage cpAdd when action == "add":
+                            cpAdd.RequestShowAddForm();
+                            break;
+                        case CollectionPage cpLoad when action == "load":
+                            cpLoad.RequestLoadCollection();
+                            break;
+                    }
+                    _pendingPageAction = null;
+                }
+
                 var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
                 {
                     EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
@@ -300,27 +321,17 @@ public partial class MainWindow : Window
     private void MenuExportWbs_Click(object sender, System.Windows.RoutedEventArgs e)
         => _taskListPage.TriggerExportWbs();
 
-    /// <summary>新規プロジェクト作成ダイアログを開き、カテゴリテンプレートを適用してプロジェクト一覧へ遷移する。</summary>
-    private void NewProject_Click(object sender, System.Windows.RoutedEventArgs e)
+    // ── ライブラリ：プロジェクト ────────────────────────────
+
+    /// <summary>プロジェクト一覧へ遷移し、追加フォームを開いた状態にする。</summary>
+    private void ProjectAdd_Click(object sender, System.Windows.RoutedEventArgs e)
     {
-        var dlg = new Views.Dialogs.NewProjectDialog { Owner = this };
-        if (dlg.ShowDialog() != true) return;
-
-        _vm.ProjectService.CreateProject(dlg.SavePath, dlg.ProjectName, dlg.Description);
-
-        var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
-        var templateDlg = new Views.Dialogs.CategoryTemplateDialog(customPresets) { Owner = this };
-        if (templateDlg.ShowDialog() == true)
-        {
-            foreach (var item in templateDlg.SelectedCategories)
-                _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
-        }
-
+        _pendingPageAction = "add";
         _vm.NavigateToCommand.Execute("ProjectList");
     }
 
-    /// <summary>ファイル選択ダイアログでプロジェクトファイルを選択して読み込む。</summary>
-    private void OpenProject_Click(object sender, System.Windows.RoutedEventArgs e)
+    /// <summary>プロジェクトファイルの読み込みダイアログをそのまま表示する。</summary>
+    private void ProjectLoad_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
@@ -329,6 +340,22 @@ public partial class MainWindow : Window
         };
         if (dlg.ShowDialog() == true)
             _vm.SwitchProjectCommand.Execute(dlg.FileName);
+    }
+
+    // ── ライブラリ：コレクション ────────────────────────────
+
+    /// <summary>コレクション画面へ遷移し、追加フォームを開いた状態にする。</summary>
+    private void CollectionAdd_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        _pendingPageAction = "add";
+        _vm.NavigateToCommand.Execute("Collection");
+    }
+
+    /// <summary>コレクション画面へ遷移し、読み込みダイアログをそのまま表示する。</summary>
+    private void CollectionLoad_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        _pendingPageAction = "load";
+        _vm.NavigateToCommand.Execute("Collection");
     }
 
     /// <summary>設定に保存されたメニュー順序に従い、トップメニューの項目を並び替える。</summary>

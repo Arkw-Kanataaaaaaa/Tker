@@ -141,6 +141,13 @@ public partial class CollectionItemsPage : Page
                 case Key.Subtract:
                     DeleteItem_Click(this, new RoutedEventArgs());
                     e.Handled = true; break;
+                case Key.M:
+                    if (BtnOrganize.Visibility == Visibility.Visible)
+                    {
+                        ToggleOrganize_Click(this, new RoutedEventArgs());
+                        e.Handled = true;
+                    }
+                    break;
             }
         }
         else if (ctrl && shift && !alt)

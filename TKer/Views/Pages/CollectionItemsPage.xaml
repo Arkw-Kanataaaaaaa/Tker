@@ -83,9 +83,9 @@
                         <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                     </Button>
                     <Button x:Name="BtnOrganize" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="フォルダ整理" Click="ToggleOrganize_Click"
+                            ToolTip="フォルダ整理 (Ctrl+M)" Click="ToggleOrganize_Click"
                             Visibility="Collapsed">
-                        <Path Data="{StaticResource Bi.Tools}" Style="{StaticResource BiIconLg}"/>
+                        <Path Data="{StaticResource Bi.Magic}" Style="{StaticResource BiIconLg}"/>
                     </Button>
                     <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
                     <Button x:Name="BtnSearch" Style="{StaticResource VToolbarBtn}"

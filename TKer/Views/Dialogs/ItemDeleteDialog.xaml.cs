@@ -15,15 +15,14 @@ public partial class ItemDeleteDialog : Window
 
     public bool DeleteFile => _deleteFile;
 
-    public ItemDeleteDialog(string itemName, string? filePath)
+    public ItemDeleteDialog(string? filePath)
     {
         InitializeComponent();
 
         CommandBindings.Add(new CommandBinding(
             SystemCommands.CloseWindowCommand, (_, _) => { DialogResult = false; }));
 
-        var label = string.IsNullOrWhiteSpace(itemName) ? "このアイテム" : $"「{itemName}」";
-        ItemNameText.Text      = $"{label} 削除確認";
+        ItemNameText.Text      = "削除確認";
         ToggleTrack.Background = _trackBrush;
 
         if (!string.IsNullOrEmpty(filePath))

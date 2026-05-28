@@ -886,7 +886,7 @@ public partial class CollectionItemsPage : Page
             && File.Exists(fp))
             filePath = fp;
 
-        var dlg = new ItemDeleteDialog(item.Name, filePath) { Owner = Window.GetWindow(this) };
+        var dlg = new ItemDeleteDialog(filePath) { Owner = Window.GetWindow(this) };
         if (dlg.ShowDialog() != true) return;
 
         if (dlg.DeleteFile && filePath != null)

@@ -325,8 +325,8 @@ public partial class MainWindow : Window
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "プロジェクトファイルを開く",
-            Filter = "TKer データ (*.json)|*.json|すべてのファイル (*.*)|*.*"
+            Title = "プロジェクトファイルを選択",
+            Filter = "プロジェクトファイル|*_project.json|すべてのファイル|*.*"
         };
         if (dlg.ShowDialog() == true)
             _vm.SwitchProjectCommand.Execute(dlg.FileName);

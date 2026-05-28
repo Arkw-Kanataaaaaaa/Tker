@@ -28,6 +28,7 @@ public partial class CollectionPage : Page, IRefreshable
     private bool     _sortDescending = true;
 
     private readonly List<CollectionField>          _formFields       = new();
+    private readonly List<string>                   _draftSelectOptions = new();
     private string?                                 _editingId;
     private string                                  _coverImageData   = string.Empty;
     private readonly Dictionary<string, BitmapImage?> _coverBitmapCache = new();
@@ -679,11 +680,19 @@ public partial class CollectionPage : Page, IRefreshable
         if (existing != null)
             _formFields.AddRange(existing.Fields.Select(f => new CollectionField
             {
-                Id = f.Id, Name = f.Name, FieldType = f.FieldType, Order = f.Order,
+                Id = f.Id, Name = f.Name, FieldType = f.FieldType,
+                InputFormat = string.IsNullOrEmpty(f.InputFormat) ? "入力" : f.InputFormat,
+                SelectOptions = f.SelectOptions?.ToList() ?? new List<string>(),
+                Order = f.Order,
             }));
 
-        TxtNewFieldName.Text = "";
-        CbFieldType.SelectedIndex = 0;
+        TxtNewFieldName.Text     = "";
+        TxtNewSelectOption.Text  = "";
+        CbFieldType.SelectedIndex   = 0;
+        CbInputFormat.SelectedIndex = 0;
+        _draftSelectOptions.Clear();
+        RefreshSelectOptionsList();
+        UpdateSelectOptionsVisibility();
 
         ClearCoverImageField();
         if (!string.IsNullOrEmpty(existing?.CoverImageData))
@@ -750,19 +759,22 @@ public partial class CollectionPage : Page, IRefreshable
             FormFieldListPanel.Children.Add(BuildFormFieldRow(field));
     }
 
+    private static (string label, Color color) FieldTypeBadge(string fieldType) => fieldType switch
+    {
+        "ファイル" => ("ファイル", Color.FromArgb(200, 120, 60, 200)),
+        "リンク" => ("リンク", Color.FromArgb(200, 30, 140, 80)),
+        "日時"   => ("日時",   Color.FromArgb(200, 200, 130, 35)),
+        _       => ("文字列", Color.FromArgb(200, 35, 100, 200)),
+    };
+
     private UIElement BuildFormFieldRow(CollectionField field)
     {
-        var (icon, label, badgeColor) = field.FieldType switch
-        {
-            "ファイル" => ("📁", "ファイル", Color.FromArgb(200, 120, 60, 200)),
-            "リンク" => ("🔗", "リンク", Color.FromArgb(200, 30, 140, 80)),
-            _       => ("📝", "文字列", Color.FromArgb(200, 35, 100, 200)),
-        };
+        var (label, badgeColor) = FieldTypeBadge(field.FieldType);
 
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
 
@@ -776,9 +788,6 @@ public partial class CollectionPage : Page, IRefreshable
         };
         Grid.SetColumn(dragHandle, 0); g.Children.Add(dragHandle);
 
-        var iconTb = new TextBlock { Text = icon, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(iconTb, 1); g.Children.Add(iconTb);
-
         var nameTb = new TextBlock
         {
             Text = field.Name, FontSize = 13,
@@ -786,7 +795,18 @@ public partial class CollectionPage : Page, IRefreshable
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 0, 0, 0),
         };
-        Grid.SetColumn(nameTb, 2); g.Children.Add(nameTb);
+        Grid.SetColumn(nameTb, 1); g.Children.Add(nameTb);
+
+        var inputBadge = new Border
+        {
+            Background        = new SolidColorBrush(Color.FromArgb(140, 90, 90, 110)),
+            CornerRadius      = new CornerRadius(4),
+            Padding           = new Thickness(7, 2, 7, 2),
+            Margin            = new Thickness(0, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child             = new TextBlock { Text = field.InputFormat, FontSize = 11, Foreground = Brushes.White },
+        };
+        Grid.SetColumn(inputBadge, 2); g.Children.Add(inputBadge);
 
         var badge = new Border
         {
@@ -865,7 +885,11 @@ public partial class CollectionPage : Page, IRefreshable
     {
         var name = TxtNewFieldName.Text.Trim();
         if (string.IsNullOrEmpty(name)) { TxtNewFieldName.Focus(); return; }
-        var type = (CbFieldType.SelectedItem as ComboBoxItem)?.Tag as string ?? "文字列";
+        var type        = (CbFieldType.SelectedItem   as ComboBoxItem)?.Tag as string ?? "文字列";
+        var inputFormat = (CbInputFormat.SelectedItem as ComboBoxItem)?.Tag as string ?? "入力";
+
+        // ファイル/日時 はそれぞれ「入力」固定
+        if (type == "ファイル" || type == "日時") inputFormat = "入力";
 
         // ファイル型フィールドは1つのみ
         if (type == "ファイル" && HasFileField())
@@ -874,11 +898,113 @@ public partial class CollectionPage : Page, IRefreshable
             return;
         }
 
-        _formFields.Add(new CollectionField { Name = name, FieldType = type, Order = _formFields.Count });
+        if (inputFormat == "選択" && _draftSelectOptions.Count == 0)
+        {
+            AppDialog.ShowWarning("選択肢を1つ以上追加してください", "確認", Window.GetWindow(this));
+            return;
+        }
+
+        _formFields.Add(new CollectionField
+        {
+            Name          = name,
+            FieldType     = type,
+            InputFormat   = inputFormat,
+            SelectOptions = inputFormat == "選択" ? _draftSelectOptions.ToList() : new List<string>(),
+            Order         = _formFields.Count,
+        });
         TxtNewFieldName.Text = "";
+        _draftSelectOptions.Clear();
+        RefreshSelectOptionsList();
         TxtNewFieldName.Focus();
         RefreshFormFieldList();
         RefreshFolderSectionVisibility();
+    }
+
+    private void CbFieldType_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (CbInputFormat == null) return;
+        var type = (CbFieldType.SelectedItem as ComboBoxItem)?.Tag as string ?? "文字列";
+        // ファイル/日時 は入力形式が固定
+        bool inputFormatLocked = type == "ファイル" || type == "日時";
+        CbInputFormat.IsEnabled = !inputFormatLocked;
+        if (inputFormatLocked) CbInputFormat.SelectedIndex = 0;
+        UpdateSelectOptionsVisibility();
+    }
+
+    private void CbInputFormat_Changed(object sender, SelectionChangedEventArgs e)
+        => UpdateSelectOptionsVisibility();
+
+    private void UpdateSelectOptionsVisibility()
+    {
+        if (SelectOptionsSection == null) return;
+        var inputFormat = (CbInputFormat.SelectedItem as ComboBoxItem)?.Tag as string ?? "入力";
+        SelectOptionsSection.Visibility = inputFormat == "選択" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void AddSelectOption_Click(object sender, RoutedEventArgs e)
+    {
+        var opt = TxtNewSelectOption.Text.Trim();
+        if (string.IsNullOrEmpty(opt)) { TxtNewSelectOption.Focus(); return; }
+        if (_draftSelectOptions.Contains(opt))
+        {
+            AppDialog.ShowWarning("同じ選択肢がすでに追加されています", "確認", Window.GetWindow(this));
+            return;
+        }
+        _draftSelectOptions.Add(opt);
+        TxtNewSelectOption.Text = "";
+        TxtNewSelectOption.Focus();
+        RefreshSelectOptionsList();
+    }
+
+    private void RefreshSelectOptionsList()
+    {
+        SelectOptionsList.Children.Clear();
+        for (int i = 0; i < _draftSelectOptions.Count; i++)
+        {
+            var idx = i;
+            var opt = _draftSelectOptions[i];
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var tb = new TextBlock
+            {
+                Text              = opt,
+                FontSize          = 12,
+                Foreground        = Brush("TextPrimaryBrush"),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(tb, 0); g.Children.Add(tb);
+
+            var del = new Button
+            {
+                Content         = "✕",
+                FontSize        = 11,
+                Background      = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground      = Brush("TextDimBrush"),
+                Cursor          = Cursors.Hand,
+                Padding         = new Thickness(4, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            del.Click += (_, _) =>
+            {
+                _draftSelectOptions.RemoveAt(idx);
+                RefreshSelectOptionsList();
+            };
+            Grid.SetColumn(del, 1); g.Children.Add(del);
+
+            SelectOptionsList.Children.Add(new Border
+            {
+                Background      = Brush("BgCardBrush"),
+                BorderBrush     = Brush("BorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius    = new CornerRadius(4),
+                Padding         = new Thickness(8, 4, 6, 4),
+                Margin          = new Thickness(0, 0, 0, 4),
+                Child           = g,
+            });
+        }
     }
 
     private void BrowseFolder_Click(object sender, RoutedEventArgs e)
@@ -941,7 +1067,9 @@ public partial class CollectionPage : Page, IRefreshable
                 ItemFormat = existing.ItemFormat, FolderPath = existing.FolderPath,
                 Fields = existing.Fields.Select(f => new CollectionField
                 {
-                    Id = f.Id, Name = f.Name, FieldType = f.FieldType, Order = f.Order,
+                    Id = f.Id, Name = f.Name, FieldType = f.FieldType,
+                    InputFormat = f.InputFormat, SelectOptions = f.SelectOptions?.ToList() ?? new List<string>(),
+                    Order = f.Order,
                 }).ToList(),
             };
 
@@ -1152,20 +1280,13 @@ public partial class CollectionPage : Page, IRefreshable
 
         foreach (var field in col.Fields.OrderBy(f => f.Order))
         {
-            var (icon, label, badgeColor) = field.FieldType switch
-            {
-                "ファイル" => ("📁", "ファイル", Color.FromArgb(180, 120, 60, 200)),
-                "リンク" => ("🔗", "リンク", Color.FromArgb(180, 30, 140, 80)),
-                _       => ("📝", "文字列", Color.FromArgb(180, 35, 100, 200)),
-            };
+            var (label, badgeColor) = FieldTypeBadge(field.FieldType);
+            var inputLabel = string.IsNullOrEmpty(field.InputFormat) ? "入力" : field.InputFormat;
 
             var g = new Grid { Margin = new Thickness(0, 0, 0, 6) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var fi = new TextBlock { Text = icon, FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetColumn(fi, 0); g.Children.Add(fi);
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var fn = new TextBlock
             {
@@ -1173,9 +1294,19 @@ public partial class CollectionPage : Page, IRefreshable
                 FontSize          = 13,
                 Foreground        = Brush("TextPrimaryBrush"),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin            = new Thickness(6, 0, 0, 0),
             };
-            Grid.SetColumn(fn, 1); g.Children.Add(fn);
+            Grid.SetColumn(fn, 0); g.Children.Add(fn);
+
+            var inputBd = new Border
+            {
+                Background        = new SolidColorBrush(Color.FromArgb(140, 90, 90, 110)),
+                CornerRadius      = new CornerRadius(4),
+                Padding           = new Thickness(7, 2, 7, 2),
+                Margin            = new Thickness(0, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child             = new TextBlock { Text = inputLabel, FontSize = 11, Foreground = Brushes.White },
+            };
+            Grid.SetColumn(inputBd, 1); g.Children.Add(inputBd);
 
             var bd = new Border
             {

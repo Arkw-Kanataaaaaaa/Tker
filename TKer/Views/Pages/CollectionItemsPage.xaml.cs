@@ -356,11 +356,26 @@ public partial class CollectionItemsPage : Page
         var g = MakeRowGrid();
         for (int i = 0; i < _col.Fields.Count; i++)
         {
-            var f       = _col.Fields[i];
-            var val     = item.FieldValues.TryGetValue(f.Id, out var v) ? v : "";
-            var display = f.FieldType == "ファイル" && !string.IsNullOrEmpty(val)
-                ? $"📁 {Path.GetFileName(val)}" : val;
-            AddCell(g, display, i, isSel && i == 0);
+            var f   = _col.Fields[i];
+            var val = item.FieldValues.TryGetValue(f.Id, out var v) ? v : "";
+
+            if (f.FieldType == "リンク" && !string.IsNullOrEmpty(val))
+            {
+                var link = BuildLinkText(val, 13);
+                Grid.SetColumn(link, i);
+                g.Children.Add(link);
+            }
+            else
+            {
+                string display;
+                if (f.FieldType == "ファイル" && !string.IsNullOrEmpty(val))
+                    display = Path.GetFileName(val);
+                else if (f.InputFormat == "チェックボックス")
+                    display = val == "true" ? "✓" : "";
+                else
+                    display = val;
+                AddCell(g, display, i, isSel && i == 0);
+            }
         }
         AddCell(g, item.AddedAt.ToString("yyyy/MM/dd"), DateColumn, false);
 
@@ -466,10 +481,18 @@ public partial class CollectionItemsPage : Page
 
         foreach (var field in _col.Fields.OrderBy(f => f.Order))
         {
-            var val     = item.FieldValues.TryGetValue(field.Id, out var v) ? v : "";
-            var display = field.FieldType == "ファイル" && !string.IsNullOrEmpty(val)
-                ? Path.GetFileName(val) : val;
-            AddDetailRow(field.Name, display);
+            var val = item.FieldValues.TryGetValue(field.Id, out var v) ? v : "";
+            if (string.IsNullOrEmpty(val)) continue;
+
+            if (field.FieldType == "リンク")
+                AddDetailLinkRow(field.Name, val);
+            else if (field.InputFormat == "チェックボックス")
+                AddDetailRow(field.Name, val == "true" ? "✓ 有効" : "未設定");
+            else
+            {
+                var display = field.FieldType == "ファイル" ? Path.GetFileName(val) : val;
+                AddDetailRow(field.Name, display);
+            }
         }
         AddDetailRow("追加日", item.AddedAt.ToString("yyyy/MM/dd HH:mm"));
     }
@@ -493,6 +516,56 @@ public partial class CollectionItemsPage : Page
             TextWrapping = TextWrapping.Wrap,
         });
         DetailContentPanel.Children.Add(sp);
+    }
+
+    private void AddDetailLinkRow(string label, string url)
+    {
+        var sp = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        sp.Children.Add(new TextBlock
+        {
+            Text       = label,
+            FontSize   = 11,
+            Foreground = R<Brush>("TextDimBrush"),
+            Margin     = new Thickness(0, 0, 0, 3),
+        });
+        sp.Children.Add(BuildLinkText(url, 13));
+        DetailContentPanel.Children.Add(sp);
+    }
+
+    private TextBlock BuildLinkText(string url, double fontSize)
+    {
+        var tb = new TextBlock
+        {
+            FontSize          = fontSize,
+            Foreground        = R<Brush>("AccentCyanBrush"),
+            TextDecorations   = TextDecorations.Underline,
+            Cursor            = Cursors.Hand,
+            TextTrimming      = TextTrimming.CharacterEllipsis,
+            TextWrapping      = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip           = url,
+        };
+        tb.Inlines.Add(new System.Windows.Documents.Run(url));
+        tb.MouseLeftButtonUp += (_, e) =>
+        {
+            OpenLink(url);
+            e.Handled = true;
+        };
+        return tb;
+    }
+
+    private static void OpenLink(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName        = url,
+                UseShellExecute = true,
+            });
+        }
+        catch { }
     }
 
     // ── ドラッグ＆ドロップ ──────────────────────────────────
@@ -650,9 +723,68 @@ public partial class CollectionItemsPage : Page
             FormContentPanel.Children.Add(MakeFormLabel(field.Name));
             if (field.FieldType == "ファイル")
                 FormContentPanel.Children.Add(BuildFileFieldRow(field));
+            else if (field.FieldType == "日時")
+                FormContentPanel.Children.Add(BuildDatePickerRow(field));
+            else if (field.InputFormat == "選択")
+                FormContentPanel.Children.Add(BuildSelectFieldRow(field));
+            else if (field.InputFormat == "チェックボックス")
+                FormContentPanel.Children.Add(BuildCheckBoxFieldRow(field));
             else
                 FormContentPanel.Children.Add(MakeFormTextBox(field.Id, new Thickness(0, 0, 0, 14)));
         }
+    }
+
+    private UIElement BuildDatePickerRow(CollectionField field)
+    {
+        var capField = field;
+        _editingValues.TryGetValue(field.Id, out var current);
+        var dp = new DatePicker { Margin = new Thickness(0, 0, 0, 14) };
+        if (!string.IsNullOrEmpty(current) && DateTime.TryParse(current, out var dt))
+            dp.SelectedDate = dt;
+        _editingValues.TryAdd(field.Id, "");
+        dp.SelectedDateChanged += (_, _) =>
+            _editingValues[capField.Id] = dp.SelectedDate?.ToString("yyyy/MM/dd") ?? "";
+        return dp;
+    }
+
+    private UIElement BuildSelectFieldRow(CollectionField field)
+    {
+        var capField = field;
+        _editingValues.TryGetValue(field.Id, out var current);
+        var cb = new ComboBox
+        {
+            Style  = R<Style>("DarkComboBox"),
+            Margin = new Thickness(0, 0, 0, 14),
+        };
+        foreach (var opt in field.SelectOptions)
+            cb.Items.Add(new ComboBoxItem { Content = opt, Tag = opt });
+        if (!string.IsNullOrEmpty(current))
+        {
+            for (int i = 0; i < cb.Items.Count; i++)
+                if ((cb.Items[i] as ComboBoxItem)?.Tag as string == current)
+                { cb.SelectedIndex = i; break; }
+        }
+        _editingValues.TryAdd(field.Id, "");
+        cb.SelectionChanged += (_, _) =>
+            _editingValues[capField.Id] = (cb.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+        return cb;
+    }
+
+    private UIElement BuildCheckBoxFieldRow(CollectionField field)
+    {
+        var capField = field;
+        _editingValues.TryGetValue(field.Id, out var current);
+        var chk = new CheckBox
+        {
+            Content    = "有効",
+            Foreground = R<Brush>("TextPrimaryBrush"),
+            Margin     = new Thickness(0, 0, 0, 14),
+            IsChecked  = current == "true",
+        };
+        _editingValues.TryAdd(field.Id, current == "true" ? "true" : "false");
+        chk.Checked   += (_, _) => _editingValues[capField.Id] = "true";
+        chk.Unchecked += (_, _) => _editingValues[capField.Id] = "false";
+        return chk;
     }
 
     private UIElement BuildFileFieldRow(CollectionField field)

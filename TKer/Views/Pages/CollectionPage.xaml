@@ -342,31 +342,66 @@
                                     <TextBlock Text="フィールドを追加" FontSize="12" FontWeight="Bold"
                                                Foreground="{StaticResource TextSecondaryBrush}"
                                                Margin="0,0,0,10"/>
+                                    <TextBlock Text="付属情報名" FontSize="11"
+                                               Foreground="{StaticResource TextDimBrush}"
+                                               Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtNewFieldName"
+                                             Style="{StaticResource DarkTextBox}"
+                                             Margin="0,0,0,10"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                            <TextBlock Text="付属情報名" FontSize="11"
-                                                       Foreground="{StaticResource TextDimBrush}"
-                                                       Margin="0,0,0,4"/>
-                                            <TextBox x:Name="TxtNewFieldName"
-                                                     Style="{StaticResource DarkTextBox}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1">
+                                        <StackPanel Grid.Column="0" Margin="0,0,6,0">
                                             <TextBlock Text="データ形式" FontSize="11"
                                                        Foreground="{StaticResource TextDimBrush}"
                                                        Margin="0,0,0,4"/>
                                             <ComboBox x:Name="CbFieldType"
                                                       Style="{StaticResource DarkComboBox}"
-                                                      SelectedIndex="0">
-                                                <ComboBoxItem Tag="文字列">📝 文字列</ComboBoxItem>
-                                                <ComboBoxItem x:Name="CbFieldFile" Tag="ファイル">📁 ファイル</ComboBoxItem>
-                                                <ComboBoxItem Tag="リンク">🔗 リンク</ComboBoxItem>
+                                                      SelectedIndex="0"
+                                                      SelectionChanged="CbFieldType_Changed">
+                                                <ComboBoxItem Tag="文字列">文字列</ComboBoxItem>
+                                                <ComboBoxItem x:Name="CbFieldFile" Tag="ファイル">ファイル</ComboBoxItem>
+                                                <ComboBoxItem Tag="リンク">リンク</ComboBoxItem>
+                                                <ComboBoxItem Tag="日時">日時</ComboBoxItem>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                            <TextBlock Text="入力形式" FontSize="11"
+                                                       Foreground="{StaticResource TextDimBrush}"
+                                                       Margin="0,0,0,4"/>
+                                            <ComboBox x:Name="CbInputFormat"
+                                                      Style="{StaticResource DarkComboBox}"
+                                                      SelectedIndex="0"
+                                                      SelectionChanged="CbInputFormat_Changed">
+                                                <ComboBoxItem Tag="入力">入力</ComboBoxItem>
+                                                <ComboBoxItem Tag="選択">選択</ComboBoxItem>
+                                                <ComboBoxItem Tag="チェックボックス">チェックボックス</ComboBoxItem>
                                             </ComboBox>
                                         </StackPanel>
                                     </Grid>
+
+                                    <!-- 選択肢入力（入力形式=選択 のみ表示） -->
+                                    <StackPanel x:Name="SelectOptionsSection" Visibility="Collapsed" Margin="0,10,0,0">
+                                        <TextBlock Text="選択肢" FontSize="11"
+                                                   Foreground="{StaticResource TextDimBrush}"
+                                                   Margin="0,0,0,4"/>
+                                        <StackPanel x:Name="SelectOptionsList" Margin="0,0,0,4"/>
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="TxtNewSelectOption" Grid.Column="0"
+                                                     Style="{StaticResource DarkTextBox}"/>
+                                            <Button Grid.Column="1" Content="＋ 追加"
+                                                    Style="{StaticResource SecondaryButton}"
+                                                    Padding="10,4" Margin="6,0,0,0"
+                                                    Click="AddSelectOption_Click"/>
+                                        </Grid>
+                                    </StackPanel>
+
                                     <Button Content="＋ フィールドを追加"
                                             Style="{StaticResource SecondaryButton}"
                                             Padding="12,5" Margin="0,10,0,0"

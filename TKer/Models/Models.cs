@@ -893,8 +893,12 @@ public class CollectionField
     public string Id        { get; set; } = Guid.NewGuid().ToString("N")[..8];
     /// <summary>フィールド名。</summary>
     public string Name      { get; set; } = "";
-    /// <summary>文字列 | ファイル | リンク</summary>
+    /// <summary>文字列 | ファイル | リンク | 日時</summary>
     public string FieldType { get; set; } = "文字列";
+    /// <summary>入力 | 選択 | チェックボックス</summary>
+    public string InputFormat { get; set; } = "入力";
+    /// <summary>InputFormat="選択" の場合の選択肢一覧。</summary>
+    public List<string> SelectOptions { get; set; } = new();
     /// <summary>フィールドの表示順序。</summary>
     public int    Order     { get; set; } = 0;
 }

@@ -939,8 +939,10 @@ public class CollectionItem
     public string Name    { get; set; } = "";
     /// <summary>フィールドID → 値 の動的データ</summary>
     public Dictionary<string, string> FieldValues { get; set; } = new();
-    /// <summary>アイテムの追加日時。</summary>
+    /// <summary>アイテムの作成日時。</summary>
     public DateTime AddedAt { get; set; } = DateTime.Now;
+    /// <summary>アイテムの更新日時。</summary>
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
 
 /// <summary>タスクの進捗達成条件を表すクラス。</summary>

@@ -297,7 +297,7 @@ public partial class CollectionPage : Page, IRefreshable
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "ColName" });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "ColCreated" });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "ColUpdated" });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var namePanel = new StackPanel
         {
@@ -1341,6 +1341,14 @@ public partial class CollectionPage : Page, IRefreshable
 
     private void AddDetailActionButtons(Collection col)
     {
+        // 区切り線（データ付属情報セクションの下）
+        DetailContentPanel.Children.Add(new Border
+        {
+            Height     = 1,
+            Background = Brush("BorderBrush"),
+            Margin     = new Thickness(0, 4, 0, 0),
+        });
+
         bool hasFolder = !string.IsNullOrEmpty(col.FolderPath) && Directory.Exists(col.FolderPath);
 
         var btnOpenItems = new Button

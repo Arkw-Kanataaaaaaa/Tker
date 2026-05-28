@@ -82,6 +82,11 @@
                             ToolTip="アイテム削除 (Ctrl+-)" Click="DeleteItem_Click" Opacity="0.35">
                         <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                     </Button>
+                    <Button x:Name="BtnOrganize" Style="{StaticResource VToolbarBtn}"
+                            ToolTip="フォルダ整理" Click="ToggleOrganize_Click"
+                            Visibility="Collapsed">
+                        <Path Data="{StaticResource Bi.Tools}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
                     <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
                     <Button x:Name="BtnSearch" Style="{StaticResource VToolbarBtn}"
                             ToolTip="検索 (Ctrl+F)" Click="ToggleSearch_Click">
@@ -98,6 +103,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- 検索バー -->
@@ -152,6 +158,26 @@
                                FontSize="15" Foreground="{StaticResource TextDimBrush}"
                                HorizontalAlignment="Center"/>
                 </StackPanel>
+
+                <!-- 非管理アイテムセクション -->
+                <Border x:Name="OrphansSection" Grid.Row="3" Visibility="Collapsed"
+                        Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                        MaxHeight="260">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Padding="16,8,16,8"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <TextBlock x:Name="OrphansHeader"
+                                       Text="非管理アイテム"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextDimBrush}"/>
+                        </Border>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="OrphansListPanel" Margin="8"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
             </Grid>
 
             <!-- ─── 右ドロワー（詳細 / フォーム共用） ─── -->

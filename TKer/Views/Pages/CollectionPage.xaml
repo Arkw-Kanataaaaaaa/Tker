@@ -162,7 +162,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="ColName"/>
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="ColCreated"/>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="ColUpdated"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="コレクション名" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"

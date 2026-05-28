@@ -244,7 +244,7 @@
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PColPeriod"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PColProgress"/>
                                         <ColumnDefinition Width="Auto" SharedSizeGroup="PColCreated"/>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PColUpdated"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="プロジェクト名" Grid.Column="0"
                                                FontSize="11" FontWeight="SemiBold"
@@ -293,7 +293,7 @@
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="PColPeriod"/>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="PColProgress"/>
                                                     <ColumnDefinition Width="Auto" SharedSizeGroup="PColCreated"/>
-                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PColUpdated"/>
+                                                    <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <!-- 名前列 -->
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"

@@ -10,6 +10,7 @@ using System.Windows.Media.Imaging;
 using TKer.Helpers;
 using TKer.Models;
 using TKer.ViewModels;
+using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
@@ -19,11 +20,14 @@ public partial class CollectionItemsPage : Page
     private readonly MainViewModel _vm;
     private readonly Collection    _col;
     private string? _selectedItemId;
+    private string? _selectedOrphanPath;
     private string? _editingItemId;
     private string  _searchFieldId = "";
     private bool    _isGridMode;
+    private bool    _organizing;
     private Window? _keyDownWindow;
     private readonly Dictionary<string, string> _editingValues = new();
+    private readonly List<string> _orphans = new();
 
     private static readonly HashSet<string> ImageExtensions =
         new(StringComparer.OrdinalIgnoreCase)
@@ -37,6 +41,10 @@ public partial class CollectionItemsPage : Page
         TxtHeaderName.Text = _col.Name;
 
         _isGridMode = _col.Fields.Any(f => f.FieldType == "ファイル");
+
+        // フォルダ整理ボタンはファイルフィールドがあるコレクションのみ表示
+        BtnOrganize.Visibility = HasFileField()
+            ? Visibility.Visible : Visibility.Collapsed;
 
         PopulateSearchFields();
         UpdateDisplayModeButtons();
@@ -170,14 +178,17 @@ public partial class CollectionItemsPage : Page
 
     // ── 列ヘッダー ──────────────────────────────────────────
 
-    private int DateColumn => _col.Fields.Count == 0 ? 1 : _col.Fields.Count;
+    private int FieldColCount  => Math.Max(_col.Fields.Count, 1);
+    private int CreatedColumn  => FieldColCount;
+    private int UpdatedColumn  => FieldColCount + 1;
 
     private void BuildColumnHeader()
     {
         var g = MakeRowGrid();
         for (int i = 0; i < _col.Fields.Count; i++)
             AddHeaderCell(g, _col.Fields[i].Name, i);
-        AddHeaderCell(g, "追加日", DateColumn);
+        AddHeaderCell(g, "作成日時", CreatedColumn);
+        AddHeaderCell(g, "更新日時", UpdatedColumn);
 
         ItemsListHeader.Child = new Border
         {
@@ -378,7 +389,8 @@ public partial class CollectionItemsPage : Page
                 AddCell(g, display, i, isSel && i == 0);
             }
         }
-        AddCell(g, item.AddedAt.ToString("yyyy/MM/dd"), DateColumn, false);
+        AddCell(g, item.AddedAt.ToString("yyyy/MM/dd HH:mm"),   CreatedColumn, false);
+        AddCell(g, item.UpdatedAt.ToString("yyyy/MM/dd HH:mm"), UpdatedColumn, false);
 
         var row = new Border
         {
@@ -411,8 +423,159 @@ public partial class CollectionItemsPage : Page
             return;
         }
         _selectedItemId = item.Id;
+        _selectedOrphanPath = null;
         RefreshList();
+        RefreshOrphans();
         OpenDetailDrawer(item);
+    }
+
+    // ── フォルダ整理 / 非管理アイテム ─────────────────────────
+
+    private void ToggleOrganize_Click(object sender, RoutedEventArgs e)
+    {
+        _organizing = !_organizing;
+        if (!_organizing)
+        {
+            _selectedOrphanPath = null;
+            OrphansSection.Visibility = Visibility.Collapsed;
+            UpdateToolbarState();
+            return;
+        }
+        RefreshOrphans();
+    }
+
+    private void RefreshOrphans()
+    {
+        _orphans.Clear();
+        if (!_organizing || !HasFileField())
+        {
+            OrphansSection.Visibility = Visibility.Collapsed;
+            return;
+        }
+        if (string.IsNullOrEmpty(_col.FolderPath) || !Directory.Exists(_col.FolderPath))
+        {
+            OrphansSection.Visibility = Visibility.Visible;
+            OrphansHeader.Text = "非管理アイテム (0件) — コレクションフォルダがありません";
+            OrphansListPanel.Children.Clear();
+            return;
+        }
+
+        var managed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in _col.Items)
+            foreach (var f in _col.Fields.Where(x => x.FieldType == "ファイル"))
+                if (item.FieldValues.TryGetValue(f.Id, out var p) && !string.IsNullOrEmpty(p))
+                {
+                    try { managed.Add(Path.GetFullPath(p)); } catch { }
+                }
+
+        try
+        {
+            foreach (var path in Directory.EnumerateFiles(_col.FolderPath, "*", SearchOption.TopDirectoryOnly))
+            {
+                if (Path.GetFileName(path).EndsWith("_collection.json", StringComparison.OrdinalIgnoreCase)) continue;
+                var full = Path.GetFullPath(path);
+                if (!managed.Contains(full)) _orphans.Add(path);
+            }
+        }
+        catch { }
+
+        OrphansSection.Visibility = Visibility.Visible;
+        OrphansHeader.Text = $"非管理アイテム ({_orphans.Count}件)";
+        BuildOrphansList();
+    }
+
+    private void BuildOrphansList()
+    {
+        OrphansListPanel.Children.Clear();
+        if (_orphans.Count == 0)
+        {
+            OrphansListPanel.Children.Add(new TextBlock
+            {
+                Text       = "未登録のファイルはありません",
+                FontSize   = 12,
+                Foreground = R<Brush>("TextDimBrush"),
+                Margin     = new Thickness(8, 6, 0, 6),
+            });
+            return;
+        }
+
+        foreach (var path in _orphans)
+            OrphansListPanel.Children.Add(BuildOrphanRow(path));
+    }
+
+    private UIElement BuildOrphanRow(string path)
+    {
+        bool isSel = string.Equals(path, _selectedOrphanPath, StringComparison.OrdinalIgnoreCase);
+        var selBg   = new SolidColorBrush(Color.FromArgb(60, 35, 131, 226));
+        var hoverBg = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
+
+        var g = new Grid();
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var icon = new System.Windows.Shapes.Path
+        {
+            Data              = R<Geometry>("Bi.FileEarmarkText"),
+            Style             = R<Style>("BiIconSm"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 0, 8, 0),
+        };
+        Grid.SetColumn(icon, 0); g.Children.Add(icon);
+
+        var nameTb = new TextBlock
+        {
+            Text              = Path.GetFileName(path),
+            FontSize          = 12,
+            Foreground        = R<Brush>("TextPrimaryBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming      = TextTrimming.CharacterEllipsis,
+            ToolTip           = path,
+        };
+        Grid.SetColumn(nameTb, 1); g.Children.Add(nameTb);
+
+        long size = 0;
+        try { size = new FileInfo(path).Length; } catch { }
+        var sizeTb = new TextBlock
+        {
+            Text              = FormatBytes(size),
+            FontSize          = 11,
+            Foreground        = R<Brush>("TextDimBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(12, 0, 0, 0),
+        };
+        Grid.SetColumn(sizeTb, 2); g.Children.Add(sizeTb);
+
+        var row = new Border
+        {
+            Background      = isSel ? selBg : Brushes.Transparent,
+            CornerRadius    = new CornerRadius(4),
+            Padding         = new Thickness(10, 6, 10, 6),
+            Margin          = new Thickness(0, 0, 0, 2),
+            Cursor          = Cursors.Hand,
+            Child           = g,
+        };
+        row.MouseEnter        += (_, _) => { if (!isSel) row.Background = hoverBg; };
+        row.MouseLeave        += (_, _) => { if (!isSel) row.Background = Brushes.Transparent; };
+        row.MouseLeftButtonUp += (_, _) =>
+        {
+            _selectedOrphanPath = string.Equals(_selectedOrphanPath, path, StringComparison.OrdinalIgnoreCase)
+                ? null : path;
+            _selectedItemId = null;
+            if (DetailDrawer.Visibility == Visibility.Visible) CloseDetailDrawer();
+            BuildOrphansList();
+            RefreshList();
+            UpdateToolbarState();
+        };
+        return row;
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):0.#} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):0.##} GB";
     }
 
     private void OpenDetailDrawer(CollectionItem item)
@@ -448,6 +611,7 @@ public partial class CollectionItemsPage : Page
             DetailDrawer.Visibility = Visibility.Collapsed;
             _selectedItemId = null;
             RefreshList();
+            RefreshOrphans();
         };
         DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
@@ -495,7 +659,8 @@ public partial class CollectionItemsPage : Page
                 AddDetailRow(field.Name, display);
             }
         }
-        AddDetailRow("追加日", item.AddedAt.ToString("yyyy/MM/dd HH:mm"));
+        AddDetailRow("作成日時", item.AddedAt.ToString("yyyy/MM/dd HH:mm"));
+        AddDetailRow("更新日時", item.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
     }
 
     private void AddDetailRow(string label, string value)
@@ -599,8 +764,9 @@ public partial class CollectionItemsPage : Page
             var copiedPath = CopyFileToCollection(filePath);
             var item = new CollectionItem
             {
-                Name    = Path.GetFileNameWithoutExtension(filePath),
-                AddedAt = DateTime.Now,
+                Name      = Path.GetFileNameWithoutExtension(filePath),
+                AddedAt   = DateTime.Now,
+                UpdatedAt = DateTime.Now,
             };
             item.FieldValues[fileField.Id] = copiedPath;
             _col.Items.Add(item);
@@ -608,6 +774,7 @@ public partial class CollectionItemsPage : Page
         _col.UpdatedAt = DateTime.Now;
         _vm.CollectionService.Save(_col);
         RefreshList();
+        RefreshOrphans();
         e.Handled = true;
     }
 
@@ -626,7 +793,12 @@ public partial class CollectionItemsPage : Page
         g.ColumnDefinitions.Add(new ColumnDefinition
         {
             Width           = GridLength.Auto,
-            SharedSizeGroup = "ItemsColDate",
+            SharedSizeGroup = "ItemsColCreated",
+        });
+        // 最終列は * で残り幅を吸収（ウィンドウ最大化時に左寄りを防ぐ）
+        g.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width = new GridLength(1, GridUnitType.Star),
         });
         return g;
     }
@@ -664,17 +836,30 @@ public partial class CollectionItemsPage : Page
 
     private void UpdateToolbarState()
     {
-        bool hasSel = _selectedItemId != null;
+        bool hasSel = _selectedItemId != null || _selectedOrphanPath != null;
         BtnEdit.IsEnabled   = hasSel;
         BtnDelete.IsEnabled = hasSel;
         BtnEdit.Opacity     = hasSel ? 1.0 : 0.35;
         BtnDelete.Opacity   = hasSel ? 1.0 : 0.35;
     }
 
+    private bool HasFileField() => _col.Fields.Any(f => f.FieldType == "ファイル");
+
     private void AddItem_Click(object sender, RoutedEventArgs e) => ShowForm(null);
 
     private void EditItem_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedOrphanPath != null)
+        {
+            // 非管理アイテムを「編集」 = 情報付与してコレクションに取り込む
+            var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
+            if (fileField == null) return;
+            var path = _selectedOrphanPath;
+            ShowForm(null);
+            _editingValues[fileField.Id] = path;
+            BuildFormContent();
+            return;
+        }
         if (_selectedItemId == null) return;
         var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemId);
         if (item != null) ShowForm(item);
@@ -682,18 +867,30 @@ public partial class CollectionItemsPage : Page
 
     private void DeleteItem_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedOrphanPath != null)
+        {
+            var path = _selectedOrphanPath;
+            var fileName = Path.GetFileName(path);
+            if (!AppDialog.Confirm($"非管理ファイル「{fileName}」をフォルダから削除しますか？\nこの操作は元に戻せません。",
+                    "削除確認", Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
+            _selectedOrphanPath = null;
+            RefreshOrphans();
+            UpdateToolbarState();
+            return;
+        }
         if (_selectedItemId == null) return;
         var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemId);
         if (item == null) return;
         var label = string.IsNullOrWhiteSpace(item.Name) ? "このアイテム" : $"「{item.Name}」";
-        if (MessageBox.Show($"{label}を削除しますか？",
-                "削除確認", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (!AppDialog.Confirm($"{label}を削除しますか？", "削除確認",
+                Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
         _col.Items.Remove(item);
         _col.UpdatedAt = DateTime.Now;
         _vm.CollectionService.Save(_col);
         _selectedItemId = null;
         if (DetailDrawer.Visibility == Visibility.Visible) CloseDetailDrawer();
-        else RefreshList();
+        else { RefreshList(); RefreshOrphans(); }
     }
 
     // ── フォーム ────────────────────────────────────────────
@@ -980,9 +1177,10 @@ public partial class CollectionItemsPage : Page
             return first.FieldType == "ファイル" ? Path.GetFileNameWithoutExtension(v) : v.Trim();
         }
 
+        var now = DateTime.Now;
         if (_editingItemId == null)
         {
-            var item = new CollectionItem { AddedAt = DateTime.Now };
+            var item = new CollectionItem { AddedAt = now, UpdatedAt = now };
             foreach (var field in _col.Fields)
             {
                 if (!_editingValues.TryGetValue(field.Id, out var v) || string.IsNullOrEmpty(v)) continue;
@@ -1005,15 +1203,18 @@ public partial class CollectionItemsPage : Page
                     v = CopyFileToCollection(v);
                 item.FieldValues[field.Id] = v;
             }
-            item.Name = DeriveLabel();
+            item.Name      = DeriveLabel();
+            item.UpdatedAt = now;
         }
 
         _col.UpdatedAt = DateTime.Now;
         _vm.CollectionService.Save(_col);
         _editingItemId = null;
         _editingValues.Clear();
+        _selectedOrphanPath = null;
         CloseFormDrawer();
         RefreshList();
+        RefreshOrphans();
     }
 
     // ── ファイルコピー ──────────────────────────────────────

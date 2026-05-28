@@ -33,6 +33,17 @@ public partial class CollectionItemsPage : Page
         new(StringComparer.OrdinalIgnoreCase)
         { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif" };
 
+    // ── 画像プレビューオーバーレイ ──
+    private System.Windows.Point _previewDragStart;
+    private System.Windows.Point _previewTranslateStart;
+    private bool _isPreviewDragging;
+    private bool _previewPressedBackground;
+    private bool _zoomDragging;
+    private const double PreviewMinScale   = 1.0;
+    private const double PreviewMaxScale   = 4.0;
+    private const double PreviewGaugeWidth = 160.0;
+    private const double PreviewThumbSize  = 14.0;
+
     public CollectionItemsPage(MainViewModel vm)
     {
         _vm  = vm;
@@ -163,6 +174,11 @@ public partial class CollectionItemsPage : Page
             if (e.Key == Key.F2)
             {
                 EditItem_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && PreviewOverlay.Visibility == Visibility.Visible)
+            {
+                ClosePreviewOverlay();
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape && FormDrawer.Visibility == Visibility.Visible)
@@ -628,45 +644,86 @@ public partial class CollectionItemsPage : Page
     {
         DetailContentPanel.Children.Clear();
 
-        var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
-        string? filePath = fileField != null
-            && item.FieldValues.TryGetValue(fileField.Id, out var fp) ? fp : null;
-
-        // 画像プレビュー
-        if (filePath != null && IsImageFile(filePath) && File.Exists(filePath))
-        {
-            var bmp = TryLoadBitmap(filePath);
-            if (bmp != null)
-            {
-                DetailContentPanel.Children.Add(new Border
-                {
-                    Height       = 200,
-                    CornerRadius = new CornerRadius(6),
-                    ClipToBounds = true,
-                    Margin       = new Thickness(0, 0, 0, 14),
-                    Background   = R<Brush>("BgCardBrush"),
-                    Child        = new Image { Source = bmp, Stretch = Stretch.Uniform },
-                });
-            }
-        }
-
         foreach (var field in _col.Fields.OrderBy(f => f.Order))
         {
             var val = item.FieldValues.TryGetValue(field.Id, out var v) ? v : "";
             if (string.IsNullOrEmpty(val)) continue;
 
-            if (field.FieldType == "リンク")
+            if (field.FieldType == "ファイル")
+                AddDetailFileRow(field.Name, val);
+            else if (field.FieldType == "リンク")
                 AddDetailLinkRow(field.Name, val);
             else if (field.InputFormat == "チェックボックス")
                 AddDetailRow(field.Name, val == "true" ? "✓ 有効" : "未設定");
             else
-            {
-                var display = field.FieldType == "ファイル" ? Path.GetFileName(val) : val;
-                AddDetailRow(field.Name, display);
-            }
+                AddDetailRow(field.Name, val);
         }
         AddDetailRow("作成日時", item.AddedAt.ToString("yyyy/MM/dd HH:mm"));
         AddDetailRow("更新日時", item.UpdatedAt.ToString("yyyy/MM/dd HH:mm"));
+    }
+
+    private void AddDetailFileRow(string label, string path)
+    {
+        var sp = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        sp.Children.Add(new TextBlock
+        {
+            Text       = label,
+            FontSize   = 11,
+            Foreground = R<Brush>("TextDimBrush"),
+            Margin     = new Thickness(0, 0, 0, 3),
+        });
+        sp.Children.Add(new TextBlock
+        {
+            Text         = Path.GetFileName(path),
+            FontSize     = 13,
+            Foreground   = R<Brush>("TextPrimaryBrush"),
+            TextWrapping = TextWrapping.Wrap,
+            ToolTip      = path,
+        });
+
+        if (IsImageFile(path) && File.Exists(path))
+        {
+            var bmp = TryLoadBitmap(path);
+            if (bmp != null)
+            {
+                var img = new Image { Source = bmp, Stretch = Stretch.Uniform };
+                var expandIcon = new Border
+                {
+                    Width               = 28, Height = 28,
+                    CornerRadius        = new CornerRadius(4),
+                    Background          = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment   = VerticalAlignment.Bottom,
+                    Margin              = new Thickness(0, 0, 6, 6),
+                    Cursor              = Cursors.Hand,
+                    Child               = new System.Windows.Shapes.Path
+                    {
+                        Data                = R<Geometry>("Bi.ArrowsFullscreen"),
+                        Width               = 14, Height = 14,
+                        Stretch             = Stretch.Uniform,
+                        Fill                = Brushes.White,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment   = VerticalAlignment.Center,
+                    },
+                };
+                var imgGrid = new Grid { Cursor = Cursors.Hand };
+                imgGrid.Children.Add(img);
+                imgGrid.Children.Add(expandIcon);
+                imgGrid.MouseLeftButtonUp += (_, _) => OpenPreviewOverlay(bmp);
+
+                sp.Children.Add(new Border
+                {
+                    Height       = 200,
+                    CornerRadius = new CornerRadius(6),
+                    ClipToBounds = true,
+                    Margin       = new Thickness(0, 6, 0, 0),
+                    Background   = R<Brush>("BgCardBrush"),
+                    Child        = imgGrid,
+                });
+            }
+        }
+
+        DetailContentPanel.Children.Add(sp);
     }
 
     private void AddDetailRow(string label, string value)
@@ -1253,6 +1310,118 @@ public partial class CollectionItemsPage : Page
             return destPath;
         }
         catch { return sourcePath; }
+    }
+
+    // ── 画像プレビューオーバーレイ ──────────────────────────
+
+    private void OpenPreviewOverlay(BitmapImage bmp)
+    {
+        PreviewImage.Source = bmp;
+        PreviewScale.ScaleX = PreviewScale.ScaleY = 1;
+        PreviewTranslate.X  = PreviewTranslate.Y  = 0;
+        UpdateZoomGauge(1);
+        PreviewOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void ClosePreviewOverlay()
+    {
+        _isPreviewDragging        = false;
+        _previewPressedBackground = false;
+        PreviewOverlay.ReleaseMouseCapture();
+        PreviewOverlay.Visibility = Visibility.Collapsed;
+        PreviewImage.Source       = null;
+    }
+
+    private void UpdateZoomGauge(double scale)
+    {
+        double ratio = Math.Clamp((scale - PreviewMinScale) / (PreviewMaxScale - PreviewMinScale), 0, 1);
+        PreviewZoomLabel.Text = $"{(int)Math.Round(ratio * 100)}%";
+        PreviewZoomFill.Width = ratio * PreviewGaugeWidth;
+        ZoomThumb.Margin      = new Thickness(ratio * (PreviewGaugeWidth - PreviewThumbSize), 0, 0, 0);
+    }
+
+    private void SetZoomFromPoint(double x)
+    {
+        double ratio = Math.Clamp(x / PreviewGaugeWidth, 0, 1);
+        double scale = PreviewMinScale + ratio * (PreviewMaxScale - PreviewMinScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = scale;
+        UpdateZoomGauge(scale);
+    }
+
+    private void ClosePreview_Click(object sender, RoutedEventArgs e)
+    {
+        ClosePreviewOverlay();
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl)) return;
+        double factor   = e.Delta > 0 ? 1.15 : 1.0 / 1.15;
+        double newScale = Math.Clamp(PreviewScale.ScaleX * factor, PreviewMinScale, PreviewMaxScale);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = newScale;
+        UpdateZoomGauge(newScale);
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is Image)
+        {
+            _isPreviewDragging     = true;
+            _previewDragStart      = e.GetPosition(PreviewOverlay);
+            _previewTranslateStart = new System.Windows.Point(PreviewTranslate.X, PreviewTranslate.Y);
+            PreviewOverlay.CaptureMouse();
+        }
+        else
+        {
+            _previewPressedBackground = true;
+        }
+        e.Handled = true;
+    }
+
+    private void PreviewOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPreviewDragging) return;
+        var pos = e.GetPosition(PreviewOverlay);
+        PreviewTranslate.X = _previewTranslateStart.X + (pos.X - _previewDragStart.X);
+        PreviewTranslate.Y = _previewTranslateStart.Y + (pos.Y - _previewDragStart.Y);
+    }
+
+    private void PreviewOverlay_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isPreviewDragging)
+        {
+            _isPreviewDragging = false;
+            PreviewOverlay.ReleaseMouseCapture();
+        }
+        else if (_previewPressedBackground)
+        {
+            _previewPressedBackground = false;
+            ClosePreviewOverlay();
+        }
+        e.Handled = true;
+    }
+
+    private void ZoomTrack_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = true;
+        ZoomTrack.CaptureMouse();
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+        e.Handled = true;
+    }
+
+    private void ZoomTrack_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_zoomDragging) return;
+        SetZoomFromPoint(e.GetPosition(ZoomTrack).X);
+    }
+
+    private void ZoomTrack_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        _zoomDragging = false;
+        ZoomTrack.ReleaseMouseCapture();
+        e.Handled = true;
     }
 
     // ── ユーティリティ ──────────────────────────────────────

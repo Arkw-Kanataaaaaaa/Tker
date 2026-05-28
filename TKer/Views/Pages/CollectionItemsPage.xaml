@@ -41,7 +41,7 @@
                     </Grid>
                 </Border>
 
-                <!-- 左: パンくずリスト（コレクション > コレクション名） -->
+                <!-- 左: パンくずリスト -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="コレクション" FontWeight="Bold" FontSize="18"
                                Foreground="{StaticResource TextDimBrush}"
@@ -63,6 +63,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="52"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- ─── 縦ツールバー ─── -->
@@ -70,15 +71,15 @@
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
                 <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
                     <Button x:Name="BtnEdit" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="選択したアイテムを編集" Click="EditItem_Click" Opacity="0.35">
+                            ToolTip="アイテム編集 (F2)" Click="EditItem_Click" Opacity="0.35">
                         <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
                     </Button>
                     <Button x:Name="BtnAdd" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="アイテムを追加" Click="AddItem_Click">
+                            ToolTip="アイテム追加 (Ctrl+Shift+;)" Click="AddItem_Click">
                         <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
                     </Button>
                     <Button x:Name="BtnDelete" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="選択したアイテムを削除" Click="DeleteItem_Click" Opacity="0.35">
+                            ToolTip="アイテム削除 (Ctrl+-)" Click="DeleteItem_Click" Opacity="0.35">
                         <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                     </Button>
                     <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
@@ -152,6 +153,34 @@
                                HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
+
+            <!-- ─── 右ドロワー（詳細） ─── -->
+            <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
+                    Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <DockPanel x:Name="DetailDrawer" Width="360" HorizontalAlignment="Left"
+                           Visibility="Collapsed">
+                    <!-- ヘッダー -->
+                    <Border DockPanel.Dock="Top"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                            Padding="20,14">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                    Click="CloseDetail_Click" ToolTip="閉じる">
+                                <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                            </Button>
+                            <TextBlock x:Name="TxtDetailName"
+                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </DockPanel>
+                    </Border>
+                    <!-- コンテンツ -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="DetailContentPanel" Margin="20,16,20,20"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
 
         <!-- ─── フォームドロワー (ZIndex=10) ─── -->
@@ -167,7 +196,6 @@
                     <TranslateTransform x:Name="FormPanelTransform"/>
                 </Border.RenderTransform>
                 <DockPanel>
-                    <!-- ヘッダー -->
                     <Border DockPanel.Dock="Top"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                             Padding="20,14">
@@ -182,7 +210,6 @@
                                        VerticalAlignment="Center"/>
                         </DockPanel>
                     </Border>
-                    <!-- フッター -->
                     <Border DockPanel.Dock="Bottom"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
                             Padding="20,12">
@@ -195,7 +222,6 @@
                                     Padding="22,6" Click="SaveForm_Click"/>
                         </StackPanel>
                     </Border>
-                    <!-- フォーム本体（コードで動的生成） -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="FormContentPanel" Margin="24,16,24,16"/>
                     </ScrollViewer>

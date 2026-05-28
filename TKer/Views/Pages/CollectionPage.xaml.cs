@@ -295,11 +295,16 @@ public partial class CollectionPage : Page, IRefreshable
         bool isSel = col.Id == _selectedId;
 
         var g = new Grid();
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "ColName" });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "ColCreated" });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, SharedSizeGroup = "ColUpdated" });
 
-        var namePanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var namePanel = new StackPanel
+        {
+            Orientation       = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 0, 18, 0),
+        };
         namePanel.Children.Add(new TextBlock
         {
             Text              = col.Icon ?? "📁",
@@ -326,6 +331,7 @@ public partial class CollectionPage : Page, IRefreshable
             Foreground        = Brush("TextSecondaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 0, 18, 0),
         };
         Grid.SetColumn(createdTb, 1); g.Children.Add(createdTb);
 
@@ -763,7 +769,6 @@ public partial class CollectionPage : Page, IRefreshable
     {
         "ファイル" => ("ファイル", Color.FromArgb(200, 120, 60, 200)),
         "リンク" => ("リンク", Color.FromArgb(200, 30, 140, 80)),
-        "日時"   => ("日時",   Color.FromArgb(200, 200, 130, 35)),
         _       => ("文字列", Color.FromArgb(200, 35, 100, 200)),
     };
 
@@ -888,8 +893,8 @@ public partial class CollectionPage : Page, IRefreshable
         var type        = (CbFieldType.SelectedItem   as ComboBoxItem)?.Tag as string ?? "文字列";
         var inputFormat = (CbInputFormat.SelectedItem as ComboBoxItem)?.Tag as string ?? "入力";
 
-        // ファイル/日時 はそれぞれ「入力」固定
-        if (type == "ファイル" || type == "日時") inputFormat = "入力";
+        // ファイル は「入力」固定
+        if (type == "ファイル") inputFormat = "入力";
 
         // ファイル型フィールドは1つのみ
         if (type == "ファイル" && HasFileField())
@@ -924,8 +929,8 @@ public partial class CollectionPage : Page, IRefreshable
     {
         if (CbInputFormat == null) return;
         var type = (CbFieldType.SelectedItem as ComboBoxItem)?.Tag as string ?? "文字列";
-        // ファイル/日時 は入力形式が固定
-        bool inputFormatLocked = type == "ファイル" || type == "日時";
+        // ファイル は入力形式が固定
+        bool inputFormatLocked = type == "ファイル";
         CbInputFormat.IsEnabled = !inputFormatLocked;
         if (inputFormatLocked) CbInputFormat.SelectedIndex = 0;
         UpdateSelectOptionsVisibility();
@@ -1275,6 +1280,7 @@ public partial class CollectionPage : Page, IRefreshable
                 Foreground   = Brush("TextDimBrush"),
                 TextWrapping = TextWrapping.Wrap,
             });
+            AddDetailActionButtons(col);
             return;
         }
 
@@ -1329,6 +1335,45 @@ public partial class CollectionPage : Page, IRefreshable
                 Child           = g,
             });
         }
+
+        AddDetailActionButtons(col);
+    }
+
+    private void AddDetailActionButtons(Collection col)
+    {
+        bool hasFolder = !string.IsNullOrEmpty(col.FolderPath) && Directory.Exists(col.FolderPath);
+
+        var btnOpenItems = new Button
+        {
+            Content             = "アイテムを開く",
+            Style               = (Style)FindResource("SecondaryButton"),
+            Padding             = new Thickness(14, 7, 14, 7),
+            Margin              = new Thickness(0, 0, 8, 0),
+        };
+        btnOpenItems.Click += (_, _) =>
+        {
+            _vm.SelectedCollection = col;
+            _vm.NavigateToCommand.Execute("CollectionItems");
+        };
+
+        var btnExplorer = new Button
+        {
+            Content             = "エクスプローラーで開く",
+            Style               = (Style)FindResource("SecondaryButton"),
+            Padding             = new Thickness(14, 7, 14, 7),
+            IsEnabled           = hasFolder,
+            ToolTip             = hasFolder ? null : "コレクションフォルダが未設定です",
+        };
+        btnExplorer.Click += (_, _) => ShellHelper.OpenInExplorer(col.FolderPath);
+
+        var panel = new StackPanel
+        {
+            Orientation         = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin              = new Thickness(0, 12, 0, 4),
+            Children            = { btnOpenItems, btnExplorer },
+        };
+        DetailContentPanel.Children.Add(panel);
     }
 
     // ── 表紙画像 ────────────────────────────────────────────

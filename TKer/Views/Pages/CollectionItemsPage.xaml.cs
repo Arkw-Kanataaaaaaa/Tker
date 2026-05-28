@@ -71,8 +71,8 @@ public partial class CollectionItemsPage : Page
 
     private void UpdateDisplayModeButtons()
     {
-        ViewIconGrid.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
-        ViewIconList.Visibility = _isGridMode ? Visibility.Visible   : Visibility.Collapsed;
+        ViewIconGrid.Visibility = _isGridMode ? Visibility.Visible   : Visibility.Collapsed;
+        ViewIconList.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
         BtnViewToggle.ToolTip   = _isGridMode ? "リスト表示に切り替え" : "グリッド表示に切り替え";
         ItemsListHeader.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -362,6 +362,7 @@ public partial class CollectionItemsPage : Page
             if (f.FieldType == "リンク" && !string.IsNullOrEmpty(val))
             {
                 var link = BuildLinkText(val, 13);
+                link.Margin = ColumnPadding(i);
                 Grid.SetColumn(link, i);
                 g.Children.Add(link);
             }
@@ -615,24 +616,32 @@ public partial class CollectionItemsPage : Page
     private Grid MakeRowGrid()
     {
         var g = new Grid();
-        if (_col.Fields.Count == 0)
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        else
-            for (int i = 0; i < _col.Fields.Count; i++)
-                g.ColumnDefinitions.Add(new ColumnDefinition
-                {
-                    Width = i == 0 ? new GridLength(1, GridUnitType.Star) : new GridLength(150),
-                });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+        int colCount = Math.Max(_col.Fields.Count, 1);
+        for (int i = 0; i < colCount; i++)
+            g.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width            = GridLength.Auto,
+                SharedSizeGroup  = $"ItemsCol{i}",
+            });
+        g.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width           = GridLength.Auto,
+            SharedSizeGroup = "ItemsColDate",
+        });
         return g;
     }
+
+    private static Thickness ColumnPadding(int col) =>
+        new(col == 0 ? 0 : 18, 0, 18, 0);
 
     private void AddHeaderCell(Grid g, string text, int col)
     {
         var tb = new TextBlock
         {
             Text = text, FontSize = 12, FontWeight = FontWeights.SemiBold,
-            Foreground = R<Brush>("TextDimBrush"), VerticalAlignment = VerticalAlignment.Center,
+            Foreground = R<Brush>("TextDimBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = ColumnPadding(col),
         };
         Grid.SetColumn(tb, col); g.Children.Add(tb);
     }
@@ -646,6 +655,7 @@ public partial class CollectionItemsPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
+            Margin = ColumnPadding(col),
         };
         Grid.SetColumn(tb, col); g.Children.Add(tb);
     }
@@ -723,28 +733,13 @@ public partial class CollectionItemsPage : Page
             FormContentPanel.Children.Add(MakeFormLabel(field.Name));
             if (field.FieldType == "ファイル")
                 FormContentPanel.Children.Add(BuildFileFieldRow(field));
-            else if (field.FieldType == "日時")
-                FormContentPanel.Children.Add(BuildDatePickerRow(field));
             else if (field.InputFormat == "選択")
                 FormContentPanel.Children.Add(BuildSelectFieldRow(field));
             else if (field.InputFormat == "チェックボックス")
-                FormContentPanel.Children.Add(BuildCheckBoxFieldRow(field));
+                FormContentPanel.Children.Add(BuildToggleFieldRow(field));
             else
                 FormContentPanel.Children.Add(MakeFormTextBox(field.Id, new Thickness(0, 0, 0, 14)));
         }
-    }
-
-    private UIElement BuildDatePickerRow(CollectionField field)
-    {
-        var capField = field;
-        _editingValues.TryGetValue(field.Id, out var current);
-        var dp = new DatePicker { Margin = new Thickness(0, 0, 0, 14) };
-        if (!string.IsNullOrEmpty(current) && DateTime.TryParse(current, out var dt))
-            dp.SelectedDate = dt;
-        _editingValues.TryAdd(field.Id, "");
-        dp.SelectedDateChanged += (_, _) =>
-            _editingValues[capField.Id] = dp.SelectedDate?.ToString("yyyy/MM/dd") ?? "";
-        return dp;
     }
 
     private UIElement BuildSelectFieldRow(CollectionField field)
@@ -770,21 +765,67 @@ public partial class CollectionItemsPage : Page
         return cb;
     }
 
-    private UIElement BuildCheckBoxFieldRow(CollectionField field)
+    private UIElement BuildToggleFieldRow(CollectionField field)
     {
         var capField = field;
         _editingValues.TryGetValue(field.Id, out var current);
-        var chk = new CheckBox
+        bool on = current == "true";
+        _editingValues[field.Id] = on ? "true" : "false";
+
+        var offColor   = Color.FromRgb(80, 80, 80);
+        var onColor    = Color.FromRgb(35, 131, 226);
+        var trackBrush = new SolidColorBrush(on ? onColor : offColor);
+
+        var thumb = new Border
         {
-            Content    = "有効",
-            Foreground = R<Brush>("TextPrimaryBrush"),
-            Margin     = new Thickness(0, 0, 0, 14),
-            IsChecked  = current == "true",
+            Width             = 20, Height = 20,
+            CornerRadius      = new CornerRadius(10),
+            Background        = Brushes.White,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin            = new Thickness(on ? 22 : 2, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
         };
-        _editingValues.TryAdd(field.Id, current == "true" ? "true" : "false");
-        chk.Checked   += (_, _) => _editingValues[capField.Id] = "true";
-        chk.Unchecked += (_, _) => _editingValues[capField.Id] = "false";
-        return chk;
+        var track = new Border
+        {
+            Width        = 44, Height = 24,
+            CornerRadius = new CornerRadius(12),
+            Background   = trackBrush,
+            Cursor       = Cursors.Hand,
+            Child        = new Grid { Children = { thumb } },
+        };
+
+        bool animating = false;
+        track.MouseLeftButtonUp += (_, _) =>
+        {
+            if (animating) return;
+            animating = true;
+            on = !on;
+            _editingValues[capField.Id] = on ? "true" : "false";
+
+            var thumbAnim = new System.Windows.Media.Animation.ThicknessAnimation
+            {
+                To             = new Thickness(on ? 22 : 2, 0, 0, 0),
+                Duration       = TimeSpan.FromMilliseconds(180),
+                EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
+            };
+            thumbAnim.Completed += (_, _) => animating = false;
+            thumb.BeginAnimation(FrameworkElement.MarginProperty, thumbAnim);
+
+            var colorAnim = new System.Windows.Media.Animation.ColorAnimation
+            {
+                To       = on ? onColor : offColor,
+                Duration = TimeSpan.FromMilliseconds(180),
+            };
+            trackBrush.BeginAnimation(SolidColorBrush.ColorProperty, colorAnim);
+        };
+
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin      = new Thickness(0, 0, 0, 14),
+            Children    = { track },
+        };
     }
 
     private UIElement BuildFileFieldRow(CollectionField field)

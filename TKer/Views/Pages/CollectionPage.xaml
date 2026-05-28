@@ -98,7 +98,7 @@
                     <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconLg}"/>
                 </Button>
                 <Button x:Name="BtnToolbarOpen" Style="{StaticResource VToolbarBtn}"
-                        ToolTip="コレクションを開く (Ctrl+A)" Click="OpenCollection_Click"
+                        ToolTip="アイテムを開く (Ctrl+A)" Click="OpenCollection_Click"
                         IsEnabled="False">
                     <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconLg}"/>
                 </Button>
@@ -147,7 +147,8 @@
                 </ScrollViewer>
 
                 <!-- リスト表示 -->
-                <Grid x:Name="CollectionListSection" Visibility="Collapsed">
+                <Grid x:Name="CollectionListSection" Visibility="Collapsed"
+                      Grid.IsSharedSizeScope="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -159,16 +160,16 @@
                             BorderThickness="0,0,0,1" Padding="16,8,16,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="ColName"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="ColCreated"/>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="ColUpdated"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="コレクション名" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
-                                       HorizontalAlignment="Left"/>
+                                       HorizontalAlignment="Left" Margin="0,0,18,0"/>
                             <TextBlock Grid.Column="1" Text="作成日時" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
-                                       HorizontalAlignment="Left"/>
+                                       HorizontalAlignment="Left" Margin="0,0,18,0"/>
                             <TextBlock Grid.Column="2" Text="更新日時" FontSize="11"
                                        Foreground="{StaticResource TextDimBrush}" FontWeight="SemiBold"
                                        HorizontalAlignment="Left"/>
@@ -364,7 +365,6 @@
                                                 <ComboBoxItem Tag="文字列">文字列</ComboBoxItem>
                                                 <ComboBoxItem x:Name="CbFieldFile" Tag="ファイル">ファイル</ComboBoxItem>
                                                 <ComboBoxItem Tag="リンク">リンク</ComboBoxItem>
-                                                <ComboBoxItem Tag="日時">日時</ComboBoxItem>
                                             </ComboBox>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Margin="6,0,0,0">

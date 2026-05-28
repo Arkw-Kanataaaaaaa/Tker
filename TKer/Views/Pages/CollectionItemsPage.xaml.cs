@@ -21,8 +21,13 @@ public partial class CollectionItemsPage : Page
     private string? _selectedItemId;
     private string? _editingItemId;
     private string  _searchFieldId = "";   // "" = すべて
+    private bool    _isGridMode;
     private Window? _keyDownWindow;
     private readonly Dictionary<string, string> _editingValues = new();
+
+    private static readonly HashSet<string> ImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif" };
 
     public CollectionItemsPage(MainViewModel vm)
     {
@@ -30,7 +35,12 @@ public partial class CollectionItemsPage : Page
         _col = vm.SelectedCollection!;
         InitializeComponent();
         TxtHeaderName.Text = _col.Name;
+
+        // ファイルフィールドがあればデフォルトをグリッド表示に
+        _isGridMode = _col.Fields.Any(f => f.FieldType == "ファイル");
+
         PopulateSearchFields();
+        UpdateDisplayModeButtons();
         BuildColumnHeader();
         RefreshList();
 
@@ -51,9 +61,29 @@ public partial class CollectionItemsPage : Page
         };
     }
 
+    // ── 表示モード ──────────────────────────────────────────
+
+    private void ToggleViewMode_Click(object sender, MouseButtonEventArgs e)
+    {
+        _isGridMode = !_isGridMode;
+        UpdateDisplayModeButtons();
+        RefreshList();
+    }
+
+    private void UpdateDisplayModeButtons()
+    {
+        // グリッドモード時 → リストアイコン表示（切替先を示す）
+        ViewIconGrid.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
+        ViewIconList.Visibility = _isGridMode ? Visibility.Visible   : Visibility.Collapsed;
+        BtnViewToggle.ToolTip   = _isGridMode ? "リスト表示に切り替え" : "グリッド表示に切り替え";
+
+        // 列ヘッダーはリスト表示時のみ
+        ItemsListHeader.Visibility = _isGridMode ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     // ── ヘッダー ────────────────────────────────────────────
 
-    private void CollectionCrumb_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void CollectionCrumb_Click(object sender, MouseButtonEventArgs e)
         => _vm.NavigateToCommand.Execute("Collection");
 
     // ── 検索 ────────────────────────────────────────────────
@@ -134,15 +164,164 @@ public partial class CollectionItemsPage : Page
         var list = seq.ToList();
 
         TxtItemCount.Text = $"{list.Count} 件";
-        EmptyStatePanel.Visibility = list.Count == 0
-            ? Visibility.Visible : Visibility.Collapsed;
+        EmptyStatePanel.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        ItemsListPanel.Children.Clear();
-        foreach (var item in list)
-            ItemsListPanel.Children.Add(BuildItemRow(item));
+        if (_isGridMode)
+        {
+            GridScrollViewer.Visibility = list.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ListScrollViewer.Visibility = Visibility.Collapsed;
+            ItemsGridPanel.Children.Clear();
+            foreach (var item in list)
+                ItemsGridPanel.Children.Add(BuildItemCard(item));
+        }
+        else
+        {
+            ListScrollViewer.Visibility = list.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            GridScrollViewer.Visibility = Visibility.Collapsed;
+            ItemsListPanel.Children.Clear();
+            foreach (var item in list)
+                ItemsListPanel.Children.Add(BuildItemRow(item));
+        }
 
         UpdateToolbarState();
     }
+
+    // ── グリッドカード ──────────────────────────────────────
+
+    private UIElement BuildItemCard(CollectionItem item)
+    {
+        bool isSel = item.Id == _selectedItemId;
+
+        // ファイルフィールドの値を取得
+        var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
+        string? filePath = fileField != null
+            && item.FieldValues.TryGetValue(fileField.Id, out var fp) ? fp : null;
+
+        // カードタイトル: 先頭フィールドの値（ファイルは拡張子なしファイル名）
+        var firstField = _col.Fields.OrderBy(f => f.Order).FirstOrDefault();
+        var title = "";
+        if (firstField != null && item.FieldValues.TryGetValue(firstField.Id, out var fv))
+            title = firstField.FieldType == "ファイル"
+                ? Path.GetFileNameWithoutExtension(fv)
+                : fv;
+
+        var card = new Border
+        {
+            Width        = 170, Height = 220,
+            Margin       = new Thickness(6),
+            CornerRadius = new CornerRadius(12),
+            ClipToBounds = true,
+            Cursor       = Cursors.Hand,
+        };
+        card.Clip = new RectangleGeometry(new Rect(0, 0, 170, 220), 12, 12);
+
+        var grid = new Grid();
+
+        // 背景
+        grid.Children.Add(new Border
+        {
+            Background   = R<Brush>("BgCardBrush"),
+            CornerRadius = new CornerRadius(12),
+        });
+
+        // 画像 or ファイルアイコン
+        if (filePath != null && IsImageFile(filePath) && File.Exists(filePath))
+        {
+            var bmp = TryLoadBitmap(filePath);
+            if (bmp != null)
+                grid.Children.Add(new Image { Source = bmp, Stretch = Stretch.UniformToFill });
+            else
+                AddFileIconPlaceholder(grid);
+        }
+        else
+        {
+            AddFileIconPlaceholder(grid);
+        }
+
+        // 選択枠
+        if (isSel)
+            grid.Children.Add(new Border
+            {
+                CornerRadius    = new CornerRadius(12),
+                BorderThickness = new Thickness(3),
+                Background      = Brushes.Transparent,
+                BorderBrush     = R<Brush>("AccentCyanBrush"),
+            });
+
+        // タイトルオーバーレイ（下部）
+        grid.Children.Add(new Border
+        {
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Background        = new SolidColorBrush(Color.FromArgb(0xAA, 0, 0, 0)),
+            Padding           = new Thickness(10, 6, 10, 10),
+            Child             = new TextBlock
+            {
+                Text         = title,
+                Foreground   = new SolidColorBrush(Color.FromArgb(0xE8, 0xFF, 0xFF, 0xFF)),
+                FontWeight   = FontWeights.Bold,
+                FontSize     = 13,
+                FontFamily   = new FontFamily("Yu Gothic UI"),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            },
+        });
+
+        // ホバーオーバーレイ
+        var hoverOverlay = new Border
+        {
+            CornerRadius     = new CornerRadius(12),
+            Background       = new SolidColorBrush(Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF)),
+            IsHitTestVisible = false,
+            Visibility       = Visibility.Collapsed,
+        };
+        grid.Children.Add(hoverOverlay);
+
+        card.Child = grid;
+
+        card.MouseEnter        += (_, _) => hoverOverlay.Visibility = Visibility.Visible;
+        card.MouseLeave        += (_, _) => hoverOverlay.Visibility = Visibility.Collapsed;
+        card.MouseLeftButtonUp += (_, _) =>
+        {
+            _selectedItemId = _selectedItemId == item.Id ? null : item.Id;
+            RefreshList();
+        };
+        card.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount != 2) return;
+            _selectedItemId = item.Id;
+            ShowForm(item);
+        };
+
+        return card;
+    }
+
+    private static void AddFileIconPlaceholder(Grid grid)
+    {
+        grid.Children.Add(new System.Windows.Shapes.Path
+        {
+            Data  = Application.Current.Resources["Bi.FileEarmarkText"] as Geometry,
+            Style = Application.Current.Resources["BiIconXl"] as Style,
+        });
+    }
+
+    private static bool IsImageFile(string path) =>
+        ImageExtensions.Contains(Path.GetExtension(path));
+
+    private static BitmapImage? TryLoadBitmap(string path)
+    {
+        try
+        {
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource   = new Uri(path, UriKind.Absolute);
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        }
+        catch { return null; }
+    }
+
+    // ── リスト行 ────────────────────────────────────────────
 
     private UIElement BuildItemRow(CollectionItem item)
     {
@@ -184,6 +363,50 @@ public partial class CollectionItemsPage : Page
             ShowForm(item);
         };
         return row;
+    }
+
+    // ── ドラッグ＆ドロップ（コンテンツエリア） ──────────────
+
+    private void ContentArea_DragOver(object sender, DragEventArgs e)
+    {
+        if (FormOverlayRoot.Visibility == Visibility.Visible) return;
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void ContentArea_Drop(object sender, DragEventArgs e)
+    {
+        if (FormOverlayRoot.Visibility == Visibility.Visible) return;
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+        if (files.Length == 0) return;
+
+        var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
+        if (fileField == null)
+        {
+            // ファイルフィールドがない場合はフォームを開くだけ
+            ShowForm(null);
+            return;
+        }
+
+        // ドロップされたファイル1つにつき1アイテム追加
+        foreach (var filePath in files)
+        {
+            if (!File.Exists(filePath)) continue;
+            var copiedPath = CopyFileToCollection(filePath);
+            var item = new CollectionItem
+            {
+                Name    = Path.GetFileNameWithoutExtension(filePath),
+                AddedAt = DateTime.Now,
+            };
+            item.FieldValues[fileField.Id] = copiedPath;
+            _col.Items.Add(item);
+        }
+        _col.UpdatedAt = DateTime.Now;
+        _vm.CollectionService.Save(_col);
+        RefreshList();
+        e.Handled = true;
     }
 
     // ── グリッドヘルパー ────────────────────────────────────
@@ -307,52 +530,98 @@ public partial class CollectionItemsPage : Page
             return;
         }
 
-        // ── 動的フィールド ──
         foreach (var field in _col.Fields.OrderBy(f => f.Order))
         {
             FormContentPanel.Children.Add(MakeFormLabel(field.Name));
 
-            if (field.FieldType == "ファイル" || field.FieldType == "画像")
+            if (field.FieldType == "ファイル")
             {
-                var capField = field;
-                var hasVal   = _editingValues.TryGetValue(field.Id, out var filePath) && !string.IsNullOrEmpty(filePath);
-
-                var pg = new Grid { Margin = new Thickness(0, 0, 0, 14) };
-                pg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                pg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                var tb = new System.Windows.Controls.TextBox
-                {
-                    Text            = hasVal ? filePath : "",
-                    IsReadOnly      = true,
-                    Style           = R<Style>("DarkTextBox"),
-                };
-                _editingValues.TryAdd(field.Id, "");
-                Grid.SetColumn(tb, 0); pg.Children.Add(tb);
-
-                var browseBtn = new Button
-                {
-                    Content = "参照...",
-                    Style   = R<Style>("SecondaryButton"),
-                    Padding = new Thickness(10, 5, 10, 5),
-                    Margin  = new Thickness(6, 0, 0, 0),
-                };
-                browseBtn.Click += (_, _) =>
-                {
-                    var dlg = new Microsoft.Win32.OpenFileDialog { Title = "ファイルを選択" };
-                    if (dlg.ShowDialog() != true) return;
-                    _editingValues[capField.Id] = dlg.FileName;
-                    BuildFormContent();
-                };
-                Grid.SetColumn(browseBtn, 1); pg.Children.Add(browseBtn);
-                FormContentPanel.Children.Add(pg);
+                FormContentPanel.Children.Add(BuildFileFieldRow(field));
             }
             else
             {
-                // 文字列 / リンク
                 FormContentPanel.Children.Add(MakeFormTextBox(field.Id, new Thickness(0, 0, 0, 14)));
             }
         }
+    }
+
+    private UIElement BuildFileFieldRow(CollectionField field)
+    {
+        var capField = field;
+        _editingValues.TryGetValue(field.Id, out var currentPath);
+
+        var outerBorder = new Border
+        {
+            Margin          = new Thickness(0, 0, 0, 14),
+            BorderBrush     = R<Brush>("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(6),
+            Padding         = new Thickness(8),
+            Background      = R<Brush>("BgCardBrush"),
+            AllowDrop       = true,
+        };
+
+        var pg = new Grid();
+        pg.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        pg.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var tb = new TextBox
+        {
+            Text      = currentPath ?? "",
+            IsReadOnly = true,
+            Style     = R<Style>("DarkTextBox"),
+        };
+        _editingValues.TryAdd(field.Id, "");
+        Grid.SetColumn(tb, 0); pg.Children.Add(tb);
+
+        var browseBtn = new Button
+        {
+            Content = "参照...",
+            Style   = R<Style>("SecondaryButton"),
+            Padding = new Thickness(10, 5, 10, 5),
+            Margin  = new Thickness(6, 0, 0, 0),
+        };
+        browseBtn.Click += (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = "ファイルを選択" };
+            if (dlg.ShowDialog() != true) return;
+            _editingValues[capField.Id] = dlg.FileName;
+            BuildFormContent();
+        };
+        Grid.SetColumn(browseBtn, 1); pg.Children.Add(browseBtn);
+
+        var hint = new TextBlock
+        {
+            Text       = "ファイルをここにドロップすることもできます",
+            FontSize   = 11,
+            Foreground = R<Brush>("TextDimBrush"),
+            Margin     = new Thickness(0, 6, 0, 0),
+        };
+
+        var inner = new StackPanel();
+        inner.Children.Add(pg);
+        inner.Children.Add(hint);
+        outerBorder.Child = inner;
+
+        outerBorder.DragOver += (_, e) =>
+        {
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
+                ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        };
+        outerBorder.Drop += (_, e) =>
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (files.Length > 0)
+            {
+                _editingValues[capField.Id] = files[0];
+                BuildFormContent();
+            }
+            e.Handled = true;
+        };
+
+        return outerBorder;
     }
 
     private TextBlock MakeFormLabel(string text) => new()
@@ -421,21 +690,25 @@ public partial class CollectionItemsPage : Page
 
     private void SaveForm_Click(object sender, RoutedEventArgs e)
     {
-        // 表示用ラベルは先頭フィールドの値から導出する（ファイルパスはファイル名のみ）
         string DeriveLabel()
         {
             var first = _col.Fields.OrderBy(f => f.Order).FirstOrDefault();
             if (first == null) return "";
             if (!_editingValues.TryGetValue(first.Id, out var v) || string.IsNullOrWhiteSpace(v)) return "";
-            return first.FieldType == "ファイル" ? Path.GetFileName(v) : v.Trim();
+            return first.FieldType == "ファイル" ? Path.GetFileNameWithoutExtension(v) : v.Trim();
         }
 
         if (_editingItemId == null)
         {
             var item = new CollectionItem { Name = DeriveLabel(), AddedAt = DateTime.Now };
             foreach (var field in _col.Fields)
-                if (_editingValues.TryGetValue(field.Id, out var v) && !string.IsNullOrEmpty(v))
-                    item.FieldValues[field.Id] = v;
+            {
+                if (!_editingValues.TryGetValue(field.Id, out var v) || string.IsNullOrEmpty(v)) continue;
+                if (field.FieldType == "ファイル" && File.Exists(v))
+                    v = CopyFileToCollection(v);
+                item.FieldValues[field.Id] = v;
+            }
+            item.Name = DeriveLabel();   // ファイルコピー後のパスでラベルを更新
             _col.Items.Add(item);
         }
         else
@@ -444,8 +717,12 @@ public partial class CollectionItemsPage : Page
             if (item == null) return;
             item.FieldValues.Clear();
             foreach (var field in _col.Fields)
-                if (_editingValues.TryGetValue(field.Id, out var v) && !string.IsNullOrEmpty(v))
-                    item.FieldValues[field.Id] = v;
+            {
+                if (!_editingValues.TryGetValue(field.Id, out var v) || string.IsNullOrEmpty(v)) continue;
+                if (field.FieldType == "ファイル" && File.Exists(v))
+                    v = CopyFileToCollection(v);
+                item.FieldValues[field.Id] = v;
+            }
             item.Name = DeriveLabel();
         }
 
@@ -455,6 +732,42 @@ public partial class CollectionItemsPage : Page
         _editingValues.Clear();
         CloseFormDrawer();
         RefreshList();
+    }
+
+    // ── ファイルコピー ──────────────────────────────────────
+
+    /// <summary>
+    /// ファイルをコレクションフォルダにコピーしてコピー先パスを返す。
+    /// フォルダが設定されていない、またはすでに同フォルダ内の場合は元のパスをそのまま返す。
+    /// </summary>
+    private string CopyFileToCollection(string sourcePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_col.FolderPath) || !Directory.Exists(_col.FolderPath))
+                return sourcePath;
+
+            var destPath = Path.Combine(_col.FolderPath, Path.GetFileName(sourcePath));
+
+            // すでに同じファイルなら移動不要
+            if (string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(destPath),
+                    StringComparison.OrdinalIgnoreCase))
+                return sourcePath;
+
+            // 同名ファイルが存在する場合はユニーク名を生成
+            if (File.Exists(destPath))
+            {
+                var base_  = Path.GetFileNameWithoutExtension(sourcePath);
+                var ext    = Path.GetExtension(sourcePath);
+                int n      = 1;
+                do { destPath = Path.Combine(_col.FolderPath, $"{base_}_{n++}{ext}"); }
+                while (File.Exists(destPath));
+            }
+
+            File.Copy(sourcePath, destPath);
+            return destPath;
+        }
+        catch { return sourcePath; }
     }
 
     // ── ユーティリティ ──────────────────────────────────────

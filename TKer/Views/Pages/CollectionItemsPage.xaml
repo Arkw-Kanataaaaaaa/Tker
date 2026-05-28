@@ -19,6 +19,28 @@
                            FontSize="13" Foreground="{StaticResource TextDimBrush}"
                            VerticalAlignment="Center" Margin="0,0,4,0"/>
 
+                <!-- 右: グリッド/リスト切替ボタン -->
+                <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
+                        Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                        MouseLeftButtonUp="ToggleViewMode_Click"
+                        VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid Background="Transparent">
+                        <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconLg}"/>
+                        <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconLg}"
+                              Visibility="Collapsed"/>
+                    </Grid>
+                </Border>
+
                 <!-- 左: パンくずリスト（コレクション > コレクション名） -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="コレクション" FontWeight="Bold" FontSize="18"
@@ -68,14 +90,16 @@
             </Border>
 
             <!-- ─── コンテンツ ─── -->
-            <Grid Grid.Column="1" Background="{StaticResource BgPrimaryBrush}">
+            <Grid Grid.Column="1" Background="{StaticResource BgPrimaryBrush}"
+                  AllowDrop="True"
+                  DragOver="ContentArea_DragOver" Drop="ContentArea_Drop">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- 検索バー（ヘッダー上・右寄せ） -->
+                <!-- 検索バー -->
                 <Border x:Name="SearchSection" Grid.Row="0" Visibility="Collapsed"
                         HorizontalAlignment="Right" Margin="0,6,12,6"
                         Background="{StaticResource BgCardBrush}"
@@ -97,11 +121,21 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 列ヘッダー（コードから差し替え） -->
+                <!-- 列ヘッダー（リスト表示時のみ） -->
                 <Border x:Name="ItemsListHeader" Grid.Row="1"/>
 
-                <!-- アイテム一覧 -->
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                <!-- グリッド表示 -->
+                <ScrollViewer x:Name="GridScrollViewer" Grid.Row="2"
+                              Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="8">
+                    <WrapPanel x:Name="ItemsGridPanel" Margin="4"/>
+                </ScrollViewer>
+
+                <!-- リスト表示 -->
+                <ScrollViewer x:Name="ListScrollViewer" Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel x:Name="ItemsListPanel"/>
                 </ScrollViewer>

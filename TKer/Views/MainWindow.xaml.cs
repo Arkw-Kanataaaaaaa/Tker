@@ -172,13 +172,6 @@ public partial class MainWindow : Window
                 (page as IRefreshable)?.Refresh();
                 MainFrame.Navigate(page);
 
-                // トップメニューから遷移した場合の保留アクションを適用
-                if (_pendingPageAction is { } action)
-                {
-                    ApplyPageAction(page, action);
-                    _pendingPageAction = null;
-                }
-
                 var fadeIn = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180))
                 {
                     EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
@@ -186,7 +179,17 @@ public partial class MainWindow : Window
                 fadeIn.Completed += (_, _) =>
                 {
                     _isNavigating = false;
-                    HideLoadingOverlay();
+                    // ローディングオーバーレイを消し切ってから保留アクション（モーダル
+                    // ダイアログ等）を適用する。表示中に適用するとローディング画面が
+                    // 固まって見えるため。
+                    HideLoadingOverlay(() =>
+                    {
+                        if (_pendingPageAction is { } action)
+                        {
+                            ApplyPageAction(page, action);
+                            _pendingPageAction = null;
+                        }
+                    });
                 };
                 MainFrame.BeginAnimation(OpacityProperty, fadeIn);
             };
@@ -227,7 +230,7 @@ public partial class MainWindow : Window
     };
 
     /// <summary>ローディングオーバーレイをフェードアウトアニメーションで非表示にする。</summary>
-    private void HideLoadingOverlay()
+    private void HideLoadingOverlay(Action? onComplete = null)
     {
         var anim = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500))
         {
@@ -237,6 +240,7 @@ public partial class MainWindow : Window
         {
             LoadingOverlay.BeginAnimation(OpacityProperty, null);
             LoadingOverlay.Visibility = Visibility.Collapsed;
+            onComplete?.Invoke();
         };
         LoadingOverlay.BeginAnimation(OpacityProperty, anim);
     }

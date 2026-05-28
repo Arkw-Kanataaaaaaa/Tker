@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     // 遷移のたびに新しいインスタンスに更新される
     private TaskListPage _taskListPage = null!;
 
-    // トップメニューから遷移直後に実行する保留アクション（"add" / "load"）
+    // トップメニューから遷移直後に実行する保留アクション（"add"）
     private string? _pendingPageAction;
 
     // ── ウィジェット ────────────────────────────────────────
@@ -320,12 +320,8 @@ public partial class MainWindow : Window
     private void ProjectAdd_Click(object sender, System.Windows.RoutedEventArgs e)
         => RunLibraryAction("ProjectList", "add");
 
-    /// <summary>プロジェクト一覧へ遷移し、読み込みダイアログを表示する。</summary>
+    /// <summary>読み込みダイアログをそのまま表示し、ファイル選択時にプロジェクトを切り替える（切替後に画面遷移）。</summary>
     private void ProjectLoad_Click(object sender, System.Windows.RoutedEventArgs e)
-        => RunLibraryAction("ProjectList", "load");
-
-    /// <summary>プロジェクトファイルの読み込みダイアログを表示し、選択時にプロジェクトを切り替える。</summary>
-    private void ShowProjectLoadDialog()
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
@@ -342,9 +338,44 @@ public partial class MainWindow : Window
     private void CollectionAdd_Click(object sender, System.Windows.RoutedEventArgs e)
         => RunLibraryAction("Collection", "add");
 
-    /// <summary>コレクション画面へ遷移し、読み込みダイアログをそのまま表示する。</summary>
+    /// <summary>読み込みダイアログをそのまま表示し、選択時にコレクションを取り込んで画面遷移・更新する。</summary>
     private void CollectionLoad_Click(object sender, System.Windows.RoutedEventArgs e)
-        => RunLibraryAction("Collection", "load");
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "コレクションファイルを選択",
+            Filter = "コレクションファイル|*_collection.json|すべてのファイル|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var json = File.ReadAllText(dlg.FileName);
+            var col  = Newtonsoft.Json.JsonConvert.DeserializeObject<TKer.Models.Collection>(json);
+            if (col == null)
+            {
+                Views.Dialogs.AppDialog.ShowError("ファイルの読み込みに失敗しました", "エラー", this);
+                return;
+            }
+            if (_vm.CollectionService.Collections.Any(c => c.Id == col.Id))
+            {
+                Views.Dialogs.AppDialog.ShowWarning("このコレクションはすでに読み込まれています", "確認", this);
+                return;
+            }
+            _vm.CollectionService.AddImported(col, dlg.FileName);
+        }
+        catch
+        {
+            Views.Dialogs.AppDialog.ShowError("ファイルの読み込みに失敗しました", "エラー", this);
+            return;
+        }
+
+        // 選択された場合のみ画面遷移・更新する
+        if (_vm.CurrentView == "Collection" && MainFrame.Content is CollectionPage cp)
+            cp.Refresh();
+        else
+            _vm.NavigateToCommand.Execute("Collection");
+    }
 
     /// <summary>
     /// 対象ビューへ遷移してアクションを適用する。すでに対象ビューを表示中の場合は
@@ -361,7 +392,7 @@ public partial class MainWindow : Window
         _vm.NavigateToCommand.Execute(view);
     }
 
-    /// <summary>ページ種別に応じて保留アクション（"add" / "load"）を適用する。</summary>
+    /// <summary>ページ種別に応じて保留アクション（"add"）を適用する。</summary>
     private void ApplyPageAction(Page page, string action)
     {
         switch (page)
@@ -369,14 +400,8 @@ public partial class MainWindow : Window
             case ProjectListPage plp when action == "add":
                 plp.RequestShowAddPanel();
                 break;
-            case ProjectListPage when action == "load":
-                ShowProjectLoadDialog();
-                break;
             case CollectionPage cpAdd when action == "add":
                 cpAdd.RequestShowAddForm();
-                break;
-            case CollectionPage cpLoad when action == "load":
-                cpLoad.RequestLoadCollection();
                 break;
         }
     }

@@ -593,11 +593,6 @@ public partial class CollectionPage : Page, IRefreshable
     public void RequestShowAddForm()
         => Dispatcher.InvokeAsync(() => ShowForm(null), System.Windows.Threading.DispatcherPriority.Loaded);
 
-    /// <summary>トップメニューから遷移した直後に読み込みダイアログを開くための公開エントリ。</summary>
-    public void RequestLoadCollection()
-        => Dispatcher.InvokeAsync(() => LoadCollection_Click(this, new RoutedEventArgs()),
-                                  System.Windows.Threading.DispatcherPriority.Loaded);
-
     private void EditCollection_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedId == null) return;

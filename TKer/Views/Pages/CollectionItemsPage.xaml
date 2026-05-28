@@ -14,19 +14,38 @@
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                 Padding="24,12">
             <DockPanel>
-                <!-- 右: アイテム数バッジ -->
-                <TextBlock x:Name="TxtItemCount" DockPanel.Dock="Right"
-                           FontSize="13" Foreground="{StaticResource TextDimBrush}"
-                           VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <!-- 右: グリッド/リスト切替ボタン -->
+                <Border x:Name="BtnViewToggle" DockPanel.Dock="Right"
+                        Width="30" Height="30" CornerRadius="6" Cursor="Hand"
+                        MouseLeftButtonUp="ToggleViewMode_Click"
+                        VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource BgCardBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid Background="Transparent">
+                        <Path x:Name="ViewIconGrid" Data="{StaticResource Bi.Grid3x3Gap}" Style="{StaticResource BiIconLg}"/>
+                        <Path x:Name="ViewIconList" Data="{StaticResource Bi.ListUl}" Style="{StaticResource BiIconLg}"
+                              Visibility="Collapsed"/>
+                    </Grid>
+                </Border>
 
-                <!-- 左: 戻るボタン + アイコン + 名前 -->
+                <!-- 左: パンくずリスト -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource VToolbarBtn}" ToolTip="コレクション一覧へ戻る"
-                            Click="Back_Click" Margin="0,0,8,0">
-                        <Path Data="{StaticResource Bi.ChevronLeft}" Style="{StaticResource BiIconLg}"/>
-                    </Button>
-                    <TextBlock x:Name="TxtHeaderIcon" FontSize="20" VerticalAlignment="Center"
-                               Margin="0,0,8,0"/>
+                    <TextBlock Text="コレクション" FontWeight="Bold" FontSize="18"
+                               Foreground="{StaticResource TextDimBrush}"
+                               VerticalAlignment="Center" Cursor="Hand"
+                               ToolTip="コレクション一覧へ戻る"
+                               MouseLeftButtonUp="CollectionCrumb_Click"/>
+                    <TextBlock Text="›" FontWeight="Bold" FontSize="18"
+                               Foreground="{StaticResource TextDimBrush}"
+                               VerticalAlignment="Center" Margin="10,0,10,0"/>
                     <TextBlock x:Name="TxtHeaderName" FontWeight="Bold" FontSize="18"
                                Foreground="{StaticResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
@@ -39,111 +58,245 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="52"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- ─── 縦ツールバー ─── -->
             <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
                 <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
-                    <Button x:Name="BtnAdd" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="アイテムを追加" Click="AddItem_Click">
-                        <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
-                    </Button>
                     <Button x:Name="BtnEdit" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="選択したアイテムを編集" Click="EditItem_Click" Opacity="0.35">
+                            ToolTip="アイテム編集 (F2)" Click="EditItem_Click" Opacity="0.35">
                         <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
                     </Button>
+                    <Button x:Name="BtnAdd" Style="{StaticResource VToolbarBtn}"
+                            ToolTip="アイテム追加 (Ctrl+Shift+;)" Click="AddItem_Click">
+                        <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
                     <Button x:Name="BtnDelete" Style="{StaticResource VToolbarBtn}"
-                            ToolTip="選択したアイテムを削除" Click="DeleteItem_Click" Opacity="0.35">
+                            ToolTip="アイテム削除 (Ctrl+-)" Click="DeleteItem_Click" Opacity="0.35">
                         <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                     </Button>
+                    <Button x:Name="BtnOrganize" Style="{StaticResource VToolbarBtn}"
+                            ToolTip="フォルダ整理 (Ctrl+M)" Click="ToggleOrganize_Click"
+                            Visibility="Collapsed">
+                        <Path Data="{StaticResource Bi.Magic}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
                     <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
-                    <Button Style="{StaticResource VToolbarBtn}"
-                            ToolTip="フォルダを開く" Click="OrganizeFolder_Click">
-                        <Path Data="{StaticResource Bi.WrenchFill}" Style="{StaticResource BiIconLg}"/>
+                    <Button x:Name="BtnSearch" Style="{StaticResource VToolbarBtn}"
+                            ToolTip="検索 (Ctrl+F)" Click="ToggleSearch_Click">
+                        <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconLg}"/>
                     </Button>
                 </StackPanel>
             </Border>
 
             <!-- ─── コンテンツ ─── -->
-            <Grid Grid.Column="1" Background="{StaticResource BgPrimaryBrush}">
+            <Grid Grid.Column="1" Background="{StaticResource BgPrimaryBrush}"
+                  AllowDrop="True"
+                  DragOver="ContentArea_DragOver" Drop="ContentArea_Drop">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- 列ヘッダー（コードから差し替え） -->
-                <Border x:Name="ItemsListHeader" Grid.Row="0"/>
+                <!-- 検索バー -->
+                <Border x:Name="SearchSection" Grid.Row="0" Visibility="Collapsed"
+                        HorizontalAlignment="Right" Margin="0,6,12,6"
+                        Background="{StaticResource BgCardBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8,5">
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="CbSearchField" Width="130" Height="26"
+                                  Style="{StaticResource DarkComboBox}"
+                                  VerticalAlignment="Center" Margin="0,0,8,0"
+                                  SelectionChanged="SearchField_Changed"/>
+                        <Path Data="{StaticResource Bi.Search}" Style="{StaticResource BiIconSm}"
+                              Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SearchBox" Width="220"
+                                 Background="Transparent" BorderThickness="0"
+                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                 CaretBrush="{StaticResource AccentCyanBrush}"
+                                 FontSize="13" VerticalAlignment="Center"
+                                 TextChanged="SearchBox_TextChanged"/>
+                    </StackPanel>
+                </Border>
 
-                <!-- アイテム一覧 -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                <!-- 列ヘッダー（リスト表示時のみ） -->
+                <Border x:Name="ItemsListHeader" Grid.Row="1"/>
+
+                <!-- グリッド表示 -->
+                <ScrollViewer x:Name="GridScrollViewer" Grid.Row="2"
+                              Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Padding="8">
+                    <WrapPanel x:Name="ItemsGridPanel" Margin="4"/>
+                </ScrollViewer>
+
+                <!-- リスト表示 -->
+                <ScrollViewer x:Name="ListScrollViewer" Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel x:Name="ItemsListPanel"/>
                 </ScrollViewer>
 
                 <!-- 空状態 -->
-                <StackPanel x:Name="EmptyStatePanel" Grid.Row="1"
+                <StackPanel x:Name="EmptyStatePanel" Grid.Row="2"
                             Visibility="Collapsed"
                             VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock Text="📦" FontSize="48"
-                               HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                    <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconXl}"
+                          Fill="{StaticResource TextDimBrush}"
+                          HorizontalAlignment="Center" Margin="0,0,0,14"/>
                     <TextBlock Text="アイテムがありません"
                                FontSize="15" Foreground="{StaticResource TextDimBrush}"
                                HorizontalAlignment="Center"/>
-                    <TextBlock Text="「＋」ボタンから追加できます"
-                               FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                               HorizontalAlignment="Center" Margin="0,6,0,0"/>
                 </StackPanel>
+
+                <!-- 非管理アイテムセクション -->
+                <Border x:Name="OrphansSection" Grid.Row="3" Visibility="Collapsed"
+                        Background="{StaticResource BgSecondaryBrush}"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                        MaxHeight="280">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Padding="16,8,16,8"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <Button x:Name="BtnBulkAddOrphans" DockPanel.Dock="Right"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="12,4" Margin="8,0,0,0"
+                                        Click="BulkAddOrphans_Click" IsEnabled="False"
+                                        ToolTip="選択したファイルを仮データとして一括追加">
+                                    <TextBlock x:Name="BtnBulkAddOrphansText" Text="選択を一括追加"/>
+                                </Button>
+                                <Button x:Name="BtnOrphansSelectAll" DockPanel.Dock="Right"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="12,4" Margin="8,0,0,0"
+                                        Click="OrphansSelectAll_Click" IsEnabled="False">
+                                    <TextBlock x:Name="BtnOrphansSelectAllText" Text="全選択"/>
+                                </Button>
+                                <TextBlock x:Name="OrphansHeader"
+                                           Text="非管理アイテム"
+                                           FontSize="12" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextDimBrush}"/>
+                            </DockPanel>
+                        </Border>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="OrphansListPanel" Margin="8"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
             </Grid>
+
+            <!-- ─── 右ドロワー（詳細 / フォーム共用） ─── -->
+            <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
+                    Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <Grid>
+                    <!-- 詳細ドロワー -->
+                    <DockPanel x:Name="DetailDrawer" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <!-- ヘッダー -->
+                        <Border DockPanel.Dock="Top"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="20,14">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        Click="CloseDetail_Click" ToolTip="閉じる">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="TxtDetailName"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                        <!-- コンテンツ -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="DetailContentPanel" Margin="20,16,20,20"/>
+                        </ScrollViewer>
+                    </DockPanel>
+
+                    <!-- フォームドロワー -->
+                    <DockPanel x:Name="FormDrawer" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <Border DockPanel.Dock="Top"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="20,14">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        Click="CancelForm_Click" ToolTip="閉じる">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="TxtFormTitle" Text="アイテム追加"
+                                           FontSize="16" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+                        <Border DockPanel.Dock="Bottom"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                                Padding="20,12">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
+                                        Padding="14,6" Margin="0,0,8,0"
+                                        Click="CancelForm_Click"/>
+                                <Button x:Name="BtnFormSave" Content="追加"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Padding="22,6" Click="SaveForm_Click"/>
+                            </StackPanel>
+                        </Border>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="FormContentPanel" Margin="24,16,24,16"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
+            </Border>
         </Grid>
 
-        <!-- ─── フォームドロワー (ZIndex=10) ─── -->
-        <Grid Grid.RowSpan="2" Panel.ZIndex="10"
-              x:Name="FormOverlayRoot" Visibility="Collapsed">
-            <Border x:Name="FormBackdrop" Background="#40000000"
-                    MouseLeftButtonUp="FormBackdrop_Click"/>
-            <Border x:Name="FormOverlay" HorizontalAlignment="Right" Width="480"
-                    Background="{StaticResource BgSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"
-                    ClipToBounds="True">
-                <Border.RenderTransform>
-                    <TranslateTransform x:Name="FormPanelTransform"/>
-                </Border.RenderTransform>
-                <DockPanel>
-                    <!-- ヘッダー -->
-                    <Border DockPanel.Dock="Top"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                            Padding="20,14">
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                    Click="CancelForm_Click" ToolTip="閉じる">
-                                <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                            </Button>
-                            <TextBlock x:Name="TxtFormTitle" Text="アイテムを追加"
-                                       FontSize="16" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       VerticalAlignment="Center"/>
-                        </DockPanel>
-                    </Border>
-                    <!-- フッター -->
-                    <Border DockPanel.Dock="Bottom"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
-                            Padding="20,12">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
-                                    Padding="14,6" Margin="0,0,8,0"
-                                    Click="CancelForm_Click"/>
-                            <Button x:Name="BtnFormSave" Content="追加"
-                                    Style="{StaticResource PrimaryButton}"
-                                    Padding="22,6" Click="SaveForm_Click"/>
-                        </StackPanel>
-                    </Border>
-                    <!-- フォーム本体（コードで動的生成） -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="FormContentPanel" Margin="24,16,24,16"/>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+        <!-- ─── 画像プレビュー オーバーレイ ─── -->
+        <Grid x:Name="PreviewOverlay" Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="1000"
+              Visibility="Collapsed" Background="#DC000000"
+              MouseWheel="PreviewOverlay_MouseWheel"
+              MouseLeftButtonDown="PreviewOverlay_MouseDown"
+              MouseMove="PreviewOverlay_MouseMove"
+              MouseLeftButtonUp="PreviewOverlay_MouseUp">
+            <Image x:Name="PreviewImage" Stretch="Uniform"
+                   MaxWidth="1200" MaxHeight="800"
+                   RenderTransformOrigin="0.5,0.5"
+                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Image.RenderTransform>
+                    <TransformGroup>
+                        <ScaleTransform x:Name="PreviewScale" ScaleX="1" ScaleY="1"/>
+                        <TranslateTransform x:Name="PreviewTranslate" X="0" Y="0"/>
+                    </TransformGroup>
+                </Image.RenderTransform>
+            </Image>
+            <TextBlock Text="×" FontSize="26" FontWeight="Bold" Foreground="White" Cursor="Hand"
+                       Padding="8,2" HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Margin="0,8,16,0" MouseLeftButtonUp="ClosePreview_Click"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                        Margin="16,0,0,16">
+                <Border x:Name="ZoomTrack" Width="160" Height="16" Background="Transparent" Cursor="Hand"
+                        VerticalAlignment="Center"
+                        MouseLeftButtonDown="ZoomTrack_MouseDown"
+                        MouseMove="ZoomTrack_MouseMove"
+                        MouseLeftButtonUp="ZoomTrack_MouseUp">
+                    <Grid>
+                        <Border Height="6" CornerRadius="3" Background="#55FFFFFF" VerticalAlignment="Center"/>
+                        <Border x:Name="PreviewZoomFill" Height="6" Width="0" CornerRadius="3"
+                                Background="{StaticResource AccentCyanBrush}"
+                                HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        <Ellipse x:Name="ZoomThumb" Width="14" Height="14" Fill="White"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <TextBlock x:Name="PreviewZoomLabel" Text="0%" FontSize="11" Foreground="White"
+                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </StackPanel>
         </Grid>
 
     </Grid>

@@ -157,33 +157,59 @@
                                 </MenuItem.Header>
                             </MenuItem>
                             <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                      Click="OpenProject_Click">
+                                      Click="ProjectLoad_Click">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
-                                        <TextBlock Text="開く" VerticalAlignment="Center"/>
+                                        <TextBlock Text="読み込み" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
                             <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                      Click="NewProject_Click">
+                                      Click="ProjectAdd_Click">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
-                                        <TextBlock Text="新規作成" VerticalAlignment="Center"/>
+                                        <TextBlock Text="追加" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
                         </MenuItem>
-                        <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                  Command="{Binding NavigateToCommand}"
-                                  CommandParameter="Collection">
+                        <MenuItem Style="{StaticResource SubParentMenuItemStyle}">
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="📦" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
                                     <TextBlock Text="コレクション" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </MenuItem.Header>
+                            <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                      Command="{Binding NavigateToCommand}"
+                                      CommandParameter="Collection">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="一覧" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                      Click="CollectionLoad_Click">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="読み込み" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                      Click="CollectionAdd_Click">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="追加" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
                         </MenuItem>
                     </MenuItem>
 

@@ -24,6 +24,9 @@ public partial class MainWindow : Window
     // 遷移のたびに新しいインスタンスに更新される
     private TaskListPage _taskListPage = null!;
 
+    // トップメニューから遷移直後に実行する保留アクション（"add"）
+    private string? _pendingPageAction;
+
     // ── ウィジェット ────────────────────────────────────────
     private BookmarkWidget?  _bookmarkWidget;
 
@@ -176,7 +179,17 @@ public partial class MainWindow : Window
                 fadeIn.Completed += (_, _) =>
                 {
                     _isNavigating = false;
-                    HideLoadingOverlay();
+                    // ローディングオーバーレイを消し切ってから保留アクション（モーダル
+                    // ダイアログ等）を適用する。表示中に適用するとローディング画面が
+                    // 固まって見えるため。
+                    HideLoadingOverlay(() =>
+                    {
+                        if (_pendingPageAction is { } action)
+                        {
+                            ApplyPageAction(page, action);
+                            _pendingPageAction = null;
+                        }
+                    });
                 };
                 MainFrame.BeginAnimation(OpacityProperty, fadeIn);
             };
@@ -217,7 +230,7 @@ public partial class MainWindow : Window
     };
 
     /// <summary>ローディングオーバーレイをフェードアウトアニメーションで非表示にする。</summary>
-    private void HideLoadingOverlay()
+    private void HideLoadingOverlay(Action? onComplete = null)
     {
         var anim = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500))
         {
@@ -227,6 +240,7 @@ public partial class MainWindow : Window
         {
             LoadingOverlay.BeginAnimation(OpacityProperty, null);
             LoadingOverlay.Visibility = Visibility.Collapsed;
+            onComplete?.Invoke();
         };
         LoadingOverlay.BeginAnimation(OpacityProperty, anim);
     }
@@ -300,35 +314,96 @@ public partial class MainWindow : Window
     private void MenuExportWbs_Click(object sender, System.Windows.RoutedEventArgs e)
         => _taskListPage.TriggerExportWbs();
 
-    /// <summary>新規プロジェクト作成ダイアログを開き、カテゴリテンプレートを適用してプロジェクト一覧へ遷移する。</summary>
-    private void NewProject_Click(object sender, System.Windows.RoutedEventArgs e)
-    {
-        var dlg = new Views.Dialogs.NewProjectDialog { Owner = this };
-        if (dlg.ShowDialog() != true) return;
+    // ── ライブラリ：プロジェクト ────────────────────────────
 
-        _vm.ProjectService.CreateProject(dlg.SavePath, dlg.ProjectName, dlg.Description);
+    /// <summary>プロジェクト一覧へ遷移し、追加フォームを開いた状態にする。</summary>
+    private void ProjectAdd_Click(object sender, System.Windows.RoutedEventArgs e)
+        => RunLibraryAction("ProjectList", "add");
 
-        var customPresets = _vm.AppSettingsService.Settings.CategoryPresets;
-        var templateDlg = new Views.Dialogs.CategoryTemplateDialog(customPresets) { Owner = this };
-        if (templateDlg.ShowDialog() == true)
-        {
-            foreach (var item in templateDlg.SelectedCategories)
-                _vm.ProjectService.AddCategory(item.Name, item.Description, item.Color);
-        }
-
-        _vm.NavigateToCommand.Execute("ProjectList");
-    }
-
-    /// <summary>ファイル選択ダイアログでプロジェクトファイルを選択して読み込む。</summary>
-    private void OpenProject_Click(object sender, System.Windows.RoutedEventArgs e)
+    /// <summary>読み込みダイアログをそのまま表示し、ファイル選択時にプロジェクトを切り替える（切替後に画面遷移）。</summary>
+    private void ProjectLoad_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "プロジェクトファイルを開く",
-            Filter = "TKer データ (*.json)|*.json|すべてのファイル (*.*)|*.*"
+            Title = "プロジェクトファイルを選択",
+            Filter = "プロジェクトファイル|*_project.json|すべてのファイル|*.*"
         };
         if (dlg.ShowDialog() == true)
             _vm.SwitchProjectCommand.Execute(dlg.FileName);
+    }
+
+    // ── ライブラリ：コレクション ────────────────────────────
+
+    /// <summary>コレクション画面へ遷移し、追加フォームを開いた状態にする。</summary>
+    private void CollectionAdd_Click(object sender, System.Windows.RoutedEventArgs e)
+        => RunLibraryAction("Collection", "add");
+
+    /// <summary>読み込みダイアログをそのまま表示し、選択時にコレクションを取り込んで画面遷移・更新する。</summary>
+    private void CollectionLoad_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "コレクションファイルを選択",
+            Filter = "コレクションファイル|*_collection.json|すべてのファイル|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var json = File.ReadAllText(dlg.FileName);
+            var col  = Newtonsoft.Json.JsonConvert.DeserializeObject<TKer.Models.Collection>(json);
+            if (col == null)
+            {
+                Views.Dialogs.AppDialog.ShowError("ファイルの読み込みに失敗しました", "エラー", this);
+                return;
+            }
+            if (_vm.CollectionService.Collections.Any(c => c.Id == col.Id))
+            {
+                Views.Dialogs.AppDialog.ShowWarning("このコレクションはすでに読み込まれています", "確認", this);
+                return;
+            }
+            _vm.CollectionService.AddImported(col, dlg.FileName);
+        }
+        catch
+        {
+            Views.Dialogs.AppDialog.ShowError("ファイルの読み込みに失敗しました", "エラー", this);
+            return;
+        }
+
+        // 選択された場合のみ画面遷移・更新する
+        if (_vm.CurrentView == "Collection" && MainFrame.Content is CollectionPage cp)
+            cp.Refresh();
+        else
+            _vm.NavigateToCommand.Execute("Collection");
+    }
+
+    /// <summary>
+    /// 対象ビューへ遷移してアクションを適用する。すでに対象ビューを表示中の場合は
+    /// 遷移せず現在のページへ直接アクションを適用する（CurrentView 不変で遷移が起きないため）。
+    /// </summary>
+    private void RunLibraryAction(string view, string action)
+    {
+        if (_vm.CurrentView == view && MainFrame.Content is Page current)
+        {
+            ApplyPageAction(current, action);
+            return;
+        }
+        _pendingPageAction = action;
+        _vm.NavigateToCommand.Execute(view);
+    }
+
+    /// <summary>ページ種別に応じて保留アクション（"add"）を適用する。</summary>
+    private void ApplyPageAction(Page page, string action)
+    {
+        switch (page)
+        {
+            case ProjectListPage plp when action == "add":
+                plp.RequestShowAddPanel();
+                break;
+            case CollectionPage cpAdd when action == "add":
+                cpAdd.RequestShowAddForm();
+                break;
+        }
     }
 
     /// <summary>設定に保存されたメニュー順序に従い、トップメニューの項目を並び替える。</summary>

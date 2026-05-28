@@ -35,7 +35,7 @@
                     <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIcon}"
                           Fill="{StaticResource TextSecondaryBrush}"/>
                 </Button>
-                <TextBlock Text="{Binding ElementName=TitleText, Path=Text}"
+                <TextBlock x:Name="TitleBarText"
                            FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="13"
                            Foreground="{StaticResource TextPrimaryBrush}"
                            VerticalAlignment="Center" Margin="16,0,0,0"/>

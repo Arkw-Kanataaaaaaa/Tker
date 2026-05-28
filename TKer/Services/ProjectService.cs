@@ -14,9 +14,37 @@ namespace TKer.Services;
 /// <summary>プロジェクトデータの読み書き・カテゴリー/タスク管理を担当するサービス。</summary>
 public class ProjectService
 {
-    private const string DATA_FILE_NAME       = "project_data.json";
     private const string BACKUP_SUFFIX        = ".bak";
     private const string COMPLETED_FOLDER_NAME = "作業完了";
+
+    /// <summary>フォルダ管理しないプロジェクトの保存先（ドキュメント\TKerEmptyLibrary\Project）。</summary>
+    public static readonly string NoFolderProjectDir =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                     "TKerEmptyLibrary", "Project");
+
+    /// <summary>ファイル名に使えない文字を '_' に置換する。空になる場合は "project" を返す。</summary>
+    public static string SanitizeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var safe = new string((name ?? "").Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
+        return string.IsNullOrWhiteSpace(safe) ? "project" : safe;
+    }
+
+    /// <summary>プロジェクトデータファイル名（プロジェクト名_project.json）を返す。</summary>
+    private static string ProjectDataFileName(string name) => $"{SanitizeFileName(name)}_project.json";
+
+    private static bool PathsEqual(string? a, string? b)
+    {
+        if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+        try
+        {
+            return string.Equals(
+                Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
 
     public ProjectData? CurrentProject  { get; private set; }
     public string?      ProjectFilePath { get; private set; }
@@ -61,23 +89,22 @@ public class ProjectService
         string dataFilePath;
         if (useFolderManagement)
         {
+            // 指定フォルダ（親）直下に "プロジェクト名" フォルダを生成し、その中に保持する
             projectPath = Path.Combine(basePath, projectName);
             Directory.CreateDirectory(projectPath);
             Directory.CreateDirectory(Path.Combine(projectPath, COMPLETED_FOLDER_NAME));
-            dataFilePath = Path.Combine(projectPath, DATA_FILE_NAME);
+            dataFilePath = Path.Combine(projectPath, ProjectDataFileName(projectName));
         }
         else
         {
-            // フォルダ管理しない場合は ドキュメント\TKer_PJ 配下に "プロジェクト名_project.json" で保持する
-            var tkerDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TKer_PJ");
-            Directory.CreateDirectory(tkerDir);
-            var safeName = string.Concat(projectName.Split(Path.GetInvalidFileNameChars()));
+            // フォルダ管理しない場合は ドキュメント\TKerEmptyLibrary\Project 配下に "プロジェクト名_project.json" で保持する
+            Directory.CreateDirectory(NoFolderProjectDir);
+            var safeName = SanitizeFileName(projectName);
             projectPath  = "";
-            dataFilePath = Path.Combine(tkerDir, $"{safeName}_project.json");
+            dataFilePath = Path.Combine(NoFolderProjectDir, $"{safeName}_project.json");
             // 同名ファイルがある場合は連番を付けて上書きを防ぐ
             for (int i = 2; File.Exists(dataFilePath); i++)
-                dataFilePath = Path.Combine(tkerDir, $"{safeName} ({i})_project.json");
+                dataFilePath = Path.Combine(NoFolderProjectDir, $"{safeName} ({i})_project.json");
         }
 
         CurrentProject = new ProjectData
@@ -100,6 +127,85 @@ public class ProjectService
         SaveProject();
         _autoSaveTimer.Start();
         ProjectChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// 編集時のフォルダ設定変更に応じてプロジェクトの保存場所を再配置し、新しいデータファイルパスを返す。
+    /// フォルダ管理ONで親フォルダが変わった場合は既存フォルダを新しい親の配下へ移動する。
+    /// データファイルは常に "プロジェクト名_project.json" に統一する。
+    /// </summary>
+    /// <param name="oldDataFilePath">変更前のデータファイルパス。</param>
+    /// <param name="oldProjectPath">変更前のプロジェクトフォルダ（フォルダ管理時のサブフォルダ）。</param>
+    /// <param name="oldUseFolder">変更前にフォルダ管理が有効だったか。</param>
+    /// <param name="newUseFolder">変更後にフォルダ管理を有効にするか。</param>
+    /// <param name="newParentFolder">変更後の親フォルダ（フォルダ管理時）。</param>
+    /// <param name="newName">変更後のプロジェクト名。</param>
+    public string RelocateProject(
+        string oldDataFilePath, string oldProjectPath, bool oldUseFolder,
+        bool newUseFolder, string newParentFolder, string newName)
+    {
+        string newDataFilePath;
+
+        if (newUseFolder)
+        {
+            var newProjectPath = Path.Combine(newParentFolder, newName);
+            newDataFilePath     = Path.Combine(newProjectPath, ProjectDataFileName(newName));
+
+            if (oldUseFolder && !string.IsNullOrEmpty(oldProjectPath) && Directory.Exists(oldProjectPath)
+                && !PathsEqual(oldProjectPath, newProjectPath))
+            {
+                // 既存フォルダを新しい親フォルダ配下へ移動（リネーム含む）
+                Directory.CreateDirectory(newParentFolder);
+                if (Directory.Exists(newProjectPath))
+                    throw new IOException($"移動先に同名フォルダが既に存在します:\n{newProjectPath}");
+                Directory.Move(oldProjectPath, newProjectPath);
+            }
+            else
+            {
+                Directory.CreateDirectory(newProjectPath);
+                Directory.CreateDirectory(Path.Combine(newProjectPath, COMPLETED_FOLDER_NAME));
+            }
+
+            // 旧データファイルの現在位置（移動後）を解決して新名へリネーム
+            var currentOldData = oldUseFolder
+                ? Path.Combine(newProjectPath, Path.GetFileName(oldDataFilePath))
+                : oldDataFilePath;
+            MoveDataFile(currentOldData, newDataFilePath);
+        }
+        else
+        {
+            // フォルダ管理なし → ドキュメント\TKerEmptyLibrary\Project に配置
+            Directory.CreateDirectory(NoFolderProjectDir);
+            newDataFilePath = Path.Combine(NoFolderProjectDir, ProjectDataFileName(newName));
+            MoveDataFile(oldDataFilePath, newDataFilePath);
+        }
+
+        // 現在ロード中のプロジェクトなら参照パスを更新
+        if (PathsEqual(oldDataFilePath, ProjectFilePath))
+            ProjectFilePath = newDataFilePath;
+
+        return newDataFilePath;
+    }
+
+    /// <summary>データファイルを移動・改名し、隣接するバックアップ (.bak) も追従させる。</summary>
+    private static void MoveDataFile(string src, string dst)
+    {
+        if (PathsEqual(src, dst)) return;
+
+        if (File.Exists(src))
+        {
+            if (File.Exists(dst)) File.Delete(dst);
+            File.Move(src, dst);
+        }
+
+        // バックアップ (.bak) も一緒に移動（残骸を残さない）
+        var srcBak = src + BACKUP_SUFFIX;
+        var dstBak = dst + BACKUP_SUFFIX;
+        if (File.Exists(srcBak))
+        {
+            if (File.Exists(dstBak)) File.Delete(dstBak);
+            File.Move(srcBak, dstBak);
+        }
     }
 
     // =====================================================
@@ -207,6 +313,19 @@ public class ProjectService
         else
             File.Move(tmp, ProjectFilePath);
         _hasUnsavedChanges = false;
+    }
+
+    // =====================================================
+    // プロジェクトのクローズ（アクティブ解除）
+    // =====================================================
+    /// <summary>自動保存を止めてアクティブなプロジェクトを解除する。</summary>
+    public void CloseProject()
+    {
+        _autoSaveTimer.Stop();
+        _hasUnsavedChanges = false;
+        CurrentProject  = null;
+        ProjectFilePath = null;
+        ProjectChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // =====================================================

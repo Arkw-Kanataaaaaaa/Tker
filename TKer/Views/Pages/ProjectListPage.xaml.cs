@@ -670,6 +670,10 @@ public partial class ProjectListPage : Page, IRefreshable
         DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
+    /// <summary>トップメニューから遷移した直後に追加フォームを開くための公開エントリ。</summary>
+    public void RequestShowAddPanel()
+        => Dispatcher.InvokeAsync(ShowAddProjectPanel, System.Windows.Threading.DispatcherPriority.Loaded);
+
     /// <summary>新規プロジェクト作成フォームをドロワーとして表示する。</summary>
     private void ShowAddProjectPanel()
     {
@@ -1011,16 +1015,9 @@ public partial class ProjectListPage : Page, IRefreshable
     /// <summary>新規プロジェクト作成フォームの保存先フォルダ参照ダイアログを開く。</summary>
     private void BrowseNewProjPath_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Title           = "保存先フォルダを選択（そのままOKを押してください）",
-            ValidateNames   = false,
-            CheckFileExists = false,
-            FileName        = "ここを変更せずOKを押してください",
-            Filter          = "フォルダ|*.none"
-        };
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "保存先フォルダを選択" };
         if (dlg.ShowDialog() == true)
-            TxtNewProjPath.Text = System.IO.Path.GetDirectoryName(dlg.FileName) ?? "";
+            TxtNewProjPath.Text = dlg.FolderName;
     }
 
     private static readonly string[] _imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
@@ -1149,6 +1146,7 @@ public partial class ProjectListPage : Page, IRefreshable
         if (_isFolderManagementEnabled && string.IsNullOrWhiteSpace(path))
         {
             AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            TxtNewProjPath.Focus();
             return;
         }
 
@@ -1226,7 +1224,10 @@ public partial class ProjectListPage : Page, IRefreshable
         // フィールドを既存値で初期化
         TxtEditProjName.Text    = project.Settings.ProjectName;
         TxtEditProjDesc.Text    = project.Settings.Description;
-        TxtEditProjPath.Text    = project.Settings.ProjectPath ?? "";
+        // 保存先フォルダ欄には「親フォルダ」を表示する（保存時に 親/プロジェクト名 を生成・移動する）
+        TxtEditProjPath.Text    = project.Settings.UseFolderManagement && !string.IsNullOrEmpty(project.Settings.ProjectPath)
+            ? (System.IO.Path.GetDirectoryName(project.Settings.ProjectPath) ?? "")
+            : "";
         TxtEditProjStartDate.Text = project.Settings.ProjectStartDate?.ToString("yyyy/MM/dd") ?? "";
         TxtEditProjEndDate.Text   = project.Settings.ProjectEndDate?.ToString("yyyy/MM/dd") ?? "";
 
@@ -1352,34 +1353,64 @@ public partial class ProjectListPage : Page, IRefreshable
             TxtEditProjName.Focus();
             return;
         }
+        if (_isEditFolderManagementEnabled && string.IsNullOrWhiteSpace(TxtEditProjPath.Text.Trim()))
+        {
+            AppDialog.ShowWarning("保存先フォルダを選択してください", "入力エラー", Window.GetWindow(this));
+            TxtEditProjPath.Focus();
+            return;
+        }
 
-        project.Settings.ProjectName        = name;
-        project.Settings.Description        = TxtEditProjDesc.Text.Trim();
+        // 変更前の状態を控える
+        var  oldDataFilePath = path;
+        var  oldProjectPath  = project.Settings.ProjectPath ?? "";
+        bool oldUseFolder    = project.Settings.UseFolderManagement;
+        bool wasLoaded       = path == _vm.ProjectService.ProjectFilePath;
+        var  newParentFolder = TxtEditProjPath.Text.Trim();
+
+        // 入力内容を反映
+        project.Settings.ProjectName         = name;
+        project.Settings.Description         = TxtEditProjDesc.Text.Trim();
         project.Settings.UseFolderManagement = _isEditFolderManagementEnabled;
-        project.Settings.ProjectPath        = TxtEditProjPath.Text.Trim();
-        project.Settings.CoverImageData     = _editCoverImageData;
-        project.Settings.UpdatedAt          = DateTime.Now;
+        project.Settings.CoverImageData      = _editCoverImageData;
+        project.Settings.UpdatedAt           = DateTime.Now;
+        project.Settings.ProjectPath         = _isEditFolderManagementEnabled
+            ? System.IO.Path.Combine(newParentFolder, name) : "";
 
         if (DateTime.TryParse(TxtEditProjStartDate.Text.Trim(), out var sd)) project.Settings.ProjectStartDate = sd;
         else project.Settings.ProjectStartDate = null;
         if (DateTime.TryParse(TxtEditProjEndDate.Text.Trim(), out var ed)) project.Settings.ProjectEndDate = ed;
         else project.Settings.ProjectEndDate = null;
 
-        if (path == _vm.ProjectService.ProjectFilePath)
+        // フォルダ・データファイルを再配置
+        string newDataFilePath;
+        try
         {
-            _vm.ProjectService.SaveProject();
+            newDataFilePath = _vm.ProjectService.RelocateProject(
+                oldDataFilePath, oldProjectPath, oldUseFolder,
+                _isEditFolderManagementEnabled, newParentFolder, name);
         }
-        else
+        catch (Exception ex)
         {
-            try
-            {
-                File.WriteAllText(path, JsonConvert.SerializeObject(project, Formatting.Indented));
-                _vm.AppSettingsService.RegisterProject(path, name, project.Settings.ProjectPath, name);
-                _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
-            }
-            catch { }
+            AppDialog.ShowError($"保存先フォルダの変更に失敗しました\n{ex.Message}", "エラー", Window.GetWindow(this));
+            return;
         }
 
+        try
+        {
+            File.WriteAllText(newDataFilePath, JsonConvert.SerializeObject(project, Formatting.Indented));
+
+            if (!string.Equals(oldDataFilePath, newDataFilePath, StringComparison.OrdinalIgnoreCase))
+                _vm.AppSettingsService.RemoveProject(oldDataFilePath);
+            _vm.AppSettingsService.RegisterProject(newDataFilePath, name, project.Settings.ProjectPath, name);
+            _vm.AppSettingsService.CollectSummaries(forceRefresh: true);
+        }
+        catch { }
+
+        // ロード中だった場合は新しいパスから読み直して整合性を保つ
+        if (wasLoaded)
+            _vm.ProjectService.LoadProject(newDataFilePath);
+
+        _editingProjectPath = newDataFilePath;
         _coverBitmapCache.Clear();
         Refresh();
         HideEditProjectPanel();
@@ -1411,70 +1442,24 @@ public partial class ProjectListPage : Page, IRefreshable
     private async Task ShowDeleteDialogAsync(string path)
     {
         var entry = _vm.AppSettingsService.RecentProjects.FirstOrDefault(p => p.DataFilePath == path);
-        var projectName   = entry?.ProjectName ?? System.IO.Path.GetFileName(path);
-        var projectFolder = entry?.ProjectPath ?? System.IO.Path.GetDirectoryName(path) ?? "";
+        var projectName    = entry?.ProjectName ?? System.IO.Path.GetFileName(path);
+        var projectFolder  = entry?.ProjectPath ?? "";
+        var isFolderManaged = _vm.AppSettingsService.CollectSummaries()
+            .FirstOrDefault(s => s.Entry.DataFilePath == path)?.UseFolderManagement == true;
 
-        var bg  = (Brush)FindResource("BgCardBrush");
-        var fg  = (Brush)FindResource("TextPrimaryBrush");
-        var dim = (Brush)FindResource("TextDimBrush");
+        var dlg = new TKer.Views.Dialogs.ProjectDeleteDialog(
+            projectName, projectFolder, isFolderManaged)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        if (dlg.ShowDialog() != true) return;
 
-        var win = new Window
-        {
-            Title = "プロジェクトの削除", Width = 440, Height = 240,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Owner = Window.GetWindow(this), ResizeMode = ResizeMode.NoResize,
-            Background = bg
-        };
-        var sp = new StackPanel { Margin = new Thickness(24) };
-        sp.Children.Add(new TextBlock
-        {
-            Text = $"「{projectName}」を一覧から削除しますか？",
-            Foreground = fg, FontSize = 13, TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 16)
-        });
-        var chkFolder = new CheckBox
-        {
-            Content = "プロジェクトフォルダも削除する",
-            Foreground = fg, FontSize = 12,
-            Margin = new Thickness(0, 0, 0, 4)
-        };
-        sp.Children.Add(chkFolder);
-        sp.Children.Add(new TextBlock
-        {
-            Text = projectFolder,
-            Foreground = dim, FontSize = 10, FontFamily = new FontFamily("Consolas"),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(22, 0, 0, 20)
-        });
-        var btnPanel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right
-        };
-        var btnCancel = new Button
-        {
-            Content = "キャンセル", Style = (Style)FindResource("SecondaryButton"),
-            Padding = new Thickness(14, 6, 14, 6), Margin = new Thickness(0, 0, 8, 0)
-        };
-        var btnOk = new Button
-        {
-            Content = "削除", Style = (Style)FindResource("DangerButton"),
-            Padding = new Thickness(20, 6, 20, 6)
-        };
-        btnCancel.Click += (_, _) => win.DialogResult = false;
-        btnOk.Click     += (_, _) => win.DialogResult = true;
-        btnPanel.Children.Add(btnCancel);
-        btnPanel.Children.Add(btnOk);
-        sp.Children.Add(btnPanel);
-        win.Content = sp;
-        win.PreviewKeyDown += (_, ev) =>
-        {
-            if (ev.Key == Key.Escape) { win.DialogResult = false; ev.Handled = true; }
-        };
+        bool deleteFolder = dlg.DeleteFolder;
 
-        if (win.ShowDialog() != true) return;
+        // 削除対象がアクティブなら先に解除（自動保存による再生成を防ぐ）
+        if (_vm.ProjectService.ProjectFilePath == path)
+            _vm.ProjectService.CloseProject();
 
-        bool deleteFolder = chkFolder.IsChecked == true;
         _vm.AppSettingsService.RemoveProject(path);
         if (_selectedPath == path)
         {
@@ -1484,8 +1469,33 @@ public partial class ProjectListPage : Page, IRefreshable
         _coverBitmapCache.Clear();
         Refresh();
 
-        if (deleteFolder && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
+        if (isFolderManaged && deleteFolder
+            && !string.IsNullOrEmpty(projectFolder) && Directory.Exists(projectFolder))
+        {
+            // フォルダごと削除
             await DeleteFolderWithProgressAsync(projectFolder, projectName);
+        }
+        else
+        {
+            // JSON本体とバックアップ(.bak)のみ削除（フォルダは残す）
+            DeleteProjectJsonFiles(path);
+        }
+
+        // settings.json を再読み込みしてグリッド表示領域を更新
+        _vm.AppSettingsService.Reload();
+        ApplyFilter();
+    }
+
+    /// <summary>プロジェクトのJSON本体とバックアップ(.bak)を削除する。</summary>
+    private static void DeleteProjectJsonFiles(string jsonPath)
+    {
+        try { if (File.Exists(jsonPath)) File.Delete(jsonPath); } catch { }
+        try
+        {
+            var bak = jsonPath + ".bak";
+            if (File.Exists(bak)) File.Delete(bak);
+        }
+        catch { }
     }
 
     /// <summary>プロジェクトフォルダをプログレスバー付きで非同期削除する。</summary>

@@ -86,7 +86,7 @@ public partial class MainViewModel : ObservableObject
         ProjectService         = new ProjectService();
         SetupService           = new SetupService(ProjectService);
         DeliverableService     = new DeliverableService(ProjectService);
-        CollectionService      = new CollectionService();
+        CollectionService      = new CollectionService(AppSettingsService);
         ScheduleService        = new ScheduleService();
         ArticleService         = new ArticleService();
         FileWatcherService     = new FileWatcherService();

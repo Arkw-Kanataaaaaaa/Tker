@@ -158,14 +158,28 @@
                 <Border x:Name="OrphansSection" Grid.Row="3" Visibility="Collapsed"
                         Background="{StaticResource BgSecondaryBrush}"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
-                        MaxHeight="260">
+                        MaxHeight="280">
                     <DockPanel>
                         <Border DockPanel.Dock="Top" Padding="16,8,16,8"
                                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-                            <TextBlock x:Name="OrphansHeader"
-                                       Text="非管理アイテム"
-                                       FontSize="12" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextDimBrush}"/>
+                            <DockPanel>
+                                <Button x:Name="BtnBulkAddOrphans" DockPanel.Dock="Right"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="12,4" Margin="8,0,0,0"
+                                        Click="BulkAddOrphans_Click" IsEnabled="False"
+                                        ToolTip="チェックしたファイルを仮データとして一括追加">
+                                    <TextBlock x:Name="BtnBulkAddOrphansText" Text="選択を一括追加"/>
+                                </Button>
+                                <CheckBox x:Name="ChkOrphansSelectAll" DockPanel.Dock="Right"
+                                          Content="全選択" VerticalAlignment="Center"
+                                          Foreground="{StaticResource TextDimBrush}"
+                                          Click="OrphansSelectAll_Click"/>
+                                <TextBlock x:Name="OrphansHeader"
+                                           Text="非管理アイテム"
+                                           FontSize="12" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextDimBrush}"/>
+                            </DockPanel>
                         </Border>
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">

@@ -28,6 +28,7 @@ public partial class CollectionItemsPage : Page
     private Window? _keyDownWindow;
     private readonly Dictionary<string, string> _editingValues = new();
     private readonly List<string> _orphans = new();
+    private readonly HashSet<string> _checkedOrphans = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> ImageExtensions =
         new(StringComparer.OrdinalIgnoreCase)
@@ -459,6 +460,7 @@ public partial class CollectionItemsPage : Page
         if (!_organizing)
         {
             _selectedOrphanPath = null;
+            _checkedOrphans.Clear();
             OrphansSection.Visibility = Visibility.Collapsed;
             UpdateToolbarState();
             return;
@@ -471,14 +473,17 @@ public partial class CollectionItemsPage : Page
         _orphans.Clear();
         if (!_organizing || !HasFileField())
         {
+            _checkedOrphans.Clear();
             OrphansSection.Visibility = Visibility.Collapsed;
             return;
         }
         if (string.IsNullOrEmpty(_col.FolderPath) || !Directory.Exists(_col.FolderPath))
         {
+            _checkedOrphans.Clear();
             OrphansSection.Visibility = Visibility.Visible;
             OrphansHeader.Text = "非管理アイテム (0件) — コレクションフォルダがありません";
             OrphansListPanel.Children.Clear();
+            UpdateOrphanSelectionState();
             return;
         }
 
@@ -501,9 +506,13 @@ public partial class CollectionItemsPage : Page
         }
         catch { }
 
+        // 既に存在しないファイルのチェックを除去
+        _checkedOrphans.RemoveWhere(p => !_orphans.Contains(p));
+
         OrphansSection.Visibility = Visibility.Visible;
         OrphansHeader.Text = $"非管理アイテム ({_orphans.Count}件)";
         BuildOrphansList();
+        UpdateOrphanSelectionState();
     }
 
     private void BuildOrphansList()
@@ -533,8 +542,20 @@ public partial class CollectionItemsPage : Page
 
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        // 一括追加用チェックボックス
+        var chk = new CheckBox
+        {
+            IsChecked         = _checkedOrphans.Contains(path),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin            = new Thickness(0, 0, 10, 0),
+        };
+        chk.Checked   += (_, _) => { _checkedOrphans.Add(path);    UpdateOrphanSelectionState(); };
+        chk.Unchecked += (_, _) => { _checkedOrphans.Remove(path); UpdateOrphanSelectionState(); };
+        Grid.SetColumn(chk, 0); g.Children.Add(chk);
 
         var icon = new System.Windows.Shapes.Path
         {
@@ -543,7 +564,7 @@ public partial class CollectionItemsPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             Margin            = new Thickness(0, 0, 8, 0),
         };
-        Grid.SetColumn(icon, 0); g.Children.Add(icon);
+        Grid.SetColumn(icon, 1); g.Children.Add(icon);
 
         var nameTb = new TextBlock
         {
@@ -554,7 +575,7 @@ public partial class CollectionItemsPage : Page
             TextTrimming      = TextTrimming.CharacterEllipsis,
             ToolTip           = path,
         };
-        Grid.SetColumn(nameTb, 1); g.Children.Add(nameTb);
+        Grid.SetColumn(nameTb, 2); g.Children.Add(nameTb);
 
         long size = 0;
         try { size = new FileInfo(path).Length; } catch { }
@@ -566,7 +587,7 @@ public partial class CollectionItemsPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             Margin            = new Thickness(12, 0, 0, 0),
         };
-        Grid.SetColumn(sizeTb, 2); g.Children.Add(sizeTb);
+        Grid.SetColumn(sizeTb, 3); g.Children.Add(sizeTb);
 
         var row = new Border
         {
@@ -579,8 +600,10 @@ public partial class CollectionItemsPage : Page
         };
         row.MouseEnter        += (_, _) => { if (!isSel) row.Background = hoverBg; };
         row.MouseLeave        += (_, _) => { if (!isSel) row.Background = Brushes.Transparent; };
-        row.MouseLeftButtonUp += (_, _) =>
+        row.MouseLeftButtonUp += (_, e) =>
         {
+            // チェックボックス上のクリックは選択トグルに使わない
+            if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
             _selectedOrphanPath = string.Equals(_selectedOrphanPath, path, StringComparison.OrdinalIgnoreCase)
                 ? null : path;
             _selectedItemId = null;
@@ -590,6 +613,59 @@ public partial class CollectionItemsPage : Page
             UpdateToolbarState();
         };
         return row;
+    }
+
+    /// <summary>チェック状態に応じて一括追加ボタンと全選択チェックの状態を更新する。</summary>
+    private void UpdateOrphanSelectionState()
+    {
+        int checkedCount = _checkedOrphans.Count;
+        BtnBulkAddOrphans.IsEnabled = checkedCount > 0;
+        BtnBulkAddOrphansText.Text  = checkedCount > 0
+            ? $"選択を一括追加 ({checkedCount})" : "選択を一括追加";
+
+        // 全選択チェックの状態（イベント再入を避けるためハンドラを直接呼ばない）
+        ChkOrphansSelectAll.Click -= OrphansSelectAll_Click;
+        ChkOrphansSelectAll.IsChecked = _orphans.Count > 0 && checkedCount == _orphans.Count;
+        ChkOrphansSelectAll.Click += OrphansSelectAll_Click;
+    }
+
+    private void OrphansSelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        bool selectAll = ChkOrphansSelectAll.IsChecked == true;
+        _checkedOrphans.Clear();
+        if (selectAll)
+            foreach (var p in _orphans) _checkedOrphans.Add(p);
+        BuildOrphansList();
+        UpdateOrphanSelectionState();
+    }
+
+    /// <summary>チェックされた非管理ファイルを、ファイル付属情報に設定した仮アイテムとして一括追加する。</summary>
+    private void BulkAddOrphans_Click(object sender, RoutedEventArgs e)
+    {
+        var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
+        if (fileField == null) return;
+
+        var targets = _orphans.Where(p => _checkedOrphans.Contains(p)).ToList();
+        if (targets.Count == 0) return;
+
+        var now = DateTime.Now;
+        foreach (var path in targets)
+        {
+            var item = new CollectionItem
+            {
+                Name      = Path.GetFileNameWithoutExtension(path),
+                AddedAt   = now,
+                UpdatedAt = now,
+            };
+            item.FieldValues[fileField.Id] = path;
+            _col.Items.Add(item);
+        }
+
+        _col.UpdatedAt = now;
+        _vm.CollectionService.Save(_col);
+        _checkedOrphans.Clear();
+        RefreshList();
+        RefreshOrphans();
     }
 
     private static string FormatBytes(long bytes)

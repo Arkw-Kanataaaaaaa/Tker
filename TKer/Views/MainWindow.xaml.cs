@@ -175,18 +175,7 @@ public partial class MainWindow : Window
                 // トップメニューから遷移した場合の保留アクションを適用
                 if (_pendingPageAction is { } action)
                 {
-                    switch (page)
-                    {
-                        case ProjectListPage plp when action == "add":
-                            plp.RequestShowAddPanel();
-                            break;
-                        case CollectionPage cpAdd when action == "add":
-                            cpAdd.RequestShowAddForm();
-                            break;
-                        case CollectionPage cpLoad when action == "load":
-                            cpLoad.RequestLoadCollection();
-                            break;
-                    }
+                    ApplyPageAction(page, action);
                     _pendingPageAction = null;
                 }
 
@@ -325,10 +314,7 @@ public partial class MainWindow : Window
 
     /// <summary>プロジェクト一覧へ遷移し、追加フォームを開いた状態にする。</summary>
     private void ProjectAdd_Click(object sender, System.Windows.RoutedEventArgs e)
-    {
-        _pendingPageAction = "add";
-        _vm.NavigateToCommand.Execute("ProjectList");
-    }
+        => RunLibraryAction("ProjectList", "add");
 
     /// <summary>プロジェクトファイルの読み込みダイアログをそのまま表示する。</summary>
     private void ProjectLoad_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -346,16 +332,42 @@ public partial class MainWindow : Window
 
     /// <summary>コレクション画面へ遷移し、追加フォームを開いた状態にする。</summary>
     private void CollectionAdd_Click(object sender, System.Windows.RoutedEventArgs e)
-    {
-        _pendingPageAction = "add";
-        _vm.NavigateToCommand.Execute("Collection");
-    }
+        => RunLibraryAction("Collection", "add");
 
     /// <summary>コレクション画面へ遷移し、読み込みダイアログをそのまま表示する。</summary>
     private void CollectionLoad_Click(object sender, System.Windows.RoutedEventArgs e)
+        => RunLibraryAction("Collection", "load");
+
+    /// <summary>
+    /// 対象ビューへ遷移してアクションを適用する。すでに対象ビューを表示中の場合は
+    /// 遷移せず現在のページへ直接アクションを適用する（CurrentView 不変で遷移が起きないため）。
+    /// </summary>
+    private void RunLibraryAction(string view, string action)
     {
-        _pendingPageAction = "load";
-        _vm.NavigateToCommand.Execute("Collection");
+        if (_vm.CurrentView == view && MainFrame.Content is Page current)
+        {
+            ApplyPageAction(current, action);
+            return;
+        }
+        _pendingPageAction = action;
+        _vm.NavigateToCommand.Execute(view);
+    }
+
+    /// <summary>ページ種別に応じて保留アクション（"add" / "load"）を適用する。</summary>
+    private static void ApplyPageAction(Page page, string action)
+    {
+        switch (page)
+        {
+            case ProjectListPage plp when action == "add":
+                plp.RequestShowAddPanel();
+                break;
+            case CollectionPage cpAdd when action == "add":
+                cpAdd.RequestShowAddForm();
+                break;
+            case CollectionPage cpLoad when action == "load":
+                cpLoad.RequestLoadCollection();
+                break;
+        }
     }
 
     /// <summary>設定に保存されたメニュー順序に従い、トップメニューの項目を並び替える。</summary>

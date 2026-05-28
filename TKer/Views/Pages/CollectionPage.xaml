@@ -147,8 +147,7 @@
                 </ScrollViewer>
 
                 <!-- リスト表示 -->
-                <Grid x:Name="CollectionListSection" Visibility="Collapsed"
-                      Grid.IsSharedSizeScope="True">
+                <Grid x:Name="CollectionListSection" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -160,8 +159,8 @@
                             BorderThickness="0,0,0,1" Padding="16,8,16,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="ColName"/>
-                                <ColumnDefinition Width="Auto" SharedSizeGroup="ColCreated"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="コレクション名" FontSize="11"

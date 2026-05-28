@@ -232,18 +232,17 @@
                         </ItemsControl>
 
                         <!-- リスト表示 -->
-                        <StackPanel x:Name="ProjectListSection" Visibility="Collapsed"
-                                    Grid.IsSharedSizeScope="True">
+                        <StackPanel x:Name="ProjectListSection" Visibility="Collapsed">
                             <!-- ヘッダー行 -->
                             <Border Padding="16,8,16,8"
                                     Background="{StaticResource BgSecondaryBrush}"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PColName"/>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PColPeriod"/>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PColProgress"/>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="PColCreated"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="プロジェクト名" Grid.Column="0"

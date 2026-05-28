@@ -217,7 +217,6 @@ public partial class CollectionItemsPage : Page
             seq = seq.Where(it => MatchesSearch(it, query));
         var list = seq.ToList();
 
-        TxtItemCount.Text = $"{list.Count} 件";
         EmptyStatePanel.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         if (_isGridMode)
@@ -792,21 +791,10 @@ public partial class CollectionItemsPage : Page
         var g = new Grid();
         int colCount = Math.Max(_col.Fields.Count, 1);
         for (int i = 0; i < colCount; i++)
-            g.ColumnDefinitions.Add(new ColumnDefinition
-            {
-                Width            = GridLength.Auto,
-                SharedSizeGroup  = $"ItemsCol{i}",
-            });
-        g.ColumnDefinitions.Add(new ColumnDefinition
-        {
-            Width           = GridLength.Auto,
-            SharedSizeGroup = "ItemsColCreated",
-        });
-        // 最終列は * で残り幅を吸収（ウィンドウ最大化時に左寄りを防ぐ）
-        g.ColumnDefinitions.Add(new ColumnDefinition
-        {
-            Width = new GridLength(1, GridUnitType.Star),
-        });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        // 作成日時 / 更新日時
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         return g;
     }
 

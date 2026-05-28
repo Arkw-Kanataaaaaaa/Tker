@@ -369,28 +369,29 @@
                 <Grid>
 
                     <!-- プロジェクト詳細パネル -->
-                    <ScrollViewer x:Name="DetailDrawerScroll" Width="500" HorizontalAlignment="Left"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="24,20,24,24">
-                            <!-- ヘッダー行 -->
-                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                    Padding="24,0,24,12" Margin="-24,0,-24,16">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                            ToolTip="閉じる" Click="CloseDetailPanel_Click">
-                                        <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                                    </Button>
-                                    <TextBlock x:Name="DetailPanelTitle"
-                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
-                                               Foreground="{StaticResource TextPrimaryBrush}"
-                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                </DockPanel>
-                            </Border>
-                            <StackPanel x:Name="ProjectInfoContent"/>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <DockPanel x:Name="DetailDrawerScroll" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <!-- ヘッダー行（固定） -->
+                        <Border DockPanel.Dock="Top"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="24,14">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        ToolTip="閉じる" Click="CloseDetailPanel_Click">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="DetailPanelTitle"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                        <!-- コンテンツ（スクロール） -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="ProjectInfoContent" Margin="24,16,24,24"/>
+                        </ScrollViewer>
+                    </DockPanel>
 
                     <!-- 新規作成パネル -->
                     <DockPanel x:Name="AddDrawerScroll" Width="500" HorizontalAlignment="Left"

@@ -882,9 +882,23 @@ public partial class CollectionItemsPage : Page
         if (_selectedItemId == null) return;
         var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemId);
         if (item == null) return;
-        var label = string.IsNullOrWhiteSpace(item.Name) ? "このアイテム" : $"「{item.Name}」";
-        if (!AppDialog.Confirm($"{label}を削除しますか？", "削除確認",
-                Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
+
+        var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
+        string? filePath = null;
+        if (fileField != null
+            && item.FieldValues.TryGetValue(fileField.Id, out var fp)
+            && !string.IsNullOrEmpty(fp)
+            && File.Exists(fp))
+            filePath = fp;
+
+        var dlg = new ItemDeleteDialog(item.Name, filePath) { Owner = Window.GetWindow(this) };
+        if (dlg.ShowDialog() != true) return;
+
+        if (dlg.DeleteFile && filePath != null)
+        {
+            try { File.Delete(filePath); } catch { }
+        }
+
         _col.Items.Remove(item);
         _col.UpdatedAt = DateTime.Now;
         _vm.CollectionService.Save(_col);

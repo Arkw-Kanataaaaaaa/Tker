@@ -215,7 +215,7 @@
                                         Click="CancelForm_Click" ToolTip="閉じる">
                                     <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                                 </Button>
-                                <TextBlock x:Name="TxtFormTitle" Text="アイテムを追加"
+                                <TextBlock x:Name="TxtFormTitle" Text="アイテム追加"
                                            FontSize="16" FontWeight="Bold"
                                            Foreground="{StaticResource TextPrimaryBrush}"
                                            VerticalAlignment="Center"/>

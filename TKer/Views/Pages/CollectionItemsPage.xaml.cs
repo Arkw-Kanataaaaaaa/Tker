@@ -602,7 +602,7 @@ public partial class CollectionItemsPage : Page
 
     private void OpenDetailDrawer(CollectionItem item)
     {
-        TxtDetailName.Text = string.IsNullOrWhiteSpace(item.Name) ? "アイテム詳細" : item.Name;
+        TxtDetailName.Text = "アイテム詳細";
         BuildDetailContent(item);
 
         bool wasOpen = FormDrawer.Visibility == Visibility.Visible || DrawerContainer.ActualWidth > 0;
@@ -966,7 +966,7 @@ public partial class CollectionItemsPage : Page
         _editingItemId = existing?.Id;
         _editingValues.Clear();
 
-        TxtFormTitle.Text   = existing == null ? "アイテムを追加" : "アイテムを編集";
+        TxtFormTitle.Text   = existing == null ? "アイテム追加" : "アイテム編集";
         BtnFormSave.Content = existing == null ? "追加" : "保存";
 
         if (existing != null)

@@ -150,7 +150,7 @@ public partial class CollectionItemsPage : Page
                 EditItem_Click(this, new RoutedEventArgs());
                 e.Handled = true;
             }
-            else if (e.Key == Key.Escape && FormOverlayRoot.Visibility == Visibility.Visible)
+            else if (e.Key == Key.Escape && FormDrawer.Visibility == Visibility.Visible)
             {
                 CancelForm_Click(this, new RoutedEventArgs());
                 e.Handled = true;
@@ -404,15 +404,14 @@ public partial class CollectionItemsPage : Page
         TxtDetailName.Text = string.IsNullOrWhiteSpace(item.Name) ? "アイテム詳細" : item.Name;
         BuildDetailContent(item);
 
-        if (DetailDrawer.Visibility == Visibility.Visible) return;
-
-        bool wasOpen = DrawerContainer.ActualWidth > 0;
+        bool wasOpen = FormDrawer.Visibility == Visibility.Visible || DrawerContainer.ActualWidth > 0;
         DetailDrawer.Visibility = Visibility.Visible;
+        FormDrawer.Visibility   = Visibility.Collapsed;
 
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = wasOpen ? DrawerContainer.ActualWidth : 0, To = 360,
-            Duration = TimeSpan.FromMilliseconds(220),
+            From = wasOpen ? DrawerContainer.ActualWidth : 0, To = 500,
+            Duration = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
         };
@@ -424,7 +423,7 @@ public partial class CollectionItemsPage : Page
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
             From = DrawerContainer.ActualWidth, To = 0,
-            Duration = TimeSpan.FromMilliseconds(180),
+            Duration = TimeSpan.FromMilliseconds(200),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn },
         };
@@ -500,7 +499,7 @@ public partial class CollectionItemsPage : Page
 
     private void ContentArea_DragOver(object sender, DragEventArgs e)
     {
-        if (FormOverlayRoot.Visibility == Visibility.Visible) return;
+        if (FormDrawer.Visibility == Visibility.Visible) return;
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
@@ -508,7 +507,7 @@ public partial class CollectionItemsPage : Page
 
     private void ContentArea_Drop(object sender, DragEventArgs e)
     {
-        if (FormOverlayRoot.Visibility == Visibility.Visible) return;
+        if (FormDrawer.Visibility == Visibility.Visible) return;
         if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         var files = (string[])e.Data.GetData(DataFormats.FileDrop);
         if (files.Length == 0) return;
@@ -763,34 +762,32 @@ public partial class CollectionItemsPage : Page
 
     private void OpenFormDrawer()
     {
-        if (FormOverlayRoot.Visibility == Visibility.Visible) return;
-        FormOverlayRoot.Visibility = Visibility.Visible;
+        if (FormDrawer.Visibility == Visibility.Visible) return;
+        bool wasOpen = DetailDrawer.Visibility == Visibility.Visible || DrawerContainer.ActualWidth > 0;
+        FormDrawer.Visibility   = Visibility.Visible;
+        DetailDrawer.Visibility = Visibility.Collapsed;
+
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 480, To = 0, Duration = TimeSpan.FromMilliseconds(260),
+            From = wasOpen ? DrawerContainer.ActualWidth : 0, To = 500,
+            Duration = TimeSpan.FromMilliseconds(260),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
         };
-        FormPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
     private void CloseFormDrawer()
     {
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
-            From = 0, To = 480, Duration = TimeSpan.FromMilliseconds(200),
+            From = DrawerContainer.ActualWidth, To = 0,
+            Duration = TimeSpan.FromMilliseconds(200),
             EasingFunction = new System.Windows.Media.Animation.QuadraticEase
             { EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn },
         };
-        anim.Completed += (_, _) => FormOverlayRoot.Visibility = Visibility.Collapsed;
-        FormPanelTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-    }
-
-    private void FormBackdrop_Click(object sender, MouseButtonEventArgs e)
-    {
-        _editingItemId = null;
-        _editingValues.Clear();
-        CloseFormDrawer();
+        anim.Completed += (_, _) => FormDrawer.Visibility = Visibility.Collapsed;
+        DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
     private void CancelForm_Click(object sender, RoutedEventArgs e)

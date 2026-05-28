@@ -154,78 +154,69 @@
                 </StackPanel>
             </Grid>
 
-            <!-- ─── 右ドロワー（詳細） ─── -->
+            <!-- ─── 右ドロワー（詳細 / フォーム共用） ─── -->
             <Border x:Name="DrawerContainer" Grid.Column="2" Width="0" ClipToBounds="True"
                     Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
-                <DockPanel x:Name="DetailDrawer" Width="360" HorizontalAlignment="Left"
-                           Visibility="Collapsed">
-                    <!-- ヘッダー -->
-                    <Border DockPanel.Dock="Top"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                            Padding="20,14">
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                    Click="CloseDetail_Click" ToolTip="閉じる">
-                                <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                            </Button>
-                            <TextBlock x:Name="TxtDetailName"
-                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                        </DockPanel>
-                    </Border>
-                    <!-- コンテンツ -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="DetailContentPanel" Margin="20,16,20,20"/>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
-        </Grid>
+                <Grid>
+                    <!-- 詳細ドロワー -->
+                    <DockPanel x:Name="DetailDrawer" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <!-- ヘッダー -->
+                        <Border DockPanel.Dock="Top"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="20,14">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        Click="CloseDetail_Click" ToolTip="閉じる">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="TxtDetailName"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                        <!-- コンテンツ -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="DetailContentPanel" Margin="20,16,20,20"/>
+                        </ScrollViewer>
+                    </DockPanel>
 
-        <!-- ─── フォームドロワー (ZIndex=10) ─── -->
-        <Grid Grid.RowSpan="2" Panel.ZIndex="10"
-              x:Name="FormOverlayRoot" Visibility="Collapsed">
-            <Border x:Name="FormBackdrop" Background="#40000000"
-                    MouseLeftButtonUp="FormBackdrop_Click"/>
-            <Border x:Name="FormOverlay" HorizontalAlignment="Right" Width="480"
-                    Background="{StaticResource BgSecondaryBrush}"
-                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0"
-                    ClipToBounds="True">
-                <Border.RenderTransform>
-                    <TranslateTransform x:Name="FormPanelTransform"/>
-                </Border.RenderTransform>
-                <DockPanel>
-                    <Border DockPanel.Dock="Top"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                            Padding="20,14">
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                    Click="CancelForm_Click" ToolTip="閉じる">
-                                <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                            </Button>
-                            <TextBlock x:Name="TxtFormTitle" Text="アイテムを追加"
-                                       FontSize="16" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       VerticalAlignment="Center"/>
-                        </DockPanel>
-                    </Border>
-                    <Border DockPanel.Dock="Bottom"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
-                            Padding="20,12">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
-                                    Padding="14,6" Margin="0,0,8,0"
-                                    Click="CancelForm_Click"/>
-                            <Button x:Name="BtnFormSave" Content="追加"
-                                    Style="{StaticResource PrimaryButton}"
-                                    Padding="22,6" Click="SaveForm_Click"/>
-                        </StackPanel>
-                    </Border>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="FormContentPanel" Margin="24,16,24,16"/>
-                    </ScrollViewer>
-                </DockPanel>
+                    <!-- フォームドロワー -->
+                    <DockPanel x:Name="FormDrawer" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <Border DockPanel.Dock="Top"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="20,14">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        Click="CancelForm_Click" ToolTip="閉じる">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="TxtFormTitle" Text="アイテムを追加"
+                                           FontSize="16" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+                        <Border DockPanel.Dock="Bottom"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                                Padding="20,12">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="キャンセル" Style="{StaticResource SecondaryButton}"
+                                        Padding="14,6" Margin="0,0,8,0"
+                                        Click="CancelForm_Click"/>
+                                <Button x:Name="BtnFormSave" Content="追加"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Padding="22,6" Click="SaveForm_Click"/>
+                            </StackPanel>
+                        </Border>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="FormContentPanel" Margin="24,16,24,16"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Grid>
             </Border>
         </Grid>
 

@@ -167,13 +167,15 @@
                                         Style="{StaticResource SecondaryButton}"
                                         Padding="12,4" Margin="8,0,0,0"
                                         Click="BulkAddOrphans_Click" IsEnabled="False"
-                                        ToolTip="チェックしたファイルを仮データとして一括追加">
+                                        ToolTip="選択したファイルを仮データとして一括追加">
                                     <TextBlock x:Name="BtnBulkAddOrphansText" Text="選択を一括追加"/>
                                 </Button>
-                                <CheckBox x:Name="ChkOrphansSelectAll" DockPanel.Dock="Right"
-                                          Content="全選択" VerticalAlignment="Center"
-                                          Foreground="{StaticResource TextDimBrush}"
-                                          Click="OrphansSelectAll_Click"/>
+                                <Button x:Name="BtnOrphansSelectAll" DockPanel.Dock="Right"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="12,4" Margin="8,0,0,0"
+                                        Click="OrphansSelectAll_Click" IsEnabled="False">
+                                    <TextBlock x:Name="BtnOrphansSelectAllText" Text="全選択"/>
+                                </Button>
                                 <TextBlock x:Name="OrphansHeader"
                                            Text="非管理アイテム"
                                            FontSize="12" FontWeight="SemiBold"

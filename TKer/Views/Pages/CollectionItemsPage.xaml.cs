@@ -19,8 +19,9 @@ public partial class CollectionItemsPage : Page
 {
     private readonly MainViewModel _vm;
     private readonly Collection    _col;
-    private string? _selectedItemId;
-    private string? _selectedOrphanPath;
+    private readonly HashSet<string> _selectedItemIds = new();
+    private string? _itemAnchorId;
+    private readonly List<string> _visibleItemIds = new();
     private string? _editingItemId;
     private string  _searchFieldId = "";
     private bool    _isGridMode;
@@ -28,7 +29,8 @@ public partial class CollectionItemsPage : Page
     private Window? _keyDownWindow;
     private readonly Dictionary<string, string> _editingValues = new();
     private readonly List<string> _orphans = new();
-    private readonly HashSet<string> _checkedOrphans = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedOrphans = new(StringComparer.OrdinalIgnoreCase);
+    private string? _orphanAnchorPath;
 
     private static readonly HashSet<string> ImageExtensions =
         new(StringComparer.OrdinalIgnoreCase)
@@ -234,6 +236,11 @@ public partial class CollectionItemsPage : Page
             seq = seq.Where(it => MatchesSearch(it, query));
         var list = seq.ToList();
 
+        // 表示順序を保持（Shift範囲選択用）し、存在しない選択を除去
+        _visibleItemIds.Clear();
+        _visibleItemIds.AddRange(list.Select(x => x.Id));
+        _selectedItemIds.RemoveWhere(id => !_visibleItemIds.Contains(id));
+
         EmptyStatePanel.Visibility = list.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         if (_isGridMode)
@@ -260,7 +267,7 @@ public partial class CollectionItemsPage : Page
 
     private UIElement BuildItemCard(CollectionItem item)
     {
-        bool isSel = item.Id == _selectedItemId;
+        bool isSel = _selectedItemIds.Contains(item.Id);
 
         var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
         string? filePath = fileField != null
@@ -345,7 +352,9 @@ public partial class CollectionItemsPage : Page
         card.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ClickCount != 2) return;
-            _selectedItemId = item.Id;
+            _selectedItemIds.Clear();
+            _selectedItemIds.Add(item.Id);
+            _itemAnchorId = item.Id;
             ShowForm(item);
         };
 
@@ -383,7 +392,7 @@ public partial class CollectionItemsPage : Page
 
     private UIElement BuildItemRow(CollectionItem item)
     {
-        bool isSel  = item.Id == _selectedItemId;
+        bool isSel  = _selectedItemIds.Contains(item.Id);
         var selBg   = new SolidColorBrush(Color.FromArgb(50, 35, 131, 226));
         var hoverBg = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
 
@@ -424,13 +433,15 @@ public partial class CollectionItemsPage : Page
             Cursor          = Cursors.Hand,
             Child           = g,
         };
-        row.MouseEnter        += (_, _) => { if (item.Id != _selectedItemId) row.Background = hoverBg; };
-        row.MouseLeave        += (_, _) => { if (item.Id != _selectedItemId) row.Background = Brushes.Transparent; };
+        row.MouseEnter        += (_, _) => { if (!_selectedItemIds.Contains(item.Id)) row.Background = hoverBg; };
+        row.MouseLeave        += (_, _) => { if (!_selectedItemIds.Contains(item.Id)) row.Background = Brushes.Transparent; };
         row.MouseLeftButtonUp += (_, _) => SelectItem(item);
         row.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ClickCount != 2) return;
-            _selectedItemId = item.Id;
+            _selectedItemIds.Clear();
+            _selectedItemIds.Add(item.Id);
+            _itemAnchorId = item.Id;
             ShowForm(item);
         };
         return row;
@@ -440,16 +451,58 @@ public partial class CollectionItemsPage : Page
 
     private void SelectItem(CollectionItem item)
     {
-        if (_selectedItemId == item.Id && DetailDrawer.Visibility == Visibility.Visible)
+        bool ctrl  = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        bool shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+        if (shift && _itemAnchorId != null)
         {
-            CloseDetailDrawer();
-            return;
+            int a = _visibleItemIds.IndexOf(_itemAnchorId);
+            int b = _visibleItemIds.IndexOf(item.Id);
+            if (a >= 0 && b >= 0)
+            {
+                _selectedItemIds.Clear();
+                for (int i = Math.Min(a, b); i <= Math.Max(a, b); i++)
+                    _selectedItemIds.Add(_visibleItemIds[i]);
+            }
         }
-        _selectedItemId = item.Id;
-        _selectedOrphanPath = null;
+        else if (ctrl)
+        {
+            if (!_selectedItemIds.Remove(item.Id)) _selectedItemIds.Add(item.Id);
+            _itemAnchorId = item.Id;
+        }
+        else
+        {
+            // 通常クリック：単一選択中の同一アイテムを再クリックで解除
+            if (_selectedItemIds.Count == 1 && _selectedItemIds.Contains(item.Id)
+                && DetailDrawer.Visibility == Visibility.Visible)
+            {
+                _selectedItemIds.Clear();
+                _itemAnchorId = null;
+                CloseDetailDrawer();
+                return;
+            }
+            _selectedItemIds.Clear();
+            _selectedItemIds.Add(item.Id);
+            _itemAnchorId = item.Id;
+        }
+
+        // アイテム選択時は非管理ファイル選択を解除
+        _selectedOrphans.Clear();
+        _orphanAnchorPath = null;
+
         RefreshList();
         RefreshOrphans();
-        OpenDetailDrawer(item);
+
+        // 詳細表示は単一選択のときのみ。複数選択時はドロワーを閉じる。
+        if (_selectedItemIds.Count == 1)
+        {
+            var single = _col.Items.FirstOrDefault(x => x.Id == _selectedItemIds.First());
+            if (single != null) OpenDetailDrawer(single);
+        }
+        else if (DetailDrawer.Visibility == Visibility.Visible)
+        {
+            CloseDetailDrawer(clearSelection: false);
+        }
     }
 
     // ── フォルダ整理 / 非管理アイテム ─────────────────────────
@@ -459,8 +512,8 @@ public partial class CollectionItemsPage : Page
         _organizing = !_organizing;
         if (!_organizing)
         {
-            _selectedOrphanPath = null;
-            _checkedOrphans.Clear();
+            _selectedOrphans.Clear();
+            _orphanAnchorPath = null;
             OrphansSection.Visibility = Visibility.Collapsed;
             UpdateToolbarState();
             return;
@@ -473,13 +526,15 @@ public partial class CollectionItemsPage : Page
         _orphans.Clear();
         if (!_organizing || !HasFileField())
         {
-            _checkedOrphans.Clear();
+            _selectedOrphans.Clear();
+            _orphanAnchorPath = null;
             OrphansSection.Visibility = Visibility.Collapsed;
             return;
         }
         if (string.IsNullOrEmpty(_col.FolderPath) || !Directory.Exists(_col.FolderPath))
         {
-            _checkedOrphans.Clear();
+            _selectedOrphans.Clear();
+            _orphanAnchorPath = null;
             OrphansSection.Visibility = Visibility.Visible;
             OrphansHeader.Text = "非管理アイテム (0件) — コレクションフォルダがありません";
             OrphansListPanel.Children.Clear();
@@ -506,8 +561,8 @@ public partial class CollectionItemsPage : Page
         }
         catch { }
 
-        // 既に存在しないファイルのチェックを除去
-        _checkedOrphans.RemoveWhere(p => !_orphans.Contains(p));
+        // 既に存在しないファイルの選択を除去
+        _selectedOrphans.RemoveWhere(p => !_orphans.Contains(p));
 
         OrphansSection.Visibility = Visibility.Visible;
         OrphansHeader.Text = $"非管理アイテム ({_orphans.Count}件)";
@@ -536,26 +591,14 @@ public partial class CollectionItemsPage : Page
 
     private UIElement BuildOrphanRow(string path)
     {
-        bool isSel = string.Equals(path, _selectedOrphanPath, StringComparison.OrdinalIgnoreCase);
+        bool isSel = _selectedOrphans.Contains(path);
         var selBg   = new SolidColorBrush(Color.FromArgb(60, 35, 131, 226));
         var hoverBg = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255));
 
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        // 一括追加用チェックボックス
-        var chk = new CheckBox
-        {
-            IsChecked         = _checkedOrphans.Contains(path),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin            = new Thickness(0, 0, 10, 0),
-        };
-        chk.Checked   += (_, _) => { _checkedOrphans.Add(path);    UpdateOrphanSelectionState(); };
-        chk.Unchecked += (_, _) => { _checkedOrphans.Remove(path); UpdateOrphanSelectionState(); };
-        Grid.SetColumn(chk, 0); g.Children.Add(chk);
 
         var icon = new System.Windows.Shapes.Path
         {
@@ -564,7 +607,7 @@ public partial class CollectionItemsPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             Margin            = new Thickness(0, 0, 8, 0),
         };
-        Grid.SetColumn(icon, 1); g.Children.Add(icon);
+        Grid.SetColumn(icon, 0); g.Children.Add(icon);
 
         var nameTb = new TextBlock
         {
@@ -575,7 +618,7 @@ public partial class CollectionItemsPage : Page
             TextTrimming      = TextTrimming.CharacterEllipsis,
             ToolTip           = path,
         };
-        Grid.SetColumn(nameTb, 2); g.Children.Add(nameTb);
+        Grid.SetColumn(nameTb, 1); g.Children.Add(nameTb);
 
         long size = 0;
         try { size = new FileInfo(path).Length; } catch { }
@@ -587,7 +630,7 @@ public partial class CollectionItemsPage : Page
             VerticalAlignment = VerticalAlignment.Center,
             Margin            = new Thickness(12, 0, 0, 0),
         };
-        Grid.SetColumn(sizeTb, 3); g.Children.Add(sizeTb);
+        Grid.SetColumn(sizeTb, 2); g.Children.Add(sizeTb);
 
         var row = new Border
         {
@@ -598,54 +641,89 @@ public partial class CollectionItemsPage : Page
             Cursor          = Cursors.Hand,
             Child           = g,
         };
-        row.MouseEnter        += (_, _) => { if (!isSel) row.Background = hoverBg; };
-        row.MouseLeave        += (_, _) => { if (!isSel) row.Background = Brushes.Transparent; };
-        row.MouseLeftButtonUp += (_, e) =>
-        {
-            // チェックボックス上のクリックは選択トグルに使わない
-            if (e.OriginalSource is System.Windows.Controls.Primitives.ToggleButton) return;
-            _selectedOrphanPath = string.Equals(_selectedOrphanPath, path, StringComparison.OrdinalIgnoreCase)
-                ? null : path;
-            _selectedItemId = null;
-            if (DetailDrawer.Visibility == Visibility.Visible) CloseDetailDrawer();
-            BuildOrphansList();
-            RefreshList();
-            UpdateToolbarState();
-        };
+        row.MouseEnter        += (_, _) => { if (!_selectedOrphans.Contains(path)) row.Background = hoverBg; };
+        row.MouseLeave        += (_, _) => { if (!_selectedOrphans.Contains(path)) row.Background = Brushes.Transparent; };
+        row.MouseLeftButtonUp += (_, _) => SelectOrphan(path);
         return row;
     }
 
-    /// <summary>チェック状態に応じて一括追加ボタンと全選択チェックの状態を更新する。</summary>
+    private void SelectOrphan(string path)
+    {
+        bool ctrl  = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+        bool shift = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+
+        if (shift && _orphanAnchorPath != null)
+        {
+            int a = _orphans.IndexOf(_orphanAnchorPath);
+            int b = _orphans.IndexOf(path);
+            if (a >= 0 && b >= 0)
+            {
+                _selectedOrphans.Clear();
+                for (int i = Math.Min(a, b); i <= Math.Max(a, b); i++)
+                    _selectedOrphans.Add(_orphans[i]);
+            }
+        }
+        else if (ctrl)
+        {
+            if (!_selectedOrphans.Remove(path)) _selectedOrphans.Add(path);
+            _orphanAnchorPath = path;
+        }
+        else
+        {
+            if (_selectedOrphans.Count == 1 && _selectedOrphans.Contains(path))
+            {
+                _selectedOrphans.Clear();
+                _orphanAnchorPath = null;
+            }
+            else
+            {
+                _selectedOrphans.Clear();
+                _selectedOrphans.Add(path);
+                _orphanAnchorPath = path;
+            }
+        }
+
+        // 非管理ファイル選択時はアイテム選択を解除し、詳細は表示しない
+        _selectedItemIds.Clear();
+        _itemAnchorId = null;
+        if (DetailDrawer.Visibility == Visibility.Visible) CloseDetailDrawer(clearSelection: false);
+        BuildOrphansList();
+        RefreshList();
+        UpdateToolbarState();
+        UpdateOrphanSelectionState();
+    }
+
+    /// <summary>選択数に応じて一括追加ボタンと全選択トグルの表示を更新する。</summary>
     private void UpdateOrphanSelectionState()
     {
-        int checkedCount = _checkedOrphans.Count;
-        BtnBulkAddOrphans.IsEnabled = checkedCount > 0;
-        BtnBulkAddOrphansText.Text  = checkedCount > 0
-            ? $"選択を一括追加 ({checkedCount})" : "選択を一括追加";
+        int selCount = _selectedOrphans.Count;
+        BtnBulkAddOrphans.IsEnabled = selCount > 0;
+        BtnBulkAddOrphansText.Text  = selCount > 0
+            ? $"選択を一括追加 ({selCount})" : "選択を一括追加";
 
-        // 全選択チェックの状態（イベント再入を避けるためハンドラを直接呼ばない）
-        ChkOrphansSelectAll.Click -= OrphansSelectAll_Click;
-        ChkOrphansSelectAll.IsChecked = _orphans.Count > 0 && checkedCount == _orphans.Count;
-        ChkOrphansSelectAll.Click += OrphansSelectAll_Click;
+        bool allSelected = _orphans.Count > 0 && selCount == _orphans.Count;
+        BtnOrphansSelectAllText.Text = allSelected ? "全選択解除" : "全選択";
+        BtnOrphansSelectAll.IsEnabled = _orphans.Count > 0;
     }
 
     private void OrphansSelectAll_Click(object sender, RoutedEventArgs e)
     {
-        bool selectAll = ChkOrphansSelectAll.IsChecked == true;
-        _checkedOrphans.Clear();
-        if (selectAll)
-            foreach (var p in _orphans) _checkedOrphans.Add(p);
+        bool allSelected = _orphans.Count > 0 && _selectedOrphans.Count == _orphans.Count;
+        _selectedOrphans.Clear();
+        if (!allSelected)
+            foreach (var p in _orphans) _selectedOrphans.Add(p);
+        _orphanAnchorPath = null;
         BuildOrphansList();
         UpdateOrphanSelectionState();
     }
 
-    /// <summary>チェックされた非管理ファイルを、ファイル付属情報に設定した仮アイテムとして一括追加する。</summary>
+    /// <summary>選択された非管理ファイルを、ファイル付属情報に設定した仮アイテムとして一括追加する。</summary>
     private void BulkAddOrphans_Click(object sender, RoutedEventArgs e)
     {
         var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
         if (fileField == null) return;
 
-        var targets = _orphans.Where(p => _checkedOrphans.Contains(p)).ToList();
+        var targets = _orphans.Where(p => _selectedOrphans.Contains(p)).ToList();
         if (targets.Count == 0) return;
 
         var now = DateTime.Now;
@@ -663,7 +741,8 @@ public partial class CollectionItemsPage : Page
 
         _col.UpdatedAt = now;
         _vm.CollectionService.Save(_col);
-        _checkedOrphans.Clear();
+        _selectedOrphans.Clear();
+        _orphanAnchorPath = null;
         RefreshList();
         RefreshOrphans();
     }
@@ -695,7 +774,7 @@ public partial class CollectionItemsPage : Page
         DrawerContainer.BeginAnimation(FrameworkElement.WidthProperty, anim);
     }
 
-    private void CloseDetailDrawer()
+    private void CloseDetailDrawer(bool clearSelection = true)
     {
         var anim = new System.Windows.Media.Animation.DoubleAnimation
         {
@@ -707,7 +786,11 @@ public partial class CollectionItemsPage : Page
         anim.Completed += (_, _) =>
         {
             DetailDrawer.Visibility = Visibility.Collapsed;
-            _selectedItemId = null;
+            if (clearSelection)
+            {
+                _selectedItemIds.Clear();
+                _itemAnchorId = null;
+            }
             RefreshList();
             RefreshOrphans();
         };
@@ -964,11 +1047,17 @@ public partial class CollectionItemsPage : Page
 
     private void UpdateToolbarState()
     {
-        bool hasSel = _selectedItemId != null || _selectedOrphanPath != null;
-        BtnEdit.IsEnabled   = hasSel;
-        BtnDelete.IsEnabled = hasSel;
-        BtnEdit.Opacity     = hasSel ? 1.0 : 0.35;
-        BtnDelete.Opacity   = hasSel ? 1.0 : 0.35;
+        int itemSel   = _selectedItemIds.Count;
+        int orphanSel = _selectedOrphans.Count;
+
+        // 編集は単一選択のときのみ。削除は1つ以上の選択で有効。
+        bool canEdit   = (itemSel == 1 && orphanSel == 0) || (orphanSel == 1 && itemSel == 0);
+        bool canDelete = itemSel > 0 || orphanSel > 0;
+
+        BtnEdit.IsEnabled   = canEdit;
+        BtnDelete.IsEnabled = canDelete;
+        BtnEdit.Opacity     = canEdit   ? 1.0 : 0.35;
+        BtnDelete.Opacity   = canDelete ? 1.0 : 0.35;
     }
 
     private bool HasFileField() => _col.Fields.Any(f => f.FieldType == "ファイル");
@@ -977,60 +1066,75 @@ public partial class CollectionItemsPage : Page
 
     private void EditItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedOrphanPath != null)
+        // 非管理ファイルが単一選択 → 情報付与してコレクションに取り込む
+        if (_selectedOrphans.Count == 1 && _selectedItemIds.Count == 0)
         {
-            // 非管理アイテムを「編集」 = 情報付与してコレクションに取り込む
             var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
             if (fileField == null) return;
-            var path = _selectedOrphanPath;
+            var path = _selectedOrphans.First();
             ShowForm(null);
             _editingValues[fileField.Id] = path;
             BuildFormContent();
             return;
         }
-        if (_selectedItemId == null) return;
-        var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemId);
+        if (_selectedItemIds.Count != 1) return;
+        var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemIds.First());
         if (item != null) ShowForm(item);
     }
 
     private void DeleteItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedOrphanPath != null)
+        // 非管理ファイルの一括削除
+        if (_selectedOrphans.Count > 0 && _selectedItemIds.Count == 0)
         {
-            var path = _selectedOrphanPath;
-            var fileName = Path.GetFileName(path);
-            if (!AppDialog.Confirm($"非管理ファイル「{fileName}」をフォルダから削除しますか？\nこの操作は元に戻せません。",
-                    "削除確認", Window.GetWindow(this), confirmLabel: "削除", dangerConfirm: true)) return;
-            try { if (File.Exists(path)) File.Delete(path); } catch { }
-            _selectedOrphanPath = null;
+            var paths = _orphans.Where(p => _selectedOrphans.Contains(p)).ToList();
+            var msg = paths.Count == 1
+                ? $"非管理ファイル「{Path.GetFileName(paths[0])}」をフォルダから削除しますか？\nこの操作は元に戻せません。"
+                : $"選択した {paths.Count} 件の非管理ファイルをフォルダから削除しますか？\nこの操作は元に戻せません。";
+            if (!AppDialog.Confirm(msg, "削除確認", Window.GetWindow(this),
+                    confirmLabel: "削除", dangerConfirm: true)) return;
+            foreach (var path in paths)
+                try { if (File.Exists(path)) File.Delete(path); } catch { }
+            _selectedOrphans.Clear();
+            _orphanAnchorPath = null;
             RefreshOrphans();
             UpdateToolbarState();
             return;
         }
-        if (_selectedItemId == null) return;
-        var item = _col.Items.FirstOrDefault(x => x.Id == _selectedItemId);
-        if (item == null) return;
+
+        if (_selectedItemIds.Count == 0) return;
+
+        var items = _col.Items.Where(x => _selectedItemIds.Contains(x.Id)).ToList();
+        if (items.Count == 0) return;
 
         var fileField = _col.Fields.FirstOrDefault(f => f.FieldType == "ファイル");
-        string? filePath = null;
-        if (fileField != null
-            && item.FieldValues.TryGetValue(fileField.Id, out var fp)
-            && !string.IsNullOrEmpty(fp)
-            && File.Exists(fp))
-            filePath = fp;
 
-        var dlg = new ItemDeleteDialog(filePath) { Owner = Window.GetWindow(this) };
-        if (dlg.ShowDialog() != true) return;
-
-        if (dlg.DeleteFile && filePath != null)
+        // 削除対象アイテムと、それに紐づく実ファイル（あれば）を集める
+        var entries = new List<ItemDeleteDialog.Entry>();
+        foreach (var item in items)
         {
-            try { File.Delete(filePath); } catch { }
+            string? filePath = null;
+            if (fileField != null
+                && item.FieldValues.TryGetValue(fileField.Id, out var fp)
+                && !string.IsNullOrEmpty(fp)
+                && File.Exists(fp))
+                filePath = fp;
+            var label = string.IsNullOrWhiteSpace(item.Name) ? "（名称なし）" : item.Name;
+            entries.Add(new ItemDeleteDialog.Entry(label, filePath));
         }
 
-        _col.Items.Remove(item);
+        var dlg = new ItemDeleteDialog(entries) { Owner = Window.GetWindow(this) };
+        if (dlg.ShowDialog() != true) return;
+
+        var filesToDelete = dlg.FilePathsToDelete;
+        foreach (var path in filesToDelete)
+            try { if (File.Exists(path)) File.Delete(path); } catch { }
+
+        foreach (var item in items) _col.Items.Remove(item);
         _col.UpdatedAt = DateTime.Now;
         _vm.CollectionService.Save(_col);
-        _selectedItemId = null;
+        _selectedItemIds.Clear();
+        _itemAnchorId = null;
         if (DetailDrawer.Visibility == Visibility.Visible) CloseDetailDrawer();
         else { RefreshList(); RefreshOrphans(); }
     }
@@ -1353,7 +1457,8 @@ public partial class CollectionItemsPage : Page
         _vm.CollectionService.Save(_col);
         _editingItemId = null;
         _editingValues.Clear();
-        _selectedOrphanPath = null;
+        _selectedOrphans.Clear();
+        _orphanAnchorPath = null;
         CloseFormDrawer();
         RefreshList();
         RefreshOrphans();

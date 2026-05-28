@@ -288,10 +288,10 @@
                                             </Border.Style>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PColName"/>
-                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PColPeriod"/>
-                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PColProgress"/>
-                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="PColCreated"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <!-- 名前列 -->

@@ -307,13 +307,6 @@ public partial class CollectionPage : Page, IRefreshable
         };
         namePanel.Children.Add(new TextBlock
         {
-            Text              = col.Icon ?? "📁",
-            FontSize          = 16,
-            Margin            = new Thickness(0, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        namePanel.Children.Add(new TextBlock
-        {
             Text              = col.Name,
             FontFamily        = new FontFamily("Yu Gothic UI"),
             FontSize          = 13,

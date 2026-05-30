@@ -61,8 +61,9 @@ public static class Win32Window
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
                                             int X, int Y, int cx, int cy, uint uFlags);
 
-    private const uint SWP_NOZORDER   = 0x0004;
-    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_NOZORDER     = 0x0004;
+    private const uint SWP_NOACTIVATE   = 0x0010;
+    private const uint SWP_FRAMECHANGED = 0x0020;
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -190,10 +191,16 @@ public static class Win32Window
         return null;
     }
 
+    // Windows 11 標準の不可視ボーダー（DPI 100% 想定のフォールバック値）
+    private const int FALLBACK_PAD_HORIZONTAL = 8;
+    private const int FALLBACK_PAD_BOTTOM     = 8;
+    private const int FALLBACK_PAD_TOP        = 0;
+
     /// <summary>
     /// 指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する（Windows 11 対応版）。
-    /// 最小化・最大化状態のウィンドウをまず復元してから DWM 拡張フレーム境界を取得し、
-    /// 不可視ボーダー（シャドウ用余白）を補正したうえで SetWindowPos で直接配置する。
+    /// 2段階適用: 1回目に指定座標で配置し、配置後の DWM 拡張フレーム境界と
+    /// WindowRect の差分（不可視ボーダー）を実測してから 2回目に補正済み座標で再配置する。
+    /// 実測が失敗した場合は Windows 11 標準のフォールバック値で補正する。
     /// </summary>
     public static bool ApplyPlacement(IntPtr hwnd, int x, int y, int width, int height, int showState)
     {
@@ -204,47 +211,55 @@ public static class Win32Window
             return true;
         }
 
-        // 最小化・最大化状態だと DWM 拡張フレーム境界が取れないので、まず復元する
+        // 最小化・最大化状態から復元
         ShowWindow(hwnd, SW_RESTORE);
-        // 復元後の DWM 反映を待つ短い待機（Windows 11 で必要なケースあり）
-        System.Threading.Thread.Sleep(60);
+        System.Threading.Thread.Sleep(120);
 
-        // 不可視ボーダー（Windows 11 のシャドウ余白）を補正
-        AdjustForInvisibleBorders(hwnd, ref x, ref y, ref width, ref height);
+        // 1回目: ひとまず指定座標で配置
+        if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, width, height,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED))
+            return false;
 
-        // SetWindowPos で位置とサイズを直接適用（SetWindowPlacement より反映が確実）
-        bool ok = SetWindowPos(hwnd, IntPtr.Zero, x, y, width, height,
-            SWP_NOZORDER | SWP_NOACTIVATE);
+        // フレームが落ち着くのを待つ（Windows 11 のシャドウ計算が遅延するケース対策）
+        System.Threading.Thread.Sleep(150);
 
-        // 配置後に最大化指定があれば最大化（rcNormalPosition は SetWindowPos で更新済み）
-        if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);
+        // 不可視ボーダーを実測 → 失敗・異常時は標準値にフォールバック
+        int leftPad   = FALLBACK_PAD_HORIZONTAL;
+        int topPad    = FALLBACK_PAD_TOP;
+        int rightPad  = FALLBACK_PAD_HORIZONTAL;
+        int bottomPad = FALLBACK_PAD_BOTTOM;
 
-        return ok;
-    }
-
-    /// <summary>
-    /// DWM 拡張フレーム境界と WindowRect の差分を取得して、
-    /// 「見た目の右端・下端」が指定座標になるよう x/y/width/height を補正する。
-    /// 失敗時は何もしない（古い Windows / DWM 未対応プロセス対応）。
-    /// </summary>
-    private static void AdjustForInvisibleBorders(IntPtr hwnd, ref int x, ref int y, ref int width, ref int height)
-    {
         try
         {
             int size = Marshal.SizeOf<RECT>();
-            if (DwmGetWindowAttributeRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT extFrame, size) != 0) return;
-            if (!GetWindowRect(hwnd, out RECT winRect)) return;
-
-            int leftPad   = extFrame.Left   - winRect.Left;
-            int topPad    = extFrame.Top    - winRect.Top;
-            int rightPad  = winRect.Right   - extFrame.Right;
-            int bottomPad = winRect.Bottom  - extFrame.Bottom;
-
-            x      -= leftPad;
-            y      -= topPad;
-            width  += leftPad + rightPad;
-            height += topPad  + bottomPad;
+            if (DwmGetWindowAttributeRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT visible, size) == 0
+                && GetWindowRect(hwnd, out RECT actual))
+            {
+                int lP = visible.Left   - actual.Left;
+                int tP = visible.Top    - actual.Top;
+                int rP = actual.Right   - visible.Right;
+                int bP = actual.Bottom  - visible.Bottom;
+                // 妥当な範囲 (0〜30px) なら実測値を使う
+                if (lP >= 0 && lP <= 30) leftPad   = lP;
+                if (tP >= 0 && tP <= 30) topPad    = tP;
+                if (rP >= 0 && rP <= 30) rightPad  = rP;
+                if (bP >= 0 && bP <= 30) bottomPad = bP;
+            }
         }
-        catch { /* 補正失敗時は無視 */ }
+        catch { /* 実測失敗時はフォールバック */ }
+
+        // 2回目: 補正済み座標で再配置
+        if (leftPad != 0 || topPad != 0 || rightPad != 0 || bottomPad != 0)
+        {
+            SetWindowPos(hwnd, IntPtr.Zero,
+                x - leftPad,
+                y - topPad,
+                width  + leftPad + rightPad,
+                height + topPad  + bottomPad,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+
+        if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);
+        return true;
     }
 }

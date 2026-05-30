@@ -137,9 +137,9 @@ public class WindowLayoutService
             }
             usedHandles.Add(hwnd);
 
-            // 起動直後のアプリは初期レイアウト確定に時間がかかるため少し待つ
+            // 起動直後のアプリは初期レイアウト確定に時間がかかるため少し長めに待つ
             // （我々の配置がアプリ側の初期サイズ設定で上書きされるのを避ける）
-            if (wasJustLaunched) Thread.Sleep(400);
+            if (wasJustLaunched) Thread.Sleep(800);
 
             return Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState);
         }

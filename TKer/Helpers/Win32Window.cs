@@ -61,9 +61,8 @@ public static class Win32Window
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
                                             int X, int Y, int cx, int cy, uint uFlags);
 
-    private const uint SWP_NOZORDER     = 0x0004;
-    private const uint SWP_NOACTIVATE   = 0x0010;
-    private const uint SWP_FRAMECHANGED = 0x0020;
+    private const uint SWP_NOZORDER   = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -198,9 +197,9 @@ public static class Win32Window
 
     /// <summary>
     /// 指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する（Windows 11 対応版）。
-    /// 2段階適用: 1回目に指定座標で配置し、配置後の DWM 拡張フレーム境界と
-    /// WindowRect の差分（不可視ボーダー）を実測してから 2回目に補正済み座標で再配置する。
-    /// 実測が失敗した場合は Windows 11 標準のフォールバック値で補正する。
+    /// 復元後に現ウィンドウから不可視ボーダー（シャドウ用余白）を実測し、
+    /// 補正済みのサイズで「1回だけ」配置することで、配置後にサイズが伸びる
+    /// ちらつきを起こさず、見える枠が指定座標ぴったりに来るようにする。
     /// </summary>
     public static bool ApplyPlacement(IntPtr hwnd, int x, int y, int width, int height, int showState)
     {
@@ -211,23 +210,36 @@ public static class Win32Window
             return true;
         }
 
-        // 最小化・最大化状態から復元
+        // 最小化・最大化状態から復元（このあと不可視ボーダーを測れる状態にする）
         ShowWindow(hwnd, SW_RESTORE);
         System.Threading.Thread.Sleep(120);
 
-        // 1回目: ひとまず指定座標で配置
-        if (!SetWindowPos(hwnd, IntPtr.Zero, x, y, width, height,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED))
-            return false;
+        // 復元後の現ウィンドウから不可視ボーダーを測定（失敗時は Win11 標準値）
+        MeasureInvisibleBorders(hwnd, out int leftPad, out int topPad, out int rightPad, out int bottomPad);
 
-        // フレームが落ち着くのを待つ（Windows 11 のシャドウ計算が遅延するケース対策）
-        System.Threading.Thread.Sleep(150);
+        // 補正済みサイズで1回だけ配置
+        bool ok = SetWindowPos(hwnd, IntPtr.Zero,
+            x - leftPad,
+            y - topPad,
+            width  + leftPad + rightPad,
+            height + topPad  + bottomPad,
+            SWP_NOZORDER | SWP_NOACTIVATE);
 
-        // 不可視ボーダーを実測 → 失敗・異常時は標準値にフォールバック
-        int leftPad   = FALLBACK_PAD_HORIZONTAL;
-        int topPad    = FALLBACK_PAD_TOP;
-        int rightPad  = FALLBACK_PAD_HORIZONTAL;
-        int bottomPad = FALLBACK_PAD_BOTTOM;
+        if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);
+        return ok;
+    }
+
+    /// <summary>
+    /// 現ウィンドウの DWM 拡張フレーム境界と WindowRect の差から不可視ボーダー幅を測る。
+    /// 取得失敗・異常値の辺は Windows 11 標準のフォールバック値を使う。
+    /// </summary>
+    private static void MeasureInvisibleBorders(IntPtr hwnd,
+        out int leftPad, out int topPad, out int rightPad, out int bottomPad)
+    {
+        leftPad   = FALLBACK_PAD_HORIZONTAL;
+        topPad    = FALLBACK_PAD_TOP;
+        rightPad  = FALLBACK_PAD_HORIZONTAL;
+        bottomPad = FALLBACK_PAD_BOTTOM;
 
         try
         {
@@ -235,11 +247,10 @@ public static class Win32Window
             if (DwmGetWindowAttributeRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT visible, size) == 0
                 && GetWindowRect(hwnd, out RECT actual))
             {
-                int lP = visible.Left   - actual.Left;
-                int tP = visible.Top    - actual.Top;
-                int rP = actual.Right   - visible.Right;
-                int bP = actual.Bottom  - visible.Bottom;
-                // 妥当な範囲 (0〜30px) なら実測値を使う
+                int lP = visible.Left  - actual.Left;
+                int tP = visible.Top   - actual.Top;
+                int rP = actual.Right  - visible.Right;
+                int bP = actual.Bottom - visible.Bottom;
                 if (lP >= 0 && lP <= 30) leftPad   = lP;
                 if (tP >= 0 && tP <= 30) topPad    = tP;
                 if (rP >= 0 && rP <= 30) rightPad  = rP;
@@ -247,19 +258,5 @@ public static class Win32Window
             }
         }
         catch { /* 実測失敗時はフォールバック */ }
-
-        // 2回目: 補正済み座標で再配置
-        if (leftPad != 0 || topPad != 0 || rightPad != 0 || bottomPad != 0)
-        {
-            SetWindowPos(hwnd, IntPtr.Zero,
-                x - leftPad,
-                y - topPad,
-                width  + leftPad + rightPad,
-                height + topPad  + bottomPad,
-                SWP_NOZORDER | SWP_NOACTIVATE);
-        }
-
-        if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);
-        return true;
     }
 }

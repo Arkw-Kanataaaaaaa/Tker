@@ -38,8 +38,14 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     /// <summary>キャンバスサイズを実画面の解像度に合わせ、編集モードならスナップを復元する。</summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        EditorCanvas.Width  = SystemParameters.PrimaryScreenWidth;
-        EditorCanvas.Height = SystemParameters.PrimaryScreenHeight;
+        // DPI 補正: SystemParameters は DIP（拡大率考慮済み論理単位）で返すが、
+        // Win32 の SetWindowPlacement は物理ピクセルを期待するため、
+        // キャンバス座標系を物理ピクセルに揃えて保存値の変換を不要にする。
+        var dpi  = VisualTreeHelper.GetDpi(this);
+        double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+        double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+        EditorCanvas.Width  = SystemParameters.PrimaryScreenWidth  * dpiX;
+        EditorCanvas.Height = SystemParameters.PrimaryScreenHeight * dpiY;
 
         var editId = _vm.EditingWindowLayoutId;
         if (!string.IsNullOrEmpty(editId))

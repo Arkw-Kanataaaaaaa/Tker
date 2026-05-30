@@ -1035,7 +1035,7 @@ public partial class MainWindow : Window
         double endY = MediaPanel.Height / Math.Max(1, PopupRoot.Height);
 
         var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
-        var dur  = TimeSpan.FromMilliseconds(200);
+        var dur  = TimeSpan.FromMilliseconds(320);
 
         var syAnim = new DoubleAnimation(PopupScale.ScaleY, endY, dur) { EasingFunction = ease };
         syAnim.Completed += (_, _) =>
@@ -1051,7 +1051,7 @@ public partial class MainWindow : Window
 
         // 欄の位置（上端）へ戻りながら欄サイズへ縮む
         PopupContent.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(PopupContent.Opacity, 0, TimeSpan.FromMilliseconds(110)));
+            new DoubleAnimation(PopupContent.Opacity, 0, TimeSpan.FromMilliseconds(160)));
         MediaPopup.BeginAnimation(System.Windows.Controls.Primitives.Popup.VerticalOffsetProperty,
             new DoubleAnimation(MediaPopup.VerticalOffset, -MediaPanel.Height, dur) { EasingFunction = ease });
         PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
@@ -1063,7 +1063,7 @@ public partial class MainWindow : Window
     private void AnimatePopupOpen()
     {
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var dur  = TimeSpan.FromMilliseconds(260);
+        var dur  = TimeSpan.FromMilliseconds(420);
 
         // 欄の上端(-Height)から最終位置(6)へ下りながら、欄サイズ→等倍へ拡大
         MediaPopup.BeginAnimation(System.Windows.Controls.Primitives.Popup.VerticalOffsetProperty,
@@ -1075,7 +1075,7 @@ public partial class MainWindow : Window
 
         // 中身は移動・拡大の後半でフェードイン
         PopupContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
-            TimeSpan.FromMilliseconds(180)) { BeginTime = TimeSpan.FromMilliseconds(110) });
+            TimeSpan.FromMilliseconds(280)) { BeginTime = TimeSpan.FromMilliseconds(160) });
     }
 
     /// <summary>角丸でクリップするため、サイズ確定時に丸角矩形のクリップを設定する。</summary>

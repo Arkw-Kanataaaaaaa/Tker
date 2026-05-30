@@ -959,6 +959,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        // 欄がポップアップに変形したように見せるため、表示中は欄を隠す
+        // （Hidden でレイアウト幅は保持し、配置基準・プロジェクト名位置を維持）
+        MediaPanel.Visibility = Visibility.Hidden;
         MediaPopup.IsOpen = true;
         AnimatePopupOpen();
 
@@ -974,8 +977,11 @@ public partial class MainWindow : Window
     private void Window_PreviewMouseDownForPopup(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (!MediaPopup.IsOpen || _popupAnimating) return;
+        var src = e.OriginalSource as DependencyObject;
+        // ポップアップ内のクリックでは閉じない（シーク・ボタン操作を許可）
+        if (IsWithin(src, PopupRoot)) return;
         // メディア欄上のクリックは MediaPanel_Click（トグル）に任せる
-        if (IsWithin(e.OriginalSource as DependencyObject, MediaPanel)) return;
+        if (IsWithin(src, MediaPanel)) return;
         ClosePopupAnimated();
     }
 
@@ -1052,10 +1058,12 @@ public partial class MainWindow : Window
             new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), r, r);
     }
 
-    /// <summary>ポップアップが閉じたらタイマーを止める。</summary>
+    /// <summary>ポップアップが閉じたらタイマーを止め、メディア欄を再表示する。</summary>
     private void MediaPopup_Closed(object? sender, EventArgs e)
     {
         _popupTimer?.Stop();
+        // 再生中（タイトルあり）のときのみ欄を戻す（停止時は Collapsed のまま）
+        if (_lastMediaTitle != null) MediaPanel.Visibility = Visibility.Visible;
     }
 
     private async void PopupTimer_Tick(object? sender, EventArgs e)

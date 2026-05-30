@@ -120,6 +120,8 @@ public class WindowLayoutService
         try
         {
             var hwnd = FindWindowForEntry(entry, usedHandles);
+            bool wasJustLaunched = false;
+
             if (hwnd == IntPtr.Zero)
             {
                 if (!TryLaunch(entry.ExePath)) return false;
@@ -131,8 +133,14 @@ public class WindowLayoutService
                     if (hwnd != IntPtr.Zero) break;
                 }
                 if (hwnd == IntPtr.Zero) return false;
+                wasJustLaunched = true;
             }
             usedHandles.Add(hwnd);
+
+            // 起動直後のアプリは初期レイアウト確定に時間がかかるため少し待つ
+            // （我々の配置がアプリ側の初期サイズ設定で上書きされるのを避ける）
+            if (wasJustLaunched) Thread.Sleep(400);
+
             return Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState);
         }
         catch { return false; }

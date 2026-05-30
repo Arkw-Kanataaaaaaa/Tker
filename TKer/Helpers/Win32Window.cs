@@ -56,6 +56,14 @@ public static class Win32Window
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+                                            int X, int Y, int cx, int cy, uint uFlags);
+
+    private const uint SWP_NOZORDER   = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("dwmapi.dll")]
@@ -180,29 +188,36 @@ public static class Win32Window
         return null;
     }
 
-    /// <summary>指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する。</summary>
+    /// <summary>
+    /// 指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する（Windows 11 対応版）。
+    /// 最小化・最大化状態のウィンドウをまず復元してから DWM 拡張フレーム境界を取得し、
+    /// 不可視ボーダー（シャドウ用余白）を補正したうえで SetWindowPos で直接配置する。
+    /// </summary>
     public static bool ApplyPlacement(IntPtr hwnd, int x, int y, int width, int height, int showState)
     {
-        var placement = new WINDOWPLACEMENT { length = Marshal.SizeOf<WINDOWPLACEMENT>() };
-        if (!GetWindowPlacement(hwnd, ref placement)) return false;
-
-        placement.showCmd = showState switch
+        // 最小化要求は最小化だけして終了
+        if (showState == SW_MINIMIZE)
         {
-            SW_MAXIMIZE => SW_MAXIMIZE,
-            SW_MINIMIZE => SW_MINIMIZE,
-            _           => SW_SHOWNORMAL
-        };
+            ShowWindow(hwnd, SW_MINIMIZE);
+            return true;
+        }
 
-        // DWM の不可視ボーダー（Windows 10/11 のシャドウ用余白）を補正して、
-        // 目に見える枠が指定の x/y/width/height に来るようにする
+        // 最小化・最大化状態だと DWM 拡張フレーム境界が取れないので、まず復元する
+        ShowWindow(hwnd, SW_RESTORE);
+        // 復元後の DWM 反映を待つ短い待機（Windows 11 で必要なケースあり）
+        System.Threading.Thread.Sleep(60);
+
+        // 不可視ボーダー（Windows 11 のシャドウ余白）を補正
         AdjustForInvisibleBorders(hwnd, ref x, ref y, ref width, ref height);
 
-        placement.rcNormalPosition.Left   = x;
-        placement.rcNormalPosition.Top    = y;
-        placement.rcNormalPosition.Right  = x + width;
-        placement.rcNormalPosition.Bottom = y + height;
+        // SetWindowPos で位置とサイズを直接適用（SetWindowPlacement より反映が確実）
+        bool ok = SetWindowPos(hwnd, IntPtr.Zero, x, y, width, height,
+            SWP_NOZORDER | SWP_NOACTIVATE);
 
-        return SetWindowPlacement(hwnd, ref placement);
+        // 配置後に最大化指定があれば最大化（rcNormalPosition は SetWindowPos で更新済み）
+        if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);
+
+        return ok;
     }
 
     /// <summary>

@@ -230,6 +230,7 @@ public partial class MainWindow : Window
         "Todo"                => new TodoPage(_vm),
         "Setup"               => new ProjectListPage(_vm),
         "WindowLayout"        => new WindowLayoutPage(_vm),
+        "WindowLayoutEdit"    => new WindowLayoutEditPage(_vm),
         _                     => new HomePage(_vm),
     };
 

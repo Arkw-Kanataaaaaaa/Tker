@@ -6,7 +6,6 @@ using System.Windows.Media;
 using TKer.Helpers;
 using TKer.Models;
 using TKer.ViewModels;
-using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
@@ -131,22 +130,15 @@ public partial class WindowLayoutPage : Page, IRefreshable
     // ── ツールバー ────────────────────────────────────
     private void ToolbarAdd_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new WindowLayoutSaveDialog { Owner = Window.GetWindow(this) };
-        if (dlg.ShowDialog() != true) return;
-        _vm.WindowLayoutService.CaptureCurrent(dlg.LayoutName, dlg.LayoutDescription);
-        BuildList();
+        _vm.EditingWindowLayoutId = null;
+        _vm.NavigateToCommand.Execute("WindowLayoutEdit");
     }
 
     private void ToolbarEdit_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedLayout == null) return;
-        var dlg = new WindowLayoutSaveDialog(_selectedLayout.Name, _selectedLayout.Description)
-        { Owner = Window.GetWindow(this) };
-        if (dlg.ShowDialog() != true) return;
-        _selectedLayout.Name        = dlg.LayoutName;
-        _selectedLayout.Description = dlg.LayoutDescription;
-        _vm.WindowLayoutService.Update(_selectedLayout);
-        BuildList();
+        _vm.EditingWindowLayoutId = _selectedLayout.Id;
+        _vm.NavigateToCommand.Execute("WindowLayoutEdit");
     }
 
     private void ToolbarDelete_Click(object sender, RoutedEventArgs e)

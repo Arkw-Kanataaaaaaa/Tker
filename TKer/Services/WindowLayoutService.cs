@@ -58,6 +58,20 @@ public class WindowLayoutService
         return layout;
     }
 
+    /// <summary>名前・説明・エントリ一覧を指定して新規レイアウトを作成・保存する。</summary>
+    public WindowLayout Create(string name, string description, List<WindowEntry> entries)
+    {
+        var layout = new WindowLayout
+        {
+            Name        = name,
+            Description = description,
+            Windows     = entries
+        };
+        _layouts.Add(layout);
+        Save();
+        return layout;
+    }
+
     /// <summary>名前・説明を更新したレイアウトを保存する。</summary>
     public void Update(WindowLayout layout)
     {

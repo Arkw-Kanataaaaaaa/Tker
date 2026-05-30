@@ -48,6 +48,9 @@ public partial class MainViewModel : ObservableObject
     /// <summary>カレンダー画面でフォーカスする日付。null の場合は今日。</summary>
     public DateTime? CalendarFocusDate { get; set; }
 
+    /// <summary>編集モードでウィンドウレイアウト編集画面に渡す対象 ID。null=新規作成。</summary>
+    public string? EditingWindowLayoutId { get; set; }
+
     /// <summary>コレクション詳細ページで表示するコレクション。</summary>
     public Collection? SelectedCollection { get; set; }
 
@@ -212,7 +215,7 @@ public partial class MainViewModel : ObservableObject
         // Home / Setup / EnvSetup / ProjectList / ツール系はプロジェクト未ロードでも開ける
         var noAuthViews = new[] { "Home", "Setup", "Shortcuts", "ProjectList", "AppSettings",
                                    "UiCustomize", "Pomodoro", "Article", "Collection", "CollectionItems",
-                                   "WindowLayout" };
+                                   "WindowLayout", "WindowLayoutEdit" };
         if (!IsProjectLoaded && !noAuthViews.Contains(view)) return;
         CurrentView = view;
     }

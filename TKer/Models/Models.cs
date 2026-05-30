@@ -961,3 +961,36 @@ public class ProgressCondition
     /// <summary>条件が達成された日時。</summary>
     public DateTime?             AchievedAt{ get; set; }
 }
+
+// ══════════════════════════════════════════════
+//  ロードマップ
+// ══════════════════════════════════════════════
+/// <summary>ロードマップに表示する1項目（マイルストーン）を表すクラス。</summary>
+public class RoadmapItem
+{
+    /// <summary>項目の一意識別子。</summary>
+    public string Id          { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    /// <summary>項目タイトル。</summary>
+    public string Title       { get; set; } = "";
+    /// <summary>項目の説明。</summary>
+    public string Description { get; set; } = "";
+    /// <summary>所属するバージョン・期間（"v1.1.0" や "2026 Q2" 等の自由文字列）。グループ化のキー。</summary>
+    public string Version     { get; set; } = "";
+    /// <summary>進捗ステータス（"計画中" / "進行中" / "完了" / "保留"）。</summary>
+    public string Status      { get; set; } = "計画中";
+    /// <summary>目標日。未設定時は null。</summary>
+    public DateTime? TargetDate { get; set; }
+    /// <summary>同じバージョン内での表示順。</summary>
+    public int    Order       { get; set; } = 0;
+    /// <summary>項目の作成日時。</summary>
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    /// <summary>項目の最終更新日時。</summary>
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>ロードマップのステータス選択肢を定義する静的クラス。</summary>
+public static class RoadmapStatusValues
+{
+    /// <summary>有効なステータス値の一覧。</summary>
+    public static readonly string[] ALL = { "計画中", "進行中", "完了", "保留" };
+}

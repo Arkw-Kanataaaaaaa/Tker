@@ -229,6 +229,7 @@ public partial class MainWindow : Window
         "LogViewer"           => new LogViewerPage(_vm),
         "Todo"                => new TodoPage(_vm),
         "Setup"               => new ProjectListPage(_vm),
+        "Roadmap"             => new RoadmapPage(_vm),
         _                     => new HomePage(_vm),
     };
 

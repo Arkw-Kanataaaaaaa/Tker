@@ -511,6 +511,16 @@
                                 </StackPanel>
                             </MenuItem.Header>
                         </MenuItem>
+                        <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                  Command="{Binding NavigateToCommand}"
+                                  CommandParameter="Roadmap">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🗺" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="ロードマップ（試用）" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
                         <Separator Style="{StaticResource DarkMenuSeparator}"/>
                         <MenuItem Style="{StaticResource SubMenuItemStyle}"
                                   Click="MenuLaunchWidgetProcess_Click">

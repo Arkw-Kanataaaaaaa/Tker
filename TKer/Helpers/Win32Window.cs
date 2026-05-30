@@ -20,6 +20,8 @@ public static class Win32Window
     public const int SW_MAXIMIZE   = 3;
     /// <summary>SW_MINIMIZE: 最小化。</summary>
     public const int SW_MINIMIZE   = 6;
+    /// <summary>SW_RESTORE: 最小化・最大化から元のサイズ・位置に復元。</summary>
+    public const int SW_RESTORE    = 9;
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 

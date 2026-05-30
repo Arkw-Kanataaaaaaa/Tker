@@ -13,52 +13,69 @@
         <Border x:Name="PageHeader" Grid.Row="0" Padding="24,14"
                 Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-            <DockPanel>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="🪟" FontSize="18" Margin="0,0,8,0"
-                               VerticalAlignment="Center"/>
-                    <TextBlock Text="ウィンドウレイアウト" FontFamily="Yu Gothic UI"
-                               FontWeight="Bold" FontSize="20"
-                               Foreground="{DynamicResource TextPrimaryBrush}"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button DockPanel.Dock="Right" Content="＋ 現在の配置を保存"
-                        Padding="12,5" FontSize="12"
-                        Background="{DynamicResource AccentCyanBrush}"
-                        Foreground="White" BorderThickness="0"
-                        Cursor="Hand" Click="SaveCurrent_Click"/>
-            </DockPanel>
+            <TextBlock Text="ウィンドウレイアウト" FontFamily="Yu Gothic UI"
+                       FontWeight="Bold" FontSize="20"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       VerticalAlignment="Center"/>
         </Border>
 
-        <!-- コンテンツ -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,20">
-            <StackPanel>
-                <Border x:Name="NoItemBanner" Visibility="Collapsed"
-                        Background="{DynamicResource BgCardBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                        CornerRadius="10" Padding="24,20" Margin="0,0,0,16">
-                    <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="🪟" FontSize="40"
-                                   HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <TextBlock Text="ウィンドウレイアウトが保存されていません"
-                                   FontSize="14"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="現在のデスクトップ上のウィンドウ配置を保存し、後で復元できます"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource TextDimBrush}"
-                                   HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                    </StackPanel>
-                </Border>
+        <!-- メインエリア（縦ツールバー + コンテンツ） -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="52"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <ItemsControl x:Name="LayoutGrid">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
+            <!-- ─── 縦ツールバー ─── -->
+            <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
+                    <Button Style="{StaticResource VToolbarBtn}"
+                            ToolTip="現在の配置を保存"
+                            Click="ToolbarAdd_Click">
+                        <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                    <Button x:Name="BtnToolbarEdit" Style="{StaticResource VToolbarBtn}"
+                            ToolTip="選択中のレイアウトを編集" IsEnabled="False"
+                            Click="ToolbarEdit_Click">
+                        <Path Data="{StaticResource Bi.PencilSquare}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                    <Button x:Name="BtnToolbarDelete" Style="{StaticResource VToolbarBtn}"
+                            ToolTip="選択中のレイアウトを削除" IsEnabled="False"
+                            Click="ToolbarDelete_Click">
+                        <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ─── コンテンツ ─── -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="24,20">
+                <StackPanel>
+                    <Border x:Name="NoItemBanner" Visibility="Collapsed"
+                            Background="{DynamicResource BgCardBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="10" Padding="24,20" Margin="0,0,0,16">
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="ウィンドウレイアウトが保存されていません"
+                                       FontSize="14"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="左のツールバーの「＋」から現在のデスクトップ配置を保存できます"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextDimBrush}"
+                                       HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl x:Name="LayoutGrid">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </Grid>
 </Page>

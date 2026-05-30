@@ -10,10 +10,14 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
-/// <summary>保存済みウィンドウレイアウトをグリッド表示し、選択時にウィンドウを自動配置するページ。</summary>
+/// <summary>保存済みウィンドウレイアウトをグリッド表示し、ダブルクリックで自動配置するページ。</summary>
 public partial class WindowLayoutPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
+
+    // 現在選択中のレイアウト（編集・削除ツールバーボタンの対象）
+    private WindowLayout? _selectedLayout;
+    private Border?       _selectedCard;
 
     /// <summary>ViewModel を受け取り初期化する。</summary>
     public WindowLayoutPage(MainViewModel vm)
@@ -33,13 +37,18 @@ public partial class WindowLayoutPage : Page, IRefreshable
     private void BuildList()
     {
         LayoutGrid.Items.Clear();
+        ClearSelection();
+
         var all = _vm.WindowLayoutService.All;
         NoItemBanner.Visibility = all.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var layout in all)
             LayoutGrid.Items.Add(BuildCard(layout));
     }
 
-    /// <summary>レイアウト1件分のカードUI（クリックで適用・編集・削除ボタン付き）を構築する。</summary>
+    /// <summary>
+    /// レイアウト1件分のカードUIを構築する。
+    /// 単クリックで選択、ダブルクリックで適用する。
+    /// </summary>
     private Border BuildCard(WindowLayout layout)
     {
         var card = new Border
@@ -52,7 +61,8 @@ public partial class WindowLayoutPage : Page, IRefreshable
             BorderThickness = new Thickness(1),
             CornerRadius    = new CornerRadius(10),
             Cursor          = Cursors.Hand,
-            ToolTip         = "クリックでこの配置を復元"
+            ToolTip         = "クリックで選択 ／ ダブルクリックで適用",
+            Tag             = layout
         };
 
         var sp = new StackPanel();
@@ -76,39 +86,50 @@ public partial class WindowLayoutPage : Page, IRefreshable
             Text       = $"{layout.Windows.Count} ウィンドウ ・ {layout.CreatedAt:yyyy/MM/dd}",
             FontSize   = 10,
             Foreground = (Brush)FindResource("TextDimBrush"),
-            Margin     = new Thickness(0, 8, 0, 0)
+            Margin     = new Thickness(0, 10, 0, 0)
         });
-
-        var ops = new StackPanel
-        {
-            Orientation         = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Margin              = new Thickness(0, 10, 0, 0)
-        };
-        ops.Children.Add(MakeMiniButton("編集", () => OnEdit(layout)));
-        ops.Children.Add(MakeMiniButton("削除", () => OnDelete(layout)));
-        sp.Children.Add(ops);
-
         card.Child = sp;
-        // カード本体クリックで適用（子のボタンクリックは Button が e.Handled するので干渉しない）
-        card.MouseLeftButtonUp += (_, _) => ApplyLayout(layout);
+
+        card.MouseLeftButtonUp += (_, e) =>
+        {
+            if (e.ClickCount >= 2) ApplyLayout(layout);
+            else                   SelectCard(card, layout);
+        };
         return card;
     }
 
-    private static Button MakeMiniButton(string text, Action onClick)
+    /// <summary>指定カードを選択状態にして縁色を変更し、ツールバーボタンを有効化する。</summary>
+    private void SelectCard(Border card, WindowLayout layout)
     {
-        var btn = new Button
+        if (_selectedCard != null)
         {
-            Content = text, FontSize = 10,
-            Padding = new Thickness(8, 2, 8, 2),
-            Margin  = new Thickness(4, 0, 0, 0),
-            Cursor  = Cursors.Hand
-        };
-        btn.Click += (_, _) => onClick();
-        return btn;
+            _selectedCard.BorderBrush     = (Brush)FindResource("BorderBrush");
+            _selectedCard.BorderThickness = new Thickness(1);
+        }
+        _selectedCard = card;
+        _selectedCard.BorderBrush     = (Brush)FindResource("AccentCyanBrush");
+        _selectedCard.BorderThickness = new Thickness(2);
+        _selectedLayout = layout;
+        BtnToolbarEdit.IsEnabled   = true;
+        BtnToolbarDelete.IsEnabled = true;
     }
 
-    private void SaveCurrent_Click(object sender, RoutedEventArgs e)
+    /// <summary>カード選択状態を解除してツールバーボタンを無効化する。</summary>
+    private void ClearSelection()
+    {
+        if (_selectedCard != null)
+        {
+            _selectedCard.BorderBrush     = (Brush)FindResource("BorderBrush");
+            _selectedCard.BorderThickness = new Thickness(1);
+        }
+        _selectedCard   = null;
+        _selectedLayout = null;
+        BtnToolbarEdit.IsEnabled   = false;
+        BtnToolbarDelete.IsEnabled = false;
+    }
+
+    // ── ツールバー ────────────────────────────────────
+    private void ToolbarAdd_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new WindowLayoutSaveDialog { Owner = Window.GetWindow(this) };
         if (dlg.ShowDialog() != true) return;
@@ -116,27 +137,31 @@ public partial class WindowLayoutPage : Page, IRefreshable
         BuildList();
     }
 
-    private void OnEdit(WindowLayout layout)
+    private void ToolbarEdit_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new WindowLayoutSaveDialog(layout.Name, layout.Description)
+        if (_selectedLayout == null) return;
+        var dlg = new WindowLayoutSaveDialog(_selectedLayout.Name, _selectedLayout.Description)
         { Owner = Window.GetWindow(this) };
         if (dlg.ShowDialog() != true) return;
-        layout.Name        = dlg.LayoutName;
-        layout.Description = dlg.LayoutDescription;
-        _vm.WindowLayoutService.Update(layout);
+        _selectedLayout.Name        = dlg.LayoutName;
+        _selectedLayout.Description = dlg.LayoutDescription;
+        _vm.WindowLayoutService.Update(_selectedLayout);
         BuildList();
     }
 
-    private void OnDelete(WindowLayout layout)
+    private void ToolbarDelete_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedLayout == null) return;
         var result = MessageBox.Show(Window.GetWindow(this),
-            $"「{layout.Name}」を削除しますか?",
+            $"「{_selectedLayout.Name}」を削除しますか?",
             "確認", MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (result != MessageBoxResult.OK) return;
-        _vm.WindowLayoutService.Delete(layout.Id);
+        _vm.WindowLayoutService.Delete(_selectedLayout.Id);
         BuildList();
     }
 
+    // ── 適用 ─────────────────────────────────────────
+    /// <summary>レイアウトを現在のデスクトップに適用し、配置失敗があれば一覧通知する。</summary>
     private void ApplyLayout(WindowLayout layout)
     {
         Mouse.OverrideCursor = Cursors.Wait;

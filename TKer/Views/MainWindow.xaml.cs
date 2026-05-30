@@ -726,7 +726,7 @@ public partial class MainWindow : Window
 
         // ポップアップ外クリック／ウィンドウ非アクティブで閉じる
         PreviewMouseDown += Window_PreviewMouseDownForPopup;
-        Deactivated += (_, _) => { if (MediaPopup.IsOpen && !_popupAnimating) MediaPopup.IsOpen = false; };
+        Deactivated += (_, _) => { if (MediaPopup.IsOpen && !_popupAnimating) ClosePopupAnimated(); };
 
         // ウィンドウ移動・リサイズ時にポップアップ位置を追従させる
         LocationChanged += (_, _) => ForcePopupReposition();

@@ -12,6 +12,8 @@ public class AppSettings
     public string AppVersion { get; set; } = "1.0.0";
     /// <summary>最近開いたプロジェクトの一覧。</summary>
     public List<ProjectEntry> RecentProjects { get; set; } = new();
+    /// <summary>登録済みコレクションのファイルパス一覧。</summary>
+    public List<string> CollectionFilePaths { get; set; } = new();
     /// <summary>最後に開いたプロジェクトファイルのパス。</summary>
     public string? LastOpenedProjectPath { get; set; }
     /// <summary>最後にアプリを起動した日時。</summary>
@@ -404,8 +406,18 @@ public class ProjectSettings
     public string Description  { get; set; } = string.Empty;
     /// <summary>プロジェクト作成日時。</summary>
     public DateTime CreatedAt  { get; set; } = DateTime.Now;
+    /// <summary>プロジェクト最終更新日時。</summary>
+    public DateTime UpdatedAt  { get; set; } = DateTime.Now;
     /// <summary>プロジェクトデータのバージョン文字列。</summary>
     public string Version      { get; set; } = "1.0.0";
+    /// <summary>フォルダ構造をプロジェクトと統一して管理するかどうか。falseの場合はフォルダ表示が無効になる。</summary>
+    public bool UseFolderManagement { get; set; } = true;
+    /// <summary>表紙画像のBase64エンコード文字列。空文字の場合は未設定。</summary>
+    public string CoverImageData { get; set; } = string.Empty;
+    /// <summary>プロジェクト開始予定日。</summary>
+    public DateTime? ProjectStartDate { get; set; }
+    /// <summary>プロジェクト終了予定日。</summary>
+    public DateTime? ProjectEndDate { get; set; }
 }
 
 /// <summary>タスクを分類するカテゴリーを表す ObservableObject クラス。</summary>
@@ -638,6 +650,14 @@ public class ProjectSummary
     public int OverdueTasks     { get; set; }
     /// <summary>プロジェクトの作成日時。</summary>
     public DateTime CreatedAt   { get; set; }
+    /// <summary>プロジェクトの更新日時。</summary>
+    public DateTime UpdatedAt   { get; set; }
+    /// <summary>プロジェクト開始日。</summary>
+    public DateTime? ProjectStartDate { get; set; }
+    /// <summary>プロジェクト終了日。</summary>
+    public DateTime? ProjectEndDate   { get; set; }
+    /// <summary>フォルダ管理を行っているかどうか。</summary>
+    public bool UseFolderManagement   { get; set; }
     /// <summary>完了率（0〜100 のパーセンテージ）。</summary>
     public double ProgressRate  => TotalTasks > 0 ? (double)DoneTasks / TotalTasks * 100 : 0;
     /// <summary>完了率を整数パーセントで表したラベル。</summary>
@@ -875,8 +895,12 @@ public class CollectionField
     public string Id        { get; set; } = Guid.NewGuid().ToString("N")[..8];
     /// <summary>フィールド名。</summary>
     public string Name      { get; set; } = "";
-    /// <summary>文字列 | 画像 | リンク</summary>
+    /// <summary>文字列 | ファイル | リンク | 日時</summary>
     public string FieldType { get; set; } = "文字列";
+    /// <summary>入力 | 選択 | チェックボックス</summary>
+    public string InputFormat { get; set; } = "入力";
+    /// <summary>InputFormat="選択" の場合の選択肢一覧。</summary>
+    public List<string> SelectOptions { get; set; } = new();
     /// <summary>フィールドの表示順序。</summary>
     public int    Order     { get; set; } = 0;
 }
@@ -900,6 +924,8 @@ public class Collection
     public List<CollectionField> Fields { get; set; } = new();
     /// <summary>コレクションに含まれるアイテムの一覧。</summary>
     public List<CollectionItem>  Items  { get; set; } = new();
+    /// <summary>表紙画像（Base64エンコード）。</summary>
+    public string CoverImageData { get; set; } = string.Empty;
     /// <summary>コレクションの作成日時。</summary>
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     /// <summary>コレクションの最終更新日時。</summary>
@@ -915,8 +941,10 @@ public class CollectionItem
     public string Name    { get; set; } = "";
     /// <summary>フィールドID → 値 の動的データ</summary>
     public Dictionary<string, string> FieldValues { get; set; } = new();
-    /// <summary>アイテムの追加日時。</summary>
+    /// <summary>アイテムの作成日時。</summary>
     public DateTime AddedAt { get; set; } = DateTime.Now;
+    /// <summary>アイテムの更新日時。</summary>
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
 
 /// <summary>タスクの進捗達成条件を表すクラス。</summary>

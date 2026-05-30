@@ -25,7 +25,9 @@ public static class SearchBarHelper
         section.BeginAnimation(FrameworkElement.HeightProperty, null);
         section.Height = double.NaN;
         section.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        double targetH = section.DesiredSize.Height > 0 ? section.DesiredSize.Height : 50;
+        // DesiredSize はマージンを含むため、Height プロパティ用に上下マージンを除外する
+        double measured = section.DesiredSize.Height - section.Margin.Top - section.Margin.Bottom;
+        double targetH = measured > 0 ? measured : 50;
         section.Height = 0;
 
         var anim = new DoubleAnimation(0, targetH, TimeSpan.FromMilliseconds(220))

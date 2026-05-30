@@ -34,6 +34,12 @@ public partial class CategoryTemplateDialog : Window
 {
     public List<TemplateCategoryItem> SelectedCategories { get; private set; } = new();
 
+    /// <summary>組み込みテンプレート（読み取り専用）。</summary>
+    public static IReadOnlyDictionary<string, List<TemplateCategoryItem>> BuiltInTemplates => TEMPLATES;
+
+    /// <summary>このダイアログインスタンスで使用するテンプレート（組み込み＋カスタム）。</summary>
+    private readonly Dictionary<string, List<TemplateCategoryItem>> _templates;
+
     private static readonly Dictionary<string, List<TemplateCategoryItem>> TEMPLATES = new()
     {
         ["ソフトウェア開発"] = new()
@@ -90,28 +96,28 @@ public partial class CategoryTemplateDialog : Window
         CommandBindings.Add(new System.Windows.Input.CommandBinding(
             SystemCommands.CloseWindowCommand, (_, _) => { DialogResult = false; }));
 
-        // 組み込みテンプレート + カスタムプリセットを統合
-        var allKeys = TEMPLATES.Keys.ToList();
+        // 組み込みテンプレート + カスタムプリセットを統合（静的辞書は変更しない）
+        _templates = new Dictionary<string, List<TemplateCategoryItem>>(TEMPLATES);
         if (customPresets != null)
         {
             foreach (var p in customPresets)
             {
-                if (!TEMPLATES.ContainsKey($"[カスタム] {p.Name}"))
+                if (!_templates.ContainsKey($"[カスタム] {p.Name}"))
                 {
-                    TEMPLATES[$"[カスタム] {p.Name}"] = p.Categories.Select(c =>
+                    _templates[$"[カスタム] {p.Name}"] = p.Categories.Select(c =>
                         new TemplateCategoryItem { Name = c.Name, Color = c.Color, Description = c.Description }).ToList();
                 }
             }
         }
 
-        CmbTemplate.ItemsSource  = TEMPLATES.Keys.ToList();
+        CmbTemplate.ItemsSource  = _templates.Keys.ToList();
         CmbTemplate.SelectedIndex = 0;
     }
 
     /// <summary>選択されたテンプレートのカテゴリー一覧をリストに表示する。</summary>
     private void CmbTemplate_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (CmbTemplate.SelectedItem is string key && TEMPLATES.TryGetValue(key, out var items))
+        if (CmbTemplate.SelectedItem is string key && _templates.TryGetValue(key, out var items))
         {
             var copies = items.Select(i => new TemplateCategoryItem
             {

@@ -83,48 +83,83 @@ public class FolderIntegrityService
     }
 
     // ── 実際のチェック処理 ───────────────────────────────
-    /// <summary>現在のプロジェクトの全タスク・カテゴリのフォルダ整合性を検査し、問題件数を返す。</summary>
+    /// <summary>現在のプロジェクトの全タスク・カテゴリのフォルダ整合性を検査し修復する。問題件数を返す。</summary>
     private int PerformCheck()
     {
         var project = _projectService.CurrentProject;
         if (project == null) return 0;
 
-        int issues = 0;
-        var reports = new List<(string TaskId, string Desc)>();
+        int issues   = 0;
+        bool repaired = false;
+        var reports  = new List<(string TaskId, string Desc)>();
 
         foreach (var task in project.Tasks)
         {
-            if (string.IsNullOrEmpty(task.FolderPath)) continue;
+            if (!task.FolderCreated || string.IsNullOrEmpty(task.FolderPath)) continue;
 
-            // 1) フォルダが存在するか
+            // 1) フォルダが存在しない → FolderCreated/FolderPath をリセット
             if (!Directory.Exists(task.FolderPath))
             {
-                var msg = $"タスク「{task.Name}」のフォルダが見つかりません: {task.FolderPath}";
+                var msg = $"タスク「{task.Name}」のフォルダが見つかりません（リセット）: {task.FolderPath}";
                 reports.Add((task.Id, msg));
+                task.FolderPath    = string.Empty;
+                task.FolderCreated = false;
+                repaired = true;
                 issues++;
                 continue;
             }
 
-            // 2) フォルダ名が期待値と一致するか (Id_NameShort)
+            // 2) フォルダ名が期待値と不一致 → リネームを試みる
             var expectedName = task.FolderName; // "{Id}_{NameShort}"
             var actualName   = Path.GetFileName(task.FolderPath);
             if (!string.Equals(actualName, expectedName, StringComparison.OrdinalIgnoreCase))
             {
-                var msg = $"タスク「{task.Name}」フォルダ名不一致: 期待={expectedName}, 実際={actualName}";
-                reports.Add((task.Id, msg));
+                var parentDir = Path.GetDirectoryName(task.FolderPath)!;
+                var newPath   = Path.Combine(parentDir, expectedName);
+                try
+                {
+                    if (!Directory.Exists(newPath))
+                    {
+                        Directory.Move(task.FolderPath, newPath);
+                        task.FolderPath = newPath;
+                        repaired = true;
+                        reports.Add((task.Id, $"タスク「{task.Name}」フォルダ名を修復: {actualName} → {expectedName}"));
+                    }
+                    else
+                    {
+                        reports.Add((task.Id, $"タスク「{task.Name}」フォルダ名不一致（移動先が既存のため未修復）: 期待={expectedName}, 実際={actualName}"));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    reports.Add((task.Id, $"タスク「{task.Name}」フォルダ修復失敗: {ex.Message}"));
+                }
                 issues++;
             }
         }
 
-        // カテゴリフォルダチェック
+        // カテゴリフォルダチェック → 存在しない場合はリセット
         foreach (var cat in project.Categories)
         {
-            if (string.IsNullOrEmpty(cat.FolderPath)) continue;
+            if (!cat.FolderCreated || string.IsNullOrEmpty(cat.FolderPath)) continue;
             if (!Directory.Exists(cat.FolderPath))
             {
-                var msg = $"カテゴリ「{cat.Name}」のフォルダが見つかりません: {cat.FolderPath}";
+                var msg = $"カテゴリ「{cat.Name}」のフォルダが見つかりません（リセット）: {cat.FolderPath}";
                 _logger.Warn("FolderIntegrityService", "PerformCheck", msg);
+                cat.FolderPath    = string.Empty;
+                cat.FolderCreated = false;
+                repaired = true;
                 issues++;
+            }
+        }
+
+        // 修復があれば保存
+        if (repaired)
+        {
+            try { _projectService.MarkDirtyAndSave(); }
+            catch (Exception ex)
+            {
+                _logger.Error("FolderIntegrityService", "PerformCheck", "修復後の保存に失敗", ex);
             }
         }
 

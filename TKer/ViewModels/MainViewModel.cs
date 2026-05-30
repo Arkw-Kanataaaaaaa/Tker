@@ -34,6 +34,8 @@ public partial class MainViewModel : ObservableObject
     public TodoService            TodoService            { get; }
     /// <summary>プロジェクトフォルダの整合性チェックを担うサービス。</summary>
     public FolderIntegrityService FolderIntegrityService { get; }
+    /// <summary>ユーザー定義カテゴリーテンプレートの読み書きを担うサービス。</summary>
+    public CategoryTemplateService CategoryTemplateService { get; }
 
     // ── ナビゲーション ────────────────────────────
     [ObservableProperty] private string _currentView = "Home";
@@ -43,6 +45,9 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>カレンダー画面でフォーカスする日付。null の場合は今日。</summary>
     public DateTime? CalendarFocusDate { get; set; }
+
+    /// <summary>コレクション詳細ページで表示するコレクション。</summary>
+    public Collection? SelectedCollection { get; set; }
 
     // ── 統計（現在プロジェクト） ─────────────────
     [ObservableProperty] private int _totalTasks    = 0;
@@ -81,12 +86,13 @@ public partial class MainViewModel : ObservableObject
         ProjectService         = new ProjectService();
         SetupService           = new SetupService(ProjectService);
         DeliverableService     = new DeliverableService(ProjectService);
-        CollectionService      = new CollectionService();
+        CollectionService      = new CollectionService(AppSettingsService);
         ScheduleService        = new ScheduleService();
         ArticleService         = new ArticleService();
         FileWatcherService     = new FileWatcherService();
         TodoService            = new TodoService();
-        FolderIntegrityService = new FolderIntegrityService(ProjectService);
+        FolderIntegrityService     = new FolderIntegrityService(ProjectService);
+        CategoryTemplateService    = new CategoryTemplateService();
 
         // ロガー設定の適用
         AppLogger.Instance.Configure(AppSettingsService.LogRotation);
@@ -202,7 +208,7 @@ public partial class MainViewModel : ObservableObject
     {
         // Home / Setup / EnvSetup / ProjectList / ツール系はプロジェクト未ロードでも開ける
         var noAuthViews = new[] { "Home", "Setup", "Shortcuts", "ProjectList", "AppSettings",
-                                   "UiCustomize", "Pomodoro", "Article", "Collection" };
+                                   "UiCustomize", "Pomodoro", "Article", "Collection", "CollectionItems" };
         if (!IsProjectLoaded && !noAuthViews.Contains(view)) return;
         CurrentView = view;
     }

@@ -88,7 +88,8 @@
                     <!-- 再生中メディア（システム）— 何も再生していなければ非表示 -->
                     <Border x:Name="MediaPanel" Width="200" Height="24"
                             CornerRadius="11" Margin="0,0,12,0"
-                            ClipToBounds="True" Visibility="Collapsed">
+                            ClipToBounds="True" Visibility="Collapsed"
+                            Cursor="Hand" MouseLeftButtonUp="MediaPanel_Click">
                         <DockPanel LastChildFill="True">
                             <!-- 左端：再生中アプリのアイコン（原色そのまま / 代替は白音符） -->
                             <Grid DockPanel.Dock="Left" Width="26">
@@ -122,6 +123,124 @@
                             </Canvas>
                         </DockPanel>
                     </Border>
+
+                    <!-- Now Playing ポップアップ -->
+                    <Popup x:Name="MediaPopup"
+                           PlacementTarget="{Binding ElementName=MediaPanel}"
+                           Placement="Bottom" VerticalOffset="6" HorizontalOffset="0"
+                           StaysOpen="False" AllowsTransparency="True"
+                           PopupAnimation="Fade">
+                        <Border Width="320" CornerRadius="14" ClipToBounds="True"
+                                BorderBrush="#33FFFFFF" BorderThickness="1">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="18"
+                                                  ShadowDepth="3" Opacity="0.55"/>
+                            </Border.Effect>
+                            <Border.Resources>
+                                <!-- ポップアップ用の透明丸ボタン -->
+                                <Style x:Key="PopupCtrlBtn" TargetType="Button">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" CornerRadius="22"
+                                                        Background="{TemplateBinding Background}"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#33FFFFFF"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Border.Resources>
+
+                            <Grid>
+                                <!-- 背景：サムネイルをぼかしたもの -->
+                                <Image x:Name="PopupBgImage" Stretch="UniformToFill"
+                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Effect>
+                                        <BlurEffect Radius="45" KernelType="Gaussian"/>
+                                    </Image.Effect>
+                                </Image>
+                                <!-- 可読性のための暗いスクリム -->
+                                <Border Background="#A8000000"/>
+
+                                <StackPanel Margin="18,16,18,16">
+                                    <!-- タイトル行：左上にアプリアイコン -->
+                                    <DockPanel>
+                                        <Image x:Name="PopupAppIcon" DockPanel.Dock="Left"
+                                               Width="34" Height="34" Stretch="Uniform"
+                                               VerticalAlignment="Top" Margin="0,0,12,0"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Name="PopupTitle" Text="---"
+                                                       Foreground="White"
+                                                       FontFamily="Yu Gothic UI" FontSize="14" FontWeight="Bold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="PopupSubtitle" Text=""
+                                                       Foreground="#CCFFFFFF"
+                                                       FontFamily="Yu Gothic UI" FontSize="12"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <!-- 再生時間バー（クリックでシーク） -->
+                                    <Grid x:Name="ProgressTrack" Height="6" Margin="0,16,0,0"
+                                          Background="Transparent" Cursor="Hand"
+                                          MouseLeftButtonDown="ProgressTrack_Click">
+                                        <Border Height="4" CornerRadius="2"
+                                                Background="#40FFFFFF" VerticalAlignment="Center"/>
+                                        <Border x:Name="ProgressFill" Height="4" CornerRadius="2"
+                                                Background="White" Width="0"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- 時間表示：左=現在 / 右=全体 -->
+                                    <DockPanel Margin="0,4,0,0">
+                                        <TextBlock x:Name="PopupCurTime" DockPanel.Dock="Left"
+                                                   Text="0:00" Foreground="#CCFFFFFF"
+                                                   FontFamily="Consolas" FontSize="10"/>
+                                        <TextBlock x:Name="PopupTotTime" DockPanel.Dock="Right"
+                                                   Text="0:00" Foreground="#CCFFFFFF"
+                                                   FontFamily="Consolas" FontSize="10"
+                                                   HorizontalAlignment="Right"/>
+                                    </DockPanel>
+
+                                    <!-- 操作：前 / 再生・一時停止 / 次 -->
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Center" Margin="0,14,0,0">
+                                        <Button Style="{StaticResource PopupCtrlBtn}"
+                                                Padding="9" ToolTip="前のトラック"
+                                                Click="MediaPrev_Click">
+                                            <Path Data="{StaticResource Bi.SkipStartFill}"
+                                                  Fill="White" Stretch="Uniform" Width="16" Height="16"/>
+                                        </Button>
+                                        <Button Style="{StaticResource PopupCtrlBtn}"
+                                                Padding="12" Margin="10,0" ToolTip="再生 / 一時停止"
+                                                Click="MediaPlayPause_Click">
+                                            <Path x:Name="PopupPlayIcon"
+                                                  Data="{StaticResource Bi.PlayFill}"
+                                                  Fill="White" Stretch="Uniform" Width="20" Height="20"/>
+                                        </Button>
+                                        <Button Style="{StaticResource PopupCtrlBtn}"
+                                                Padding="9" ToolTip="次のトラック"
+                                                Click="MediaNext_Click">
+                                            <Path Data="{StaticResource Bi.SkipEndFill}"
+                                                  Fill="White" Stretch="Uniform" Width="16" Height="16"/>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Popup>
 
                     <TextBlock Text="{Binding ProjectTitle}"
                                FontFamily="Consolas" FontSize="11"

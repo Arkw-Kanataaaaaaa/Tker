@@ -689,6 +689,7 @@ public partial class MainWindow : Window
 
         try { _bookmarkWidget?.ForceClose(); } catch { }
         _mediaTimer?.Stop();
+        _popupTimer?.Stop();
     }
 
     // ── 再生中メディア（システム）の取得・表示 ─────────────────
@@ -699,6 +700,7 @@ public partial class MainWindow : Window
 
     private global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager? _smtcManager;
     private DispatcherTimer? _mediaTimer;
+    private DispatcherTimer? _popupTimer;
     private string? _lastMediaTitle;
     private string? _lastMediaAumid;
     private bool _marqueeRunning;
@@ -758,6 +760,8 @@ public partial class MainWindow : Window
                 // 曲が変わったとき：テキスト・背景色・マーキーを作り直す
                 _lastMediaTitle    = display;
                 MediaTrackName.Text = display;
+                PopupTitle.Text     = title;
+                PopupSubtitle.Text  = artist;
                 _ = UpdateBackgroundFromThumbnail(props);
                 SetupMarquee(playing);
             }
@@ -767,6 +771,9 @@ public partial class MainWindow : Window
                 if (playing && !_marqueeRunning)      SetupMarquee(true);
                 else if (!playing && _marqueeRunning) StopMarquee();
             }
+
+            // ポップアップ表示中はタイムライン・再生状態を更新
+            if (MediaPopup.IsOpen) UpdatePopupTimeline(session, playing);
         }
         catch
         {
@@ -805,6 +812,8 @@ public partial class MainWindow : Window
             AppIconImage.Visibility    = Visibility.Collapsed;
             AppIconFallback.Visibility = Visibility.Visible;
         }
+
+        PopupAppIcon.Source = src; // ポップアップのタイトル左上アイコン
     }
 
     /// <summary>パッケージアプリのロゴを AppInfo 経由で取得する（失敗時は null）。</summary>
@@ -930,6 +939,136 @@ public partial class MainWindow : Window
         _marqueeRunning = false;
     }
 
+    // ── Now Playing ポップアップ ─────────────────────────────
+
+    /// <summary>メディアパネルのクリックでポップアップを開閉する。</summary>
+    private async void MediaPanel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        MediaPopup.IsOpen = !MediaPopup.IsOpen;
+
+        if (MediaPopup.IsOpen)
+        {
+            // 0.5秒ごとに経過時間バーを滑らかに更新
+            _popupTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _popupTimer.Tick -= PopupTimer_Tick;
+            _popupTimer.Tick += PopupTimer_Tick;
+            _popupTimer.Start();
+            await RefreshNowPlaying();
+        }
+        else
+        {
+            _popupTimer?.Stop();
+        }
+    }
+
+    private async void PopupTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!MediaPopup.IsOpen) { _popupTimer?.Stop(); return; }
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        bool playing = session.GetPlaybackInfo()?.PlaybackStatus
+            == global::Windows.Media.Control
+                .GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+        UpdatePopupTimeline(session, playing);
+        await Task.CompletedTask;
+    }
+
+    /// <summary>セッションのタイムラインから経過バー・時間表示・再生アイコンを更新する。</summary>
+    private void UpdatePopupTimeline(
+        global::Windows.Media.Control.GlobalSystemMediaTransportControlsSession session,
+        bool playing)
+    {
+        // 再生アイコン
+        PopupPlayIcon.Data = (System.Windows.Media.Geometry)
+            FindResource(playing ? "Bi.PauseFill" : "Bi.PlayFill");
+
+        try
+        {
+            var tl = session.GetTimelineProperties();
+            var duration = tl.EndTime - tl.StartTime;
+            var pos      = tl.Position - tl.StartTime;
+
+            // 再生中は最終更新からの経過を加算して滑らかに進める
+            if (playing)
+            {
+                var elapsed = DateTimeOffset.Now - tl.LastUpdatedTime;
+                if (elapsed > TimeSpan.Zero) pos += elapsed;
+            }
+
+            if (duration <= TimeSpan.Zero)
+            {
+                ProgressFill.Width    = 0;
+                PopupCurTime.Text     = "0:00";
+                PopupTotTime.Text     = "0:00";
+                return;
+            }
+
+            if (pos < TimeSpan.Zero)     pos = TimeSpan.Zero;
+            if (pos > duration)          pos = duration;
+
+            double frac = pos.TotalSeconds / duration.TotalSeconds;
+            ProgressFill.Width = Math.Max(0, ProgressTrack.ActualWidth * frac);
+            PopupCurTime.Text  = FormatTime(pos);
+            PopupTotTime.Text  = FormatTime(duration);
+        }
+        catch
+        {
+            ProgressFill.Width = 0;
+        }
+    }
+
+    private static string FormatTime(TimeSpan t) =>
+        $"{(int)t.TotalMinutes}:{t.Seconds:D2}";
+
+    /// <summary>経過バーのクリック位置に応じてシークする。</summary>
+    private async void ProgressTrack_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+
+        try
+        {
+            var tl = session.GetTimelineProperties();
+            var duration = tl.EndTime - tl.StartTime;
+            if (duration <= TimeSpan.Zero) return;
+
+            double x    = e.GetPosition(ProgressTrack).X;
+            double frac = Math.Clamp(x / ProgressTrack.ActualWidth, 0, 1);
+            var target  = tl.StartTime + TimeSpan.FromTicks((long)(duration.Ticks * frac));
+
+            await session.TryChangePlaybackPositionAsync(target.Ticks);
+            UpdatePopupTimeline(session, true);
+        }
+        catch { }
+    }
+
+    /// <summary>再生 / 一時停止を切り替える。</summary>
+    private async void MediaPlayPause_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TryTogglePlayPauseAsync(); } catch { }
+        await RefreshNowPlaying();
+    }
+
+    /// <summary>前のトラックへスキップする。</summary>
+    private async void MediaPrev_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TrySkipPreviousAsync(); } catch { }
+        await RefreshNowPlaying();
+    }
+
+    /// <summary>次のトラックへスキップする。</summary>
+    private async void MediaNext_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TrySkipNextAsync(); } catch { }
+        await RefreshNowPlaying();
+    }
+
     /// <summary>サムネイルから主要色を抽出し、ぼかし風グラデーション背景を設定する。</summary>
     private async Task UpdateBackgroundFromThumbnail(
         global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties? props)
@@ -937,7 +1076,12 @@ public partial class MainWindow : Window
         try
         {
             var thumbRef = props?.Thumbnail;
-            if (thumbRef == null) { SetMediaBackground(System.Windows.Media.Color.FromRgb(45, 45, 48)); return; }
+            if (thumbRef == null)
+            {
+                SetMediaBackground(System.Windows.Media.Color.FromRgb(45, 45, 48));
+                PopupBgImage.Source = null;
+                return;
+            }
 
             using var ras = await thumbRef.OpenReadAsync();
             using var net = ras.AsStreamForRead();
@@ -953,6 +1097,7 @@ public partial class MainWindow : Window
             bmp.Freeze();
 
             SetMediaBackground(GetDominantColor(bmp));
+            PopupBgImage.Source = bmp; // ポップアップ背景（ぼかしはXAML側のBlurEffect）
         }
         catch
         {

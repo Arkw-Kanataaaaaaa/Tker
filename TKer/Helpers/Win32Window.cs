@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -57,6 +58,16 @@ public static class Win32Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern int SystemParametersInfo(int uAction, int uParam, StringBuilder lpvParam, int fuWinIni);
+
+    private const int DWMWA_CLOAKED        = 14;
+    private const int SPI_GETDESKWALLPAPER = 0x0073;
+    private const int MAX_PATH             = 260;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -96,6 +107,16 @@ public static class Win32Window
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
             if ((exStyle & WS_EX_TOOLWINDOW) != 0 && (exStyle & WS_EX_APPWINDOW) == 0) return true;
 
+            // DWM 上で cloaked（実際には表示されていない）ウィンドウは除外
+            // TextInputHost.exe や仮想デスクトップで非表示の UWP 等を弾く
+            try
+            {
+                if (DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0
+                    && cloaked != 0)
+                    return true;
+            }
+            catch { /* 古い Windows では DwmGetWindowAttribute 未対応 — 無視 */ }
+
             int len = GetWindowTextLength(hwnd);
             if (len <= 0) return true;
             var sb = new StringBuilder(len + 1);
@@ -134,6 +155,22 @@ public static class Win32Window
 
     /// <summary>指定ハンドルのウィンドウを最小化する。</summary>
     public static void MinimizeWindow(IntPtr hwnd) => ShowWindow(hwnd, SW_MINIMIZE);
+
+    /// <summary>現在のデスクトップ壁紙ファイルのフルパスを取得する。存在しない場合は null。</summary>
+    public static string? GetDesktopWallpaperPath()
+    {
+        try
+        {
+            var sb = new StringBuilder(MAX_PATH);
+            if (SystemParametersInfo(SPI_GETDESKWALLPAPER, sb.Capacity, sb, 0) != 0)
+            {
+                var path = sb.ToString();
+                if (!string.IsNullOrEmpty(path) && File.Exists(path)) return path;
+            }
+        }
+        catch { }
+        return null;
+    }
 
     /// <summary>指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する。</summary>
     public static bool ApplyPlacement(IntPtr hwnd, int x, int y, int width, int height, int showState)

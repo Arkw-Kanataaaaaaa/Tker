@@ -8,10 +8,10 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using TKer.Helpers;
 using TKer.Models;
 using TKer.ViewModels;
-using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
@@ -21,21 +21,24 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     private readonly MainViewModel _vm;
 
     private string?        _editingId;
-    private readonly List<SnapRect> _snaps = new();
-    private SnapRect?      _selected;
+    private readonly List<SnapRect> _snaps        = new();
+    private readonly List<SnapRect> _selectedList = new();
 
-    // 「他ウィンドウを最小化」トグルの状態
+    // 「全ウィンドウ最小化後、レイアウト適用」トグルの状態
     private bool _minimizeOthers;
 
-    // 起動中アプリ一覧のドラッグ開始判定
+    // 起動中アプリ一覧のドラッグ開始判定・リアルタイム更新
     private Point _appDragStartPoint;
+    private DispatcherTimer? _appsRefreshTimer;
 
     /// <summary>ViewModel を受け取り初期化する。</summary>
     public WindowLayoutEditPage(MainViewModel vm)
     {
         _vm = vm;
         InitializeComponent();
-        Loaded += OnLoaded;
+        Loaded   += OnLoaded;
+        Unloaded += OnUnloaded;
+        PreviewKeyDown += OnPreviewKeyDown;
     }
 
     /// <summary>ナビゲーション直後の再表示用フック（編集対象は OnLoaded で読み込む）。</summary>
@@ -44,14 +47,14 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     /// <summary>キャンバスサイズを実画面の解像度に合わせ、編集モードならスナップを復元する。</summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // DPI 補正: SystemParameters は DIP（拡大率考慮済み論理単位）で返すが、
-        // Win32 の SetWindowPlacement は物理ピクセルを期待するため、
-        // キャンバス座標系を物理ピクセルに揃えて保存値の変換を不要にする。
+        // DPI 補正
         var dpi  = VisualTreeHelper.GetDpi(this);
         double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
         double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
         EditorCanvas.Width  = SystemParameters.PrimaryScreenWidth  * dpiX;
         EditorCanvas.Height = SystemParameters.PrimaryScreenHeight * dpiY;
+
+        ApplyDesktopWallpaper();
 
         var editId = _vm.EditingWindowLayoutId;
         if (!string.IsNullOrEmpty(editId))
@@ -70,7 +73,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
                     if (!string.IsNullOrEmpty(entry.ExePath))
                         snap.SetExePath(entry.ExePath, entry.Title);
                 }
-                SetSelected(null);
+                ClearSelection();
             }
         }
         else
@@ -79,7 +82,28 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
 
         UpdateMinimizeToggleVisual();
-        LoadRunningApps();
+        RefreshRunningAppsList();
+        StartAppsRefreshTimer();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) => _appsRefreshTimer?.Stop();
+
+    /// <summary>仮想デスクトップ Border の背景に現在のデスクトップ壁紙を適用する（取得失敗時は素のダーク背景）。</summary>
+    private void ApplyDesktopWallpaper()
+    {
+        var path = Win32Window.GetDesktopWallpaperPath();
+        if (path == null) return;
+        try
+        {
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource     = new Uri(path);
+            bmp.CacheOption   = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            DesktopBg.Background = new ImageBrush { ImageSource = bmp, Stretch = Stretch.UniformToFill };
+        }
+        catch { /* 失敗時はデフォルト背景のまま */ }
     }
 
     // ── スナップ生成・選択 ─────────────────────────────
@@ -87,30 +111,64 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     private SnapRect CreateSnap(double x, double y, double w, double h)
     {
         var snap = new SnapRect(EditorCanvas, x, y, w, h);
-        snap.Selected         += (_, _) => SetSelected(snap);
+        snap.Selected         += (_, _) => OnSnapSelected(snap);
         snap.PickAppRequested += (_, _) => OnPickApp(snap);
         EditorCanvas.Children.Add(snap.Container);
         _snaps.Add(snap);
         return snap;
     }
 
-    /// <summary>選択中スナップを切り替え、リサイズハンドルとツールバーボタンの状態を更新する。</summary>
-    private void SetSelected(SnapRect? snap)
+    /// <summary>
+    /// スナップ選択イベントを処理する。Ctrl 押下中はトグル選択、押下なしは単一選択。
+    /// 選択状態に応じて削除ツールボタンを有効化する。
+    /// </summary>
+    private void OnSnapSelected(SnapRect snap)
     {
-        if (_selected != null) _selected.IsSelected = false;
-        _selected = snap;
-        if (_selected != null) _selected.IsSelected = true;
-        BtnDeleteSnap.IsEnabled = _selected != null;
+        bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+
+        if (ctrl)
+        {
+            if (_selectedList.Contains(snap))
+            {
+                snap.IsSelected = false;
+                _selectedList.Remove(snap);
+            }
+            else
+            {
+                snap.IsSelected = true;
+                _selectedList.Add(snap);
+            }
+        }
+        else
+        {
+            foreach (var s in _selectedList) s.IsSelected = false;
+            _selectedList.Clear();
+            snap.IsSelected = true;
+            _selectedList.Add(snap);
+        }
+        BtnDeleteSnap.IsEnabled = _selectedList.Count > 0;
     }
 
-    /// <summary>アプリ選択ダイアログを開いて、結果をスナップに反映する。</summary>
+    /// <summary>全選択を解除して削除ツールボタンを無効化する。</summary>
+    private void ClearSelection()
+    {
+        foreach (var s in _selectedList) s.IsSelected = false;
+        _selectedList.Clear();
+        BtnDeleteSnap.IsEnabled = false;
+    }
+
+    /// <summary>ファイル選択ダイアログを直接開いて、結果をスナップに反映する。</summary>
     private void OnPickApp(SnapRect snap)
     {
-        var dlg = new AppPickerDialog { Owner = Window.GetWindow(this) };
-        if (dlg.ShowDialog() == true && !string.IsNullOrEmpty(dlg.SelectedExePath))
+        var ofd = new Microsoft.Win32.OpenFileDialog
         {
-            var displayName = Path.GetFileNameWithoutExtension(dlg.SelectedExePath);
-            snap.SetExePath(dlg.SelectedExePath, displayName);
+            Filter = "実行ファイル (*.exe)|*.exe|すべて (*.*)|*.*",
+            Title  = "アプリの実行ファイルを選択"
+        };
+        if (ofd.ShowDialog(Window.GetWindow(this)) == true)
+        {
+            var name = Path.GetFileNameWithoutExtension(ofd.FileName);
+            snap.SetExePath(ofd.FileName, name);
         }
     }
 
@@ -120,52 +178,106 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         double w = Math.Max(SnapRect.MIN_SIZE, EditorCanvas.Width  / 3);
         double h = Math.Max(SnapRect.MIN_SIZE, EditorCanvas.Height / 3);
         var snap = CreateSnap(0, 0, w, h);
-        SetSelected(snap);
+        // 単一選択
+        foreach (var s in _selectedList) s.IsSelected = false;
+        _selectedList.Clear();
+        snap.IsSelected = true;
+        _selectedList.Add(snap);
+        BtnDeleteSnap.IsEnabled = true;
     }
 
+    /// <summary>選択中のスナップをすべて削除する。</summary>
     private void DeleteSnap_Click(object sender, RoutedEventArgs e)
     {
-        if (_selected == null) return;
-        EditorCanvas.Children.Remove(_selected.Container);
-        _snaps.Remove(_selected);
-        SetSelected(null);
+        if (_selectedList.Count == 0) return;
+        foreach (var snap in _selectedList.ToList())
+        {
+            EditorCanvas.Children.Remove(snap.Container);
+            _snaps.Remove(snap);
+        }
+        _selectedList.Clear();
+        BtnDeleteSnap.IsEnabled = false;
     }
 
+    /// <summary>配置されたスナップをすべて削除する（確認なし）。</summary>
     private void ResetSnaps_Click(object sender, RoutedEventArgs e)
     {
-        if (_snaps.Count == 0) return;
-        var result = MessageBox.Show(Window.GetWindow(this),
-            "配置されたスナップをすべて削除しますか?",
-            "確認", MessageBoxButton.OKCancel, MessageBoxImage.Question);
-        if (result != MessageBoxResult.OK) return;
-
         foreach (var snap in _snaps.ToList())
             EditorCanvas.Children.Remove(snap.Container);
         _snaps.Clear();
-        SetSelected(null);
+        _selectedList.Clear();
+        BtnDeleteSnap.IsEnabled = false;
+    }
+
+    /// <summary>現在のスナップ構成を保存せずに即座に適用してテストする。</summary>
+    private void TestApply_Click(object sender, RoutedEventArgs e)
+    {
+        var entries = BuildEntries();
+        if (entries.Count == 0)
+        {
+            MessageBox.Show(Window.GetWindow(this),
+                "適用可能なスナップがありません（アプリが設定されたスナップを配置してください）。",
+                "テスト適用", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var tempLayout = new WindowLayout
+        {
+            Name           = "(テスト)",
+            Windows        = entries,
+            MinimizeOthers = _minimizeOthers
+        };
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            var failed = _vm.WindowLayoutService.Apply(tempLayout);
+            Mouse.OverrideCursor = null;
+            if (failed.Count > 0)
+                MessageBox.Show(Window.GetWindow(this),
+                    "以下のウィンドウは配置できませんでした:\n\n" + string.Join("\n", failed),
+                    "テスト適用結果", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally { Mouse.OverrideCursor = null; }
     }
 
     // ── 空領域クリックで選択解除 ────────────────────────
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (ReferenceEquals(e.OriginalSource, EditorCanvas))
-            SetSelected(null);
+        if (ReferenceEquals(e.OriginalSource, EditorCanvas)) ClearSelection();
     }
 
     private void OuterArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // 仮想デスクトップ外（背景）クリックでも選択解除
         if (!(e.OriginalSource is FrameworkElement fe && fe.IsDescendantOf(EditorCanvas)))
-            SetSelected(null);
+            ClearSelection();
     }
 
     // ── ナビゲーション・保存 ───────────────────────
     /// <summary>パンくずリストの「ウィンドウレイアウト」クリックで一覧画面に戻る（編集破棄）。</summary>
-    private void LayoutCrumb_Click(object sender, MouseButtonEventArgs e)
+    private void LayoutCrumb_Click(object sender, MouseButtonEventArgs e) => NavigateBackToList();
+
+    /// <summary>キャンセルボタンで一覧画面に戻る（編集破棄）。</summary>
+    private void Cancel_Click(object sender, RoutedEventArgs e) => NavigateBackToList();
+
+    private void NavigateBackToList()
     {
         _vm.EditingWindowLayoutId = null;
         _vm.NavigateToCommand.Execute("WindowLayout");
     }
+
+    /// <summary>現在のスナップ群から WindowEntry リスト（アプリ未設定は除外）を構築する。</summary>
+    private List<WindowEntry> BuildEntries() => _snaps
+        .Where(s => !string.IsNullOrEmpty(s.ExePath))
+        .Select(s => new WindowEntry
+        {
+            Title     = s.DisplayTitle,
+            ExePath   = s.ExePath!,
+            ClassName = "",
+            X         = (int)Math.Round(Canvas.GetLeft(s.Container)),
+            Y         = (int)Math.Round(Canvas.GetTop(s.Container)),
+            Width     = (int)Math.Round(s.Container.Width),
+            Height    = (int)Math.Round(s.Container.Height),
+            ShowState = Win32Window.SW_SHOWNORMAL
+        }).ToList();
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -177,20 +289,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             return;
         }
 
-        // アプリが未設定のスナップはスキップ
-        var entries = _snaps
-            .Where(s => !string.IsNullOrEmpty(s.ExePath))
-            .Select(s => new WindowEntry
-            {
-                Title     = s.DisplayTitle,
-                ExePath   = s.ExePath!,
-                ClassName = "",
-                X         = (int)Math.Round(Canvas.GetLeft(s.Container)),
-                Y         = (int)Math.Round(Canvas.GetTop(s.Container)),
-                Width     = (int)Math.Round(s.Container.Width),
-                Height    = (int)Math.Round(s.Container.Height),
-                ShowState = Win32Window.SW_SHOWNORMAL
-            }).ToList();
+        var entries = BuildEntries();
 
         if (_editingId != null)
         {
@@ -212,11 +311,10 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             _vm.WindowLayoutService.Update(created);
         }
 
-        _vm.EditingWindowLayoutId = null;
-        _vm.NavigateToCommand.Execute("WindowLayout");
+        NavigateBackToList();
     }
 
-    // ── 「他ウィンドウを最小化」トグル ───────────────────
+    // ── 設定トグル ───────────────────────
     private void ToggleMinimize_Click(object sender, MouseButtonEventArgs e)
     {
         _minimizeOthers = !_minimizeOthers;
@@ -227,23 +325,76 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     private void UpdateMinimizeToggleVisual()
     {
         MinimizeToggleSwitch.Background = new SolidColorBrush(_minimizeOthers
-            ? Color.FromRgb(0x23, 0x83, 0xE2)   // ON: アクセント青
-            : Color.FromRgb(0x50, 0x50, 0x50)); // OFF: グレー
-        MinimizeToggleThumb.Margin = new Thickness(
-            _minimizeOthers ? 22 : 2, 0, 0, 0);
+            ? Color.FromRgb(0x23, 0x83, 0xE2)
+            : Color.FromRgb(0x50, 0x50, 0x50));
+        MinimizeToggleThumb.Margin = new Thickness(_minimizeOthers ? 22 : 2, 0, 0, 0);
     }
 
-    // ── 起動中アプリ一覧 ────────────────────────────
-    /// <summary>現在の可視ウィンドウから一意の実行ファイル一覧を抽出してリストに表示する。</summary>
-    private void LoadRunningApps()
+    // ── ショートカット ─────────────────────────────
+    /// <summary>Ctrl+Shift+; で追加、Ctrl+- で削除、Ctrl+R でリセットを実行する。</summary>
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        RunningAppsList.Items.Clear();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var w in Win32Window.EnumerateVisibleWindows())
+        // TextBox 入力中はショートカット無効
+        if (Keyboard.FocusedElement is TextBoxBase) return;
+
+        bool ctrl  = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+        bool shift = (Keyboard.Modifiers & ModifierKeys.Shift)   == ModifierKeys.Shift;
+
+        if (ctrl && shift && e.Key == Key.OemSemicolon)
         {
-            if (string.IsNullOrEmpty(w.ExePath)) continue;
-            if (!seen.Add(w.ExePath)) continue;
-            RunningAppsList.Items.Add(BuildAppRow(w.ExePath, w.Title));
+            AddSnap_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (ctrl && !shift && e.Key == Key.OemMinus)
+        {
+            DeleteSnap_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (ctrl && !shift && e.Key == Key.R)
+        {
+            ResetSnaps_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+    }
+
+    // ── 起動中アプリ一覧（リアルタイム差分更新） ────────────────────
+    /// <summary>2秒周期で RunningAppsList を再取得・差分反映するタイマーを開始する。</summary>
+    private void StartAppsRefreshTimer()
+    {
+        _appsRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _appsRefreshTimer.Tick += (_, _) => RefreshRunningAppsList();
+        _appsRefreshTimer.Start();
+    }
+
+    /// <summary>
+    /// 現在の可視ウィンドウから取得した exe 一覧と ListBox の項目を差分比較し、
+    /// 消えたものを削除・新規のものを追加する（順序・選択・スクロール位置を保持）。
+    /// </summary>
+    private void RefreshRunningAppsList()
+    {
+        var current = Win32Window.EnumerateVisibleWindows()
+            .Where(w => !string.IsNullOrEmpty(w.ExePath))
+            .GroupBy(w => w.ExePath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        // 消えたものを削除
+        var keepExisting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = RunningAppsList.Items.Count - 1; i >= 0; i--)
+        {
+            if (RunningAppsList.Items[i] is ListBoxItem item && item.Tag is string path)
+            {
+                if (!current.ContainsKey(path))
+                    RunningAppsList.Items.RemoveAt(i);
+                else
+                    keepExisting.Add(path);
+            }
+        }
+
+        // 新規追加
+        foreach (var kvp in current)
+        {
+            if (keepExisting.Contains(kvp.Key)) continue;
+            RunningAppsList.Items.Add(BuildAppRow(kvp.Value.ExePath, kvp.Value.Title));
         }
     }
 
@@ -251,7 +402,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     private ListBoxItem BuildAppRow(string exePath, string title)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        var icon = AppPickerDialog.TryGetExeIcon(exePath);
+        var icon = AppIconHelper.TryGetExeIcon(exePath);
         if (icon != null)
             sp.Children.Add(new Image
             {
@@ -285,8 +436,6 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             ToolTip = $"{exePath}\n(ドラッグしてスナップにドロップ)"
         };
     }
-
-    private void RefreshApps_Click(object sender, RoutedEventArgs e) => LoadRunningApps();
 
     /// <summary>ListBox 上でマウスダウン時の位置を保存（後の距離判定でドラッグ開始判定に使う）。</summary>
     private void RunningAppsList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
@@ -348,7 +497,7 @@ internal class SnapRect
     private Point  _dragStart;
     private double _origX, _origY;
 
-    // Aero Snap 風のゴーストプレビュー（ドラッグ中に画面端に接触したら表示する）
+    // Aero Snap 風のゴーストプレビュー
     private Border? _ghost;
     private (double X, double Y, double W, double H)? _ghostTarget;
 
@@ -445,7 +594,7 @@ internal class SnapRect
             e.Handled = true;
         };
 
-        IsSelected = false; // ハンドルを非表示初期化
+        IsSelected = false;
     }
 
     /// <summary>指定実行ファイルをこのスナップに割り当て、中央ボタンにアイコンを表示する。</summary>
@@ -454,7 +603,7 @@ internal class SnapRect
         ExePath      = exePath;
         DisplayTitle = displayName;
 
-        var icon = AppPickerDialog.TryGetExeIcon(exePath);
+        var icon = AppIconHelper.TryGetExeIcon(exePath);
         if (icon != null)
         {
             _appIcon.Source  = icon;
@@ -504,9 +653,7 @@ internal class SnapRect
 
     // ── Aero Snap 風ゴースト ────────────────────────
     /// <summary>
-    /// 現在のスナップ位置と画面端の接触状況から自動想定枠の配置を決定し、
-    /// 該当する場合はゴーストプレビューを表示する。
-    /// 接触判定: 左=x≈0、上=y≈0、右=x+w≈canvas.w、下=y+h≈canvas.h
+    /// スナップ位置と画面端の接触状況から自動想定枠の配置を決定し、該当する場合はゴーストを表示。
     /// 接触組合せ別の想定枠:
     ///   上+左 → 左上1/4   上+右 → 右上1/4
     ///   下+左 → 左下1/4   下+右 → 右下1/4
@@ -548,14 +695,10 @@ internal class SnapRect
         _ghostTarget = (tx, ty, tw, th);
     }
 
-    /// <summary>
-    /// Windows 11 スナップレイアウト風のゴースト Border をキャンバス最背面に作成する。
-    /// アクリル風の半透明白＋灰色の薄枠、ソフトな灰色グロー、丸角で構成。
-    /// </summary>
+    /// <summary>Win11 スナップレイアウト風のゴースト Border をキャンバス最背面に作成する。</summary>
     private void EnsureGhost()
     {
         if (_ghost != null) return;
-        // 灰色アクセント（中間グレー）
         var accent = Color.FromRgb(0x9A, 0x9A, 0x9A);
 
         _ghost = new Border
@@ -577,7 +720,6 @@ internal class SnapRect
             IsHitTestVisible    = false,
             SnapsToDevicePixels = true
         };
-        // 既存スナップの背面に配置（操作の邪魔をしない）
         _parent.Children.Insert(0, _ghost);
     }
 

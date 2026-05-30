@@ -97,47 +97,45 @@ public class WindowLayoutService
     public ApplyResult Apply(WindowLayout layout)
     {
         var result = new ApplyResult();
-        // 既に何かの配置で割り当てたハンドルは再利用しない（同一exe複数インスタンスの取り違え対策）
         var usedHandles = new HashSet<IntPtr>();
 
-        // 他ウィンドウ最小化オプション
         if (layout.MinimizeOthers) MinimizeAllExceptSelf();
 
         foreach (var entry in layout.Windows)
         {
-            try
+            bool success = TryApplyEntry(entry, usedHandles);
+            result.Entries.Add(new ApplyResultEntry
             {
-                var hwnd = FindWindowForEntry(entry, usedHandles);
-                if (hwnd == IntPtr.Zero)
-                {
-                    if (!TryLaunch(entry.ExePath))
-                    {
-                        result.Failed.Add(entry.Title);
-                        continue;
-                    }
-                    // 起動後ポーリング待機
-                    var deadline = DateTime.UtcNow.AddMilliseconds(LAUNCH_WAIT_MS);
-                    while (DateTime.UtcNow < deadline)
-                    {
-                        Thread.Sleep(POLL_INTERVAL_MS);
-                        hwnd = FindWindowForEntry(entry, usedHandles);
-                        if (hwnd != IntPtr.Zero) break;
-                    }
-                    if (hwnd == IntPtr.Zero) { result.Failed.Add(entry.Title); continue; }
-                }
-
-                usedHandles.Add(hwnd);
-                if (Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState))
-                    result.Succeeded.Add(entry.Title);
-                else
-                    result.Failed.Add(entry.Title);
-            }
-            catch
-            {
-                result.Failed.Add(entry.Title);
-            }
+                Title   = entry.Title,
+                ExePath = entry.ExePath,
+                Success = success
+            });
         }
         return result;
+    }
+
+    /// <summary>1エントリを実機に適用する。必要なら起動を試み、配置成否を返す。</summary>
+    private static bool TryApplyEntry(WindowEntry entry, HashSet<IntPtr> usedHandles)
+    {
+        try
+        {
+            var hwnd = FindWindowForEntry(entry, usedHandles);
+            if (hwnd == IntPtr.Zero)
+            {
+                if (!TryLaunch(entry.ExePath)) return false;
+                var deadline = DateTime.UtcNow.AddMilliseconds(LAUNCH_WAIT_MS);
+                while (DateTime.UtcNow < deadline)
+                {
+                    Thread.Sleep(POLL_INTERVAL_MS);
+                    hwnd = FindWindowForEntry(entry, usedHandles);
+                    if (hwnd != IntPtr.Zero) break;
+                }
+                if (hwnd == IntPtr.Zero) return false;
+            }
+            usedHandles.Add(hwnd);
+            return Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState);
+        }
+        catch { return false; }
     }
 
     /// <summary>
@@ -219,11 +217,24 @@ public class WindowLayoutService
     }
 }
 
-/// <summary>ウィンドウレイアウト適用の結果（成功・失敗それぞれのタイトル一覧）。</summary>
+/// <summary>ウィンドウレイアウト適用の結果1件分のデータ。</summary>
+public class ApplyResultEntry
+{
+    /// <summary>表示用タイトル。</summary>
+    public string Title   { get; init; } = "";
+    /// <summary>実行ファイルのフルパス（アイコン抽出に使う）。</summary>
+    public string ExePath { get; init; } = "";
+    /// <summary>配置に成功したかどうか。</summary>
+    public bool   Success { get; init; }
+}
+
+/// <summary>ウィンドウレイアウト適用の結果一式。</summary>
 public class ApplyResult
 {
-    /// <summary>配置に成功したエントリのタイトル一覧。</summary>
-    public List<string> Succeeded { get; } = new();
-    /// <summary>配置に失敗したエントリのタイトル一覧。</summary>
-    public List<string> Failed    { get; } = new();
+    /// <summary>適用対象エントリごとの結果一覧（入力順を保持）。</summary>
+    public List<ApplyResultEntry> Entries { get; } = new();
+    /// <summary>成功件数。</summary>
+    public int SuccessCount => Entries.Count(e => e.Success);
+    /// <summary>失敗件数。</summary>
+    public int FailureCount => Entries.Count(e => !e.Success);
 }

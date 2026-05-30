@@ -1,0 +1,91 @@
+<Window x:Class="TKer.Views.Dialogs.WindowLayoutApplyResultDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="適用結果" Width="520" Height="540"
+        Background="{StaticResource BgCardBrush}"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="36" ResizeBorderThickness="0"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{x:Static SystemCommands.CloseWindowCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="36"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- タイトルバー -->
+        <Border Grid.Row="0" Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Width="44" Height="36"
+                        Style="{StaticResource WinCloseBtn}"
+                        Command="{x:Static SystemCommands.CloseWindowCommand}"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIcon}"
+                          Fill="{StaticResource TextSecondaryBrush}"/>
+                </Button>
+                <TextBlock x:Name="TitleBarText"
+                           FontFamily="Yu Gothic UI" FontWeight="SemiBold" FontSize="13"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ヘッダー: タイトル + サマリー -->
+        <DockPanel Grid.Row="1" Margin="28,20,28,12">
+            <TextBlock x:Name="HeaderTitle" DockPanel.Dock="Top"
+                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock x:Name="SummaryText" FontFamily="Yu Gothic UI" FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Margin="0,6,0,0"/>
+        </DockPanel>
+
+        <!-- テーブル -->
+        <Border Grid.Row="2" Margin="20,0,20,16"
+                Background="{StaticResource BgSecondaryBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6">
+            <DockPanel>
+                <!-- 列ヘッダー -->
+                <Border DockPanel.Dock="Top" Padding="14,8"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="88"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="アプリ名" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextDimBrush}"/>
+                        <TextBlock Grid.Column="2" Text="テスト結果" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextDimBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <!-- データ行 -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="EntryList"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- 閉じるボタン -->
+        <Border Grid.Row="3" Padding="20,0,20,20">
+            <Button Content="閉じる" Style="{StaticResource PrimaryButton}"
+                    Padding="22,6" HorizontalAlignment="Right"
+                    IsCancel="True" Click="Close_Click"/>
+        </Border>
+    </Grid>
+</Window>

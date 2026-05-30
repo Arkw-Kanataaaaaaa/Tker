@@ -728,6 +728,10 @@ public partial class MainWindow : Window
         PreviewMouseDown += Window_PreviewMouseDownForPopup;
         Deactivated += (_, _) => { if (MediaPopup.IsOpen && !_popupAnimating) MediaPopup.IsOpen = false; };
 
+        // ウィンドウ移動・リサイズ時にポップアップ位置を追従させる
+        LocationChanged += (_, _) => ForcePopupReposition();
+        SizeChanged     += (_, _) => ForcePopupReposition();
+
         await RefreshNowPlaying();
     }
 
@@ -1075,6 +1079,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>角丸でクリップするため、サイズ確定時に丸角矩形のクリップを設定する。</summary>
+    private void ForcePopupReposition()
+    {
+        if (!MediaPopup.IsOpen) return;
+        var offset = MediaPopup.HorizontalOffset;
+        MediaPopup.HorizontalOffset = offset + 1;
+        MediaPopup.HorizontalOffset = offset;
+    }
+
     private void PopupRoot_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         double r = Math.Min(14, e.NewSize.Height / 2);

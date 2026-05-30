@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using TKer.Helpers;
 using TKer.Services;
@@ -16,6 +17,8 @@ public partial class WindowLayoutApplyResultDialog : Window
     public WindowLayoutApplyResultDialog(string title, ApplyResult result)
     {
         InitializeComponent();
+        CommandBindings.Add(new CommandBinding(
+            SystemCommands.CloseWindowCommand, (_, _) => Close()));
         Title             = title;
         TitleBarText.Text = title;
         HeaderTitle.Text  = title;

@@ -421,53 +421,17 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     /// <summary>現在のスナップ群から WindowEntry リスト（アプリ未設定は除外）を構築する。</summary>
     private List<WindowEntry> BuildEntries() => _snaps
         .Where(s => !string.IsNullOrEmpty(s.ExePath))
-        .Select(s =>
+        .Select(s => new WindowEntry
         {
-            double x = Canvas.GetLeft(s.Container);
-            double y = Canvas.GetTop(s.Container);
-            double w = s.Container.Width;
-            double h = s.Container.Height;
-            return new WindowEntry
-            {
-                Title     = s.DisplayTitle,
-                ExePath   = s.ExePath!,
-                ClassName = "",
-                X         = (int)Math.Round(x),
-                Y         = (int)Math.Round(y),
-                Width     = (int)Math.Round(w),
-                Height    = (int)Math.Round(h),
-                ShowState = Win32Window.SW_SHOWNORMAL,
-                SnapZone  = DetermineSnapZone(x, y, w, h)
-            };
+            Title     = s.DisplayTitle,
+            ExePath   = s.ExePath!,
+            ClassName = "",
+            X         = (int)Math.Round(Canvas.GetLeft(s.Container)),
+            Y         = (int)Math.Round(Canvas.GetTop(s.Container)),
+            Width     = (int)Math.Round(s.Container.Width),
+            Height    = (int)Math.Round(s.Container.Height),
+            ShowState = Win32Window.SW_SHOWNORMAL
         }).ToList();
-
-    /// <summary>
-    /// スナップ矩形がどの Windows スナップゾーンに当たるかを、接している画面端から判定する。
-    /// 前提: スナップは重ならず、必ず画面端に接する。
-    /// </summary>
-    private string DetermineSnapZone(double x, double y, double w, double h)
-    {
-        double cw = EditorCanvas.Width;
-        double ch = EditorCanvas.Height;
-        double tol = Math.Max(2.0, cw * 0.01); // 画面幅の1%程度を許容
-
-        bool left   = x <= tol;
-        bool right  = (x + w) >= (cw - tol);
-        bool top    = y <= tol;
-        bool bottom = (y + h) >= (ch - tol);
-
-        bool fullW = left && right;
-        bool fullH = top && bottom;
-
-        if (fullW && fullH)        return "Maximize";
-        if (fullH && left)         return "LeftHalf";
-        if (fullH && right)        return "RightHalf";
-        if (left && top)           return "TopLeft";
-        if (left && bottom)        return "BottomLeft";
-        if (right && top)          return "TopRight";
-        if (right && bottom)       return "BottomRight";
-        return ""; // 標準ゾーンに当てはまらない場合は座標配置にフォールバック
-    }
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {

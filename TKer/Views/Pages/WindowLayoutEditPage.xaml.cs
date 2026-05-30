@@ -8,6 +8,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using TKer.Helpers;
 using TKer.Models;
@@ -17,22 +18,27 @@ using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
-/// <summary>仮想デスクトップ上にスナップを配置してウィンドウレイアウトを新規作成・編集するページ。</summary>
+/// <summary>
+/// パターン選択方式のウィンドウレイアウト編集ページ。
+/// 左サイドバーから 9 種類のパターンを選び、仮想デスクトップに固定ゾーンが配置される。
+/// 各ゾーンの中央ボタンでアプリを割り当てる。
+/// </summary>
 public partial class WindowLayoutEditPage : Page, IRefreshable
 {
     private readonly MainViewModel _vm;
 
-    private string?        _editingId;
-    private readonly List<SnapRect> _snaps        = new();
-    private readonly List<SnapRect> _selectedList = new();
+    private string? _editingId;
+    private string? _patternId;
+    private LayoutPattern? _pattern;
+    private readonly List<SnapRect> _snaps = new();
 
-    // 編集モード時の編集前スナップ（リセット時に復元する）
-    private List<WindowEntry>? _originalEntries;
+    // パターン名 → サイドバーの該当カード（選択ハイライト用）
+    private readonly Dictionary<string, Border> _patternCards = new();
 
-    // 「全ウィンドウ最小化後、レイアウト適用」トグルの状態
+    // 「全ウィンドウ最小化後、レイアウト適用」トグル状態
     private bool _minimizeOthers;
 
-    // 起動中アプリ一覧のドラッグ開始判定・リアルタイム更新
+    // 起動中アプリ一覧
     private Point _appDragStartPoint;
     private DispatcherTimer? _appsRefreshTimer;
 
@@ -43,16 +49,18 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         InitializeComponent();
         Loaded   += OnLoaded;
         Unloaded += OnUnloaded;
-        PreviewKeyDown += OnPreviewKeyDown;
     }
 
-    /// <summary>ナビゲーション直後の再表示用フック（編集対象は OnLoaded で読み込む）。</summary>
+    /// <summary>ナビゲーション直後の再表示用フック。</summary>
     public void Refresh() { }
 
-    /// <summary>キャンバスサイズを実画面の解像度に合わせ、編集モードならスナップを復元する。</summary>
+    /// <summary>
+    /// キャンバスサイズを実画面解像度に合わせ、サイドバーのパターン一覧を構築し、
+    /// 編集モードまたは選択済みパターンがあれば対応するパターンを表示する。
+    /// </summary>
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // DPI 補正
+        // DPI 補正: SystemParameters は DIP のためキャンバスを物理ピクセルに揃える
         var dpi  = VisualTreeHelper.GetDpi(this);
         double dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
         double dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
@@ -60,7 +68,10 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         EditorCanvas.Height = SystemParameters.PrimaryScreenHeight * dpiY;
 
         ApplyDesktopWallpaper();
+        BuildPatternList();
 
+        // 編集モード: 既存レイアウト読み込み
+        Dictionary<int, WindowEntry>? preserved = null;
         var editId = _vm.EditingWindowLayoutId;
         if (!string.IsNullOrEmpty(editId))
         {
@@ -73,22 +84,25 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
                 TxtName.Text        = existing.Name;
                 TxtDescription.Text = existing.Description;
                 _minimizeOthers     = existing.MinimizeOthers;
-                // リセット時に復元できるよう、編集前のエントリをディープコピーで保持
-                _originalEntries = existing.Windows.Select(CloneEntry).ToList();
-                foreach (var entry in existing.Windows)
-                {
-                    var snap = CreateSnap(entry.X, entry.Y, entry.Width, entry.Height);
-                    if (!string.IsNullOrEmpty(entry.ExePath))
-                        snap.SetExePath(entry.ExePath, entry.Title);
-                }
-                ClearSelection();
+                _patternId          = string.IsNullOrEmpty(existing.PatternId) ? null : existing.PatternId;
+                // ゾーン番号 → 既存エントリ のマッピングを作って復元時にアプリ割当を引き継ぐ
+                preserved = existing.Windows
+                    .Where(w => w.ZoneIndex >= 0)
+                    .GroupBy(w => w.ZoneIndex)
+                    .ToDictionary(g => g.Key, g => g.First());
             }
         }
         else
         {
             HeaderTitle.Text = "ウィンドウレイアウト追加";
             BtnSave.Content  = "作成";
+            // 新規時は VM からパターンが渡されていれば採用
+            _patternId = _vm.EditingWindowLayoutPatternId;
         }
+
+        // パターンが決まっていればサイドバーで選択状態にしてゾーンを描画
+        if (!string.IsNullOrEmpty(_patternId))
+            SelectPattern(_patternId!, preserved);
 
         UpdateMinimizeToggleVisual();
         UpdateTestApplyEnabled();
@@ -98,7 +112,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
 
     private void OnUnloaded(object sender, RoutedEventArgs e) => _appsRefreshTimer?.Stop();
 
-    /// <summary>仮想デスクトップ Border の背景に現在のデスクトップ壁紙を適用する（取得失敗時は素のダーク背景）。</summary>
+    /// <summary>仮想デスクトップ Border の背景にデスクトップ壁紙を適用する（失敗時は素のダーク背景）。</summary>
     private void ApplyDesktopWallpaper()
     {
         var path = Win32Window.GetDesktopWallpaperPath();
@@ -107,182 +121,155 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         {
             var bmp = new BitmapImage();
             bmp.BeginInit();
-            bmp.UriSource     = new Uri(path);
-            bmp.CacheOption   = BitmapCacheOption.OnLoad;
+            bmp.UriSource   = new Uri(path);
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
             bmp.EndInit();
             bmp.Freeze();
             DesktopBg.Background = new ImageBrush { ImageSource = bmp, Stretch = Stretch.UniformToFill };
         }
-        catch { /* 失敗時はデフォルト背景のまま */ }
+        catch { }
     }
 
-    // ── スナップ生成・選択 ─────────────────────────────
-    /// <summary>仮想デスクトップ上に新しいスナップを生成して登録する。</summary>
-    private SnapRect CreateSnap(double x, double y, double w, double h)
+    // ── パターン一覧サイドバー ───────────────────────
+    /// <summary>サイドバーに 9 種類のパターンカードを縦に並べる。</summary>
+    private void BuildPatternList()
     {
-        var snap = new SnapRect(EditorCanvas, x, y, w, h);
-        snap.Selected         += (_, _) => OnSnapSelected(snap);
+        PatternList.Children.Clear();
+        _patternCards.Clear();
+        foreach (var pattern in LayoutPatterns.All)
+        {
+            var card = BuildPatternCard(pattern);
+            _patternCards[pattern.Id] = card;
+            PatternList.Children.Add(card);
+        }
+    }
+
+    /// <summary>パターン1件分の縦並びサムネイル付きカードを構築する。</summary>
+    private Border BuildPatternCard(LayoutPattern pattern)
+    {
+        var border = new Border
+        {
+            Margin          = new Thickness(0, 0, 0, 8),
+            Padding         = new Thickness(8),
+            Background      = (Brush)FindResource("BgSecondaryBrush"),
+            BorderBrush     = (Brush)FindResource("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius    = new CornerRadius(6),
+            Cursor          = Cursors.Hand
+        };
+
+        var stack = new StackPanel();
+        stack.Children.Add(BuildPreviewCanvas(pattern, 180, 100));
+        stack.Children.Add(new TextBlock
+        {
+            Text         = pattern.Name,
+            FontSize     = 11, FontWeight = FontWeights.SemiBold,
+            Foreground   = (Brush)FindResource("TextPrimaryBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin       = new Thickness(0, 6, 0, 0)
+        });
+        border.Child = stack;
+
+        border.MouseLeftButtonUp += (_, _) => SelectPattern(pattern.Id, preserved: null);
+        return border;
+    }
+
+    /// <summary>パターンのゾーンを正規化座標で塗り分けたミニプレビュー Canvas を返す。</summary>
+    private Canvas BuildPreviewCanvas(LayoutPattern pattern, double w, double h)
+    {
+        var canvas = new Canvas
+        {
+            Width = w, Height = h,
+            Background = (Brush)FindResource("BgCardBrush")
+        };
+        var fill   = new SolidColorBrush(Color.FromArgb(0x60, 0x3D, 0x7E, 0xFF));
+        var stroke = new SolidColorBrush(Color.FromArgb(0xCC, 0x3D, 0x7E, 0xFF));
+        foreach (var z in pattern.Zones)
+        {
+            var rect = new Rectangle
+            {
+                Width  = z.W * w - 2,
+                Height = z.H * h - 2,
+                Fill   = fill,
+                Stroke = stroke,
+                StrokeThickness = 1
+            };
+            Canvas.SetLeft(rect, z.X * w + 1);
+            Canvas.SetTop(rect,  z.Y * h + 1);
+            canvas.Children.Add(rect);
+        }
+        return canvas;
+    }
+
+    /// <summary>
+    /// 指定パターンを選択する。サイドバーのハイライトを更新し、
+    /// 仮想デスクトップに固定ゾーンスナップを再構築する。
+    /// preserved が与えられた場合、ゾーン番号一致のエントリのアプリ割当を引き継ぐ。
+    /// </summary>
+    private void SelectPattern(string patternId, Dictionary<int, WindowEntry>? preserved)
+    {
+        var pattern = LayoutPatterns.FindById(patternId);
+        if (pattern == null) return;
+
+        // パターン切り替え時はカレントゾーンのアプリ割当を保持して引き継ぐ
+        preserved ??= _snaps
+            .Where(s => s.ZoneIndex >= 0 && !string.IsNullOrEmpty(s.ExePath))
+            .ToDictionary(s => s.ZoneIndex, s => new WindowEntry
+            {
+                Title   = s.DisplayTitle,
+                ExePath = s.ExePath!,
+                ZoneIndex = s.ZoneIndex
+            });
+
+        // 既存スナップを撤去
+        foreach (var snap in _snaps) EditorCanvas.Children.Remove(snap.Container);
+        _snaps.Clear();
+
+        // パターン情報を保存し、サイドバーのハイライトを切り替え
+        _patternId = patternId;
+        _pattern   = pattern;
+        UpdatePatternCardHighlights();
+
+        // ゾーンを物理ピクセルに変換して固定スナップを配置
+        for (int i = 0; i < pattern.Zones.Count; i++)
+        {
+            var z = pattern.Zones[i];
+            double x = z.X * EditorCanvas.Width;
+            double y = z.Y * EditorCanvas.Height;
+            double w = z.W * EditorCanvas.Width;
+            double h = z.H * EditorCanvas.Height;
+            var snap = CreateZoneSnap(x, y, w, h, i);
+            if (preserved != null && preserved.TryGetValue(i, out var entry) && !string.IsNullOrEmpty(entry.ExePath))
+                snap.SetExePath(entry.ExePath, entry.Title);
+        }
+        UpdateTestApplyEnabled();
+    }
+
+    /// <summary>選択中パターンのカードを縁色でハイライトする。</summary>
+    private void UpdatePatternCardHighlights()
+    {
+        var normalBrush = (Brush)FindResource("BorderBrush");
+        var accentBrush = (Brush)FindResource("AccentCyanBrush");
+        foreach (var (id, card) in _patternCards)
+        {
+            bool selected = id == _patternId;
+            card.BorderBrush     = selected ? accentBrush : normalBrush;
+            card.BorderThickness = new Thickness(selected ? 2 : 1);
+        }
+    }
+
+    // ── ゾーンスナップ生成・アプリ割当 ───────────────────
+    /// <summary>パターン由来の固定ゾーン（移動・リサイズ不可）スナップを生成する。</summary>
+    private SnapRect CreateZoneSnap(double x, double y, double w, double h, int zoneIndex)
+    {
+        var snap = new SnapRect(EditorCanvas, x, y, w, h, isLocked: true);
+        snap.ZoneIndex = zoneIndex;
         snap.PickAppRequested += (_, _) => OnPickApp(snap);
         snap.AppAssigned      += (_, _) => UpdateTestApplyEnabled();
-        snap.EdgeDrag         += OnSnapEdgeDrag;
         EditorCanvas.Children.Add(snap.Container);
         _snaps.Add(snap);
         return snap;
-    }
-
-    /// <summary>
-    /// スナップの辺がドラッグされたとき、その辺と接している隣接スナップの
-    /// 反対側の辺も同時に動かして共有境界線をリサイズする。
-    /// </summary>
-    private void OnSnapEdgeDrag(SnapRect snap, EdgeKind edge, double delta)
-    {
-        var neighbors = FindAdjacentSnaps(snap, edge);
-        ApplyEdgeResize(snap, edge, delta);
-        var opposite = OppositeEdge(edge);
-        foreach (var n in neighbors)
-            ApplyEdgeResize(n, opposite, delta);
-    }
-
-    /// <summary>指定スナップの辺に接する（垂直方向に重なる）他のスナップ一覧を返す。</summary>
-    private List<SnapRect> FindAdjacentSnaps(SnapRect snap, EdgeKind edge)
-    {
-        const double TOL = 0.5;
-        var list = new List<SnapRect>();
-        double thisEdgePos = GetEdgePos(snap, edge);
-        var (thisMin, thisMax) = GetPerpendicularRange(snap, edge);
-        var oppEdge = OppositeEdge(edge);
-
-        foreach (var other in _snaps)
-        {
-            if (ReferenceEquals(other, snap)) continue;
-            if (Math.Abs(GetEdgePos(other, oppEdge) - thisEdgePos) > TOL) continue;
-            var (oMin, oMax) = GetPerpendicularRange(other, edge);
-            // 垂直方向に重なっているか（少しでも交差していれば隣接とみなす）
-            if (oMax > thisMin && oMin < thisMax)
-                list.Add(other);
-        }
-        return list;
-    }
-
-    /// <summary>指定スナップの指定辺の座標値を返す。</summary>
-    private static double GetEdgePos(SnapRect snap, EdgeKind edge)
-    {
-        var c = snap.Container;
-        return edge switch
-        {
-            EdgeKind.Left   => Canvas.GetLeft(c),
-            EdgeKind.Right  => Canvas.GetLeft(c) + c.Width,
-            EdgeKind.Top    => Canvas.GetTop(c),
-            EdgeKind.Bottom => Canvas.GetTop(c) + c.Height,
-            _               => 0
-        };
-    }
-
-    /// <summary>辺と垂直方向（左右辺なら上下範囲、上下辺なら左右範囲）の最小・最大を返す。</summary>
-    private static (double Min, double Max) GetPerpendicularRange(SnapRect snap, EdgeKind edge)
-    {
-        var c = snap.Container;
-        bool horizontalEdge = edge == EdgeKind.Top || edge == EdgeKind.Bottom;
-        return horizontalEdge
-            ? (Canvas.GetLeft(c), Canvas.GetLeft(c) + c.Width)
-            : (Canvas.GetTop(c),  Canvas.GetTop(c)  + c.Height);
-    }
-
-    private static EdgeKind OppositeEdge(EdgeKind e) => e switch
-    {
-        EdgeKind.Left   => EdgeKind.Right,
-        EdgeKind.Right  => EdgeKind.Left,
-        EdgeKind.Top    => EdgeKind.Bottom,
-        _               => EdgeKind.Top
-    };
-
-    /// <summary>指定スナップの辺を delta だけ動かす（最小サイズ・キャンバス境界でクランプ）。</summary>
-    private void ApplyEdgeResize(SnapRect snap, EdgeKind edge, double delta)
-    {
-        var c = snap.Container;
-        double x = Canvas.GetLeft(c);
-        double y = Canvas.GetTop(c);
-        double w = c.Width;
-        double h = c.Height;
-
-        switch (edge)
-        {
-            case EdgeKind.Right:
-            {
-                double nw = Math.Max(SnapRect.MIN_SIZE, w + delta);
-                nw = Math.Min(nw, EditorCanvas.Width - x);
-                c.Width = nw;
-                break;
-            }
-            case EdgeKind.Left:
-            {
-                double nw = Math.Max(SnapRect.MIN_SIZE, w - delta);
-                double nx = Math.Max(0, x + (w - nw));
-                Canvas.SetLeft(c, nx);
-                c.Width = nw;
-                break;
-            }
-            case EdgeKind.Bottom:
-            {
-                double nh = Math.Max(SnapRect.MIN_SIZE, h + delta);
-                nh = Math.Min(nh, EditorCanvas.Height - y);
-                c.Height = nh;
-                break;
-            }
-            case EdgeKind.Top:
-            {
-                double nh = Math.Max(SnapRect.MIN_SIZE, h - delta);
-                double ny = Math.Max(0, y + (h - nh));
-                Canvas.SetTop(c, ny);
-                c.Height = nh;
-                break;
-            }
-        }
-    }
-
-    /// <summary>アプリ設定済みのスナップが1つでもあればテスト適用ボタンを有効化する。</summary>
-    private void UpdateTestApplyEnabled()
-    {
-        BtnTestApply.IsEnabled = _snaps.Any(s => !string.IsNullOrEmpty(s.ExePath));
-    }
-
-    /// <summary>
-    /// スナップ選択イベントを処理する。Ctrl 押下中はトグル選択、押下なしは単一選択。
-    /// 選択状態に応じて削除ツールボタンを有効化する。
-    /// </summary>
-    private void OnSnapSelected(SnapRect snap)
-    {
-        bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
-
-        if (ctrl)
-        {
-            if (_selectedList.Contains(snap))
-            {
-                snap.IsSelected = false;
-                _selectedList.Remove(snap);
-            }
-            else
-            {
-                snap.IsSelected = true;
-                _selectedList.Add(snap);
-            }
-        }
-        else
-        {
-            foreach (var s in _selectedList) s.IsSelected = false;
-            _selectedList.Clear();
-            snap.IsSelected = true;
-            _selectedList.Add(snap);
-        }
-        BtnDeleteSnap.IsEnabled = _selectedList.Count > 0;
-    }
-
-    /// <summary>全選択を解除して削除ツールボタンを無効化する。</summary>
-    private void ClearSelection()
-    {
-        foreach (var s in _selectedList) s.IsSelected = false;
-        _selectedList.Clear();
-        BtnDeleteSnap.IsEnabled = false;
     }
 
     /// <summary>ファイル選択ダイアログを直接開いて、結果をスナップに反映する。</summary>
@@ -300,81 +287,22 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
     }
 
-    // ── ツールバー ────────────────────────────────────
-    private void AddSnap_Click(object sender, RoutedEventArgs e)
+    /// <summary>アプリ設定済みのスナップが1つでもあればテスト適用ボタンを有効化する。</summary>
+    private void UpdateTestApplyEnabled()
     {
-        double w = Math.Max(SnapRect.MIN_SIZE, EditorCanvas.Width  / 3);
-        double h = Math.Max(SnapRect.MIN_SIZE, EditorCanvas.Height / 3);
-        var snap = CreateSnap(0, 0, w, h);
-        // 単一選択
-        foreach (var s in _selectedList) s.IsSelected = false;
-        _selectedList.Clear();
-        snap.IsSelected = true;
-        _selectedList.Add(snap);
-        BtnDeleteSnap.IsEnabled = true;
+        BtnTestApply.IsEnabled = _snaps.Any(s => !string.IsNullOrEmpty(s.ExePath));
     }
 
-    /// <summary>選択中のスナップをすべて削除する。</summary>
-    private void DeleteSnap_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedList.Count == 0) return;
-        foreach (var snap in _selectedList.ToList())
-        {
-            EditorCanvas.Children.Remove(snap.Container);
-            _snaps.Remove(snap);
-        }
-        _selectedList.Clear();
-        BtnDeleteSnap.IsEnabled = false;
-        UpdateTestApplyEnabled();
-    }
-
-    /// <summary>
-    /// 配置されたスナップをリセットする。
-    /// 編集モード: 編集前の元レイアウトに戻す。
-    /// 追加モード: すべてのスナップを削除する。
-    /// </summary>
-    private void ResetSnaps_Click(object sender, RoutedEventArgs e)
-    {
-        foreach (var snap in _snaps.ToList())
-            EditorCanvas.Children.Remove(snap.Container);
-        _snaps.Clear();
-        _selectedList.Clear();
-        BtnDeleteSnap.IsEnabled = false;
-
-        if (_originalEntries != null)
-        {
-            foreach (var entry in _originalEntries)
-            {
-                var snap = CreateSnap(entry.X, entry.Y, entry.Width, entry.Height);
-                if (!string.IsNullOrEmpty(entry.ExePath))
-                    snap.SetExePath(entry.ExePath, entry.Title);
-            }
-        }
-
-        UpdateTestApplyEnabled();
-    }
-
-    /// <summary>WindowEntry を新しいインスタンスに複製する（編集前データのスナップショット用）。</summary>
-    private static WindowEntry CloneEntry(WindowEntry src) => new()
-    {
-        Title     = src.Title,
-        ExePath   = src.ExePath,
-        ClassName = src.ClassName,
-        X         = src.X,
-        Y         = src.Y,
-        Width     = src.Width,
-        Height    = src.Height,
-        ShowState = src.ShowState
-    };
-
+    // ── テスト適用 ───────────────────────────────
     /// <summary>現在のスナップ構成を保存せずに即座に適用してテストする。</summary>
     private void TestApply_Click(object sender, RoutedEventArgs e)
     {
         var entries = BuildEntries();
-        if (entries.Count == 0) return; // ボタンが活性のときは entries が空でないことが保証される
+        if (entries.Count == 0) return;
         var tempLayout = new WindowLayout
         {
             Name           = "(テスト)",
+            PatternId      = _patternId ?? "",
             Windows        = entries,
             MinimizeOthers = _minimizeOthers
         };
@@ -383,30 +311,16 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         try     { result = _vm.WindowLayoutService.Apply(tempLayout); }
         finally { Mouse.OverrideCursor = null; }
 
-        ShowApplyResultDialog(result, "テスト適用結果");
-    }
-
-    /// <summary>適用結果（アイコン+アプリ名+〇/×の表）を TKer 標準ダイアログで表示する。</summary>
-    private void ShowApplyResultDialog(ApplyResult result, string title)
-    {
-        var dlg = new WindowLayoutApplyResultDialog(title, result) { Owner = Window.GetWindow(this) };
+        var dlg = new WindowLayoutApplyResultDialog("テスト適用結果", result) { Owner = Window.GetWindow(this) };
         dlg.ShowDialog();
     }
 
-    // ── 空領域クリックで選択解除 ────────────────────────
-    private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (ReferenceEquals(e.OriginalSource, EditorCanvas)) ClearSelection();
-    }
-
-    private void OuterArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (!(e.OriginalSource is FrameworkElement fe && fe.IsDescendantOf(EditorCanvas)))
-            ClearSelection();
-    }
+    // ── 空領域クリックは無効化（特に何もしない） ──────
+    private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
+    private void OuterArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
 
     // ── ナビゲーション・保存 ───────────────────────
-    /// <summary>パンくずリストの「ウィンドウレイアウト」クリックで一覧画面に戻る（編集破棄）。</summary>
+    /// <summary>パンくず「ウィンドウレイアウト」クリックで一覧画面に戻る（編集破棄）。</summary>
     private void LayoutCrumb_Click(object sender, MouseButtonEventArgs e) => NavigateBackToList();
 
     /// <summary>キャンセルボタンで一覧画面に戻る（編集破棄）。</summary>
@@ -414,11 +328,12 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
 
     private void NavigateBackToList()
     {
-        _vm.EditingWindowLayoutId = null;
+        _vm.EditingWindowLayoutId        = null;
+        _vm.EditingWindowLayoutPatternId = null;
         _vm.NavigateToCommand.Execute("WindowLayout");
     }
 
-    /// <summary>現在のスナップ群から WindowEntry リスト（アプリ未設定は除外）を構築する。</summary>
+    /// <summary>現在のゾーンスナップから WindowEntry リスト（アプリ未設定は除外）を構築する。</summary>
     private List<WindowEntry> BuildEntries() => _snaps
         .Where(s => !string.IsNullOrEmpty(s.ExePath))
         .Select(s => new WindowEntry
@@ -430,7 +345,8 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             Y         = (int)Math.Round(Canvas.GetTop(s.Container)),
             Width     = (int)Math.Round(s.Container.Width),
             Height    = (int)Math.Round(s.Container.Height),
-            ShowState = Win32Window.SW_SHOWNORMAL
+            ShowState = Win32Window.SW_SHOWNORMAL,
+            ZoneIndex = s.ZoneIndex
         }).ToList();
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -439,6 +355,11 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         {
             AppDialog.ShowWarning("レイアウト名を入力してください", "入力エラー", Window.GetWindow(this));
             TxtName.Focus();
+            return;
+        }
+        if (string.IsNullOrEmpty(_patternId))
+        {
+            AppDialog.ShowWarning("レイアウトパターンを選択してください", "入力エラー", Window.GetWindow(this));
             return;
         }
 
@@ -451,6 +372,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             {
                 existing.Name           = TxtName.Text.Trim();
                 existing.Description    = TxtDescription.Text.Trim();
+                existing.PatternId      = _patternId!;
                 existing.Windows        = entries;
                 existing.MinimizeOthers = _minimizeOthers;
                 _vm.WindowLayoutService.Update(existing);
@@ -460,6 +382,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         {
             var created = _vm.WindowLayoutService.Create(
                 TxtName.Text.Trim(), TxtDescription.Text.Trim(), entries);
+            created.PatternId      = _patternId!;
             created.MinimizeOthers = _minimizeOthers;
             _vm.WindowLayoutService.Update(created);
         }
@@ -467,14 +390,13 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         NavigateBackToList();
     }
 
-    // ── 設定トグル ───────────────────────
+    // ── 最小化トグル ───────────────────────
     private void ToggleMinimize_Click(object sender, MouseButtonEventArgs e)
     {
         _minimizeOthers = !_minimizeOthers;
         UpdateMinimizeToggleVisual();
     }
 
-    /// <summary>トグルスイッチの色とつまみ位置を現在の状態に合わせて更新する。</summary>
     private void UpdateMinimizeToggleVisual()
     {
         MinimizeToggleSwitch.Background = new SolidColorBrush(_minimizeOthers
@@ -483,52 +405,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         MinimizeToggleThumb.Margin = new Thickness(_minimizeOthers ? 22 : 2, 0, 0, 0);
     }
 
-    // ── ショートカット ─────────────────────────────
-    /// <summary>Ctrl+Shift+; で追加、Ctrl+- で削除、Ctrl+R でリセットを実行する。</summary>
-    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        // TextBox 入力中はショートカット無効
-        if (Keyboard.FocusedElement is TextBoxBase) return;
-
-        bool ctrl  = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
-        bool shift = (Keyboard.Modifiers & ModifierKeys.Shift)   == ModifierKeys.Shift;
-
-        if (ctrl && shift && e.Key == Key.OemSemicolon)
-        {
-            AddSnap_Click(this, new RoutedEventArgs());
-            e.Handled = true;
-        }
-        else if (ctrl && !shift && e.Key == Key.OemMinus)
-        {
-            DeleteSnap_Click(this, new RoutedEventArgs());
-            e.Handled = true;
-        }
-        else if (ctrl && !shift && e.Key == Key.R)
-        {
-            ResetSnaps_Click(this, new RoutedEventArgs());
-            e.Handled = true;
-        }
-        else if (ctrl && !shift && e.Key == Key.A)
-        {
-            SelectAllSnaps();
-            e.Handled = true;
-        }
-    }
-
-    /// <summary>全スナップを選択状態にし、削除ツールバーボタンを有効化する。</summary>
-    private void SelectAllSnaps()
-    {
-        _selectedList.Clear();
-        foreach (var s in _snaps)
-        {
-            s.IsSelected = true;
-            _selectedList.Add(s);
-        }
-        BtnDeleteSnap.IsEnabled = _selectedList.Count > 0;
-    }
-
-    // ── 起動中アプリ一覧（リアルタイム差分更新） ────────────────────
-    /// <summary>2秒周期で RunningAppsList を再取得・差分反映するタイマーを開始する。</summary>
+    // ── 起動中アプリ一覧（リアルタイム差分更新） ────────
     private void StartAppsRefreshTimer()
     {
         _appsRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
@@ -536,10 +413,6 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         _appsRefreshTimer.Start();
     }
 
-    /// <summary>
-    /// 現在の可視ウィンドウから取得した exe 一覧と ListBox の項目を差分比較し、
-    /// 消えたものを削除・新規のものを追加する（順序・選択・スクロール位置を保持）。
-    /// </summary>
     private void RefreshRunningAppsList()
     {
         var current = Win32Window.EnumerateVisibleWindows()
@@ -547,20 +420,15 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             .GroupBy(w => w.ExePath, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        // 消えたものを削除
         var keepExisting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = RunningAppsList.Items.Count - 1; i >= 0; i--)
         {
             if (RunningAppsList.Items[i] is ListBoxItem item && item.Tag is string path)
             {
-                if (!current.ContainsKey(path))
-                    RunningAppsList.Items.RemoveAt(i);
-                else
-                    keepExisting.Add(path);
+                if (!current.ContainsKey(path)) RunningAppsList.Items.RemoveAt(i);
+                else keepExisting.Add(path);
             }
         }
-
-        // 新規追加
         foreach (var kvp in current)
         {
             if (keepExisting.Contains(kvp.Key)) continue;
@@ -568,7 +436,6 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
     }
 
-    /// <summary>アプリ1件分のリスト行（アイコン+名前+タイトル）を構築して返す。</summary>
     private ListBoxItem BuildAppRow(string exePath, string title)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
@@ -580,7 +447,6 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
                 Margin = new Thickness(0, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Center
             });
-
         var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         textPanel.Children.Add(new TextBlock
         {
@@ -596,24 +462,20 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
                 TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 240
             });
         sp.Children.Add(textPanel);
-
         return new ListBoxItem
         {
-            Tag     = exePath,
-            Content = sp,
+            Tag = exePath, Content = sp,
             Padding = new Thickness(6, 5, 6, 5),
-            Cursor  = Cursors.Hand,
-            ToolTip = $"{exePath}\n(ドラッグしてスナップにドロップ)"
+            Cursor = Cursors.Hand,
+            ToolTip = $"{exePath}\n(ドラッグしてゾーンにドロップ)"
         };
     }
 
-    /// <summary>ListBox 上でマウスダウン時の位置を保存（後の距離判定でドラッグ開始判定に使う）。</summary>
     private void RunningAppsList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         _appDragStartPoint = e.GetPosition(null);
     }
 
-    /// <summary>ドラッグ閾値を超えたら DragDrop を開始してドラッグソースとなる。</summary>
     private void RunningAppsList_PreviewMouseMove(object sender, MouseEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed) return;
@@ -695,10 +557,20 @@ internal class SnapRect
         }
     }
 
-    /// <summary>指定位置・サイズでスナップを構築する。</summary>
-    public SnapRect(Canvas parent, double x, double y, double w, double h)
+    /// <summary>パターン内のゾーン番号（0始まり、パターン由来でない場合は -1）。</summary>
+    public int ZoneIndex { get; set; } = -1;
+
+    private readonly bool _isLocked;
+
+    /// <summary>
+    /// 指定位置・サイズでスナップを構築する。
+    /// isLocked=true ならドラッグ移動・リサイズハンドル・ゴーストは無効化され、
+    /// アプリ選択ボタンとドロップ受付のみが有効になる（パターン由来の固定ゾーン用）。
+    /// </summary>
+    public SnapRect(Canvas parent, double x, double y, double w, double h, bool isLocked = false)
     {
-        _parent = parent;
+        _parent   = parent;
+        _isLocked = isLocked;
         Container = new Border
         {
             Width       = Math.Max(MIN_SIZE, w),
@@ -706,7 +578,7 @@ internal class SnapRect
             Background  = new SolidColorBrush(Color.FromArgb(0x66, 0xC8, 0xC8, 0xC8)),
             BorderBrush = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)),
             BorderThickness = new Thickness(1),
-            Cursor      = Cursors.SizeAll,
+            Cursor      = isLocked ? Cursors.Arrow : Cursors.SizeAll,
             SnapsToDevicePixels = true
         };
         Canvas.SetLeft(Container, x);
@@ -746,25 +618,28 @@ internal class SnapRect
         _appButton.Click += (_, _) => PickAppRequested?.Invoke(this, EventArgs.Empty);
         _content.Children.Add(_appButton);
 
-        // 四隅のリサイズハンドル
-        AddHandle(HorizontalAlignment.Left,  VerticalAlignment.Top,    Cursors.SizeNWSE, -1, -1);
-        AddHandle(HorizontalAlignment.Right, VerticalAlignment.Top,    Cursors.SizeNESW,  1, -1);
-        AddHandle(HorizontalAlignment.Left,  VerticalAlignment.Bottom, Cursors.SizeNESW, -1,  1);
-        AddHandle(HorizontalAlignment.Right, VerticalAlignment.Bottom, Cursors.SizeNWSE,  1,  1);
+        if (!_isLocked)
+        {
+            // 四隅のリサイズハンドル
+            AddHandle(HorizontalAlignment.Left,  VerticalAlignment.Top,    Cursors.SizeNWSE, -1, -1);
+            AddHandle(HorizontalAlignment.Right, VerticalAlignment.Top,    Cursors.SizeNESW,  1, -1);
+            AddHandle(HorizontalAlignment.Left,  VerticalAlignment.Bottom, Cursors.SizeNESW, -1,  1);
+            AddHandle(HorizontalAlignment.Right, VerticalAlignment.Bottom, Cursors.SizeNWSE,  1,  1);
 
-        // 4辺中央のエッジハンドル（隣接境界の同期リサイズ用）
-        AddEdgeHandle(EdgeKind.Top,    HorizontalAlignment.Center, VerticalAlignment.Top,    Cursors.SizeNS);
-        AddEdgeHandle(EdgeKind.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, Cursors.SizeNS);
-        AddEdgeHandle(EdgeKind.Left,   HorizontalAlignment.Left,   VerticalAlignment.Center, Cursors.SizeWE);
-        AddEdgeHandle(EdgeKind.Right,  HorizontalAlignment.Right,  VerticalAlignment.Center, Cursors.SizeWE);
+            // 4辺中央のエッジハンドル（隣接境界の同期リサイズ用）
+            AddEdgeHandle(EdgeKind.Top,    HorizontalAlignment.Center, VerticalAlignment.Top,    Cursors.SizeNS);
+            AddEdgeHandle(EdgeKind.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, Cursors.SizeNS);
+            AddEdgeHandle(EdgeKind.Left,   HorizontalAlignment.Left,   VerticalAlignment.Center, Cursors.SizeWE);
+            AddEdgeHandle(EdgeKind.Right,  HorizontalAlignment.Right,  VerticalAlignment.Center, Cursors.SizeWE);
+
+            // 移動ドラッグ（バブリング: ボタン・ハンドルが消費した後の空き領域でのみ発火）
+            Container.MouseLeftButtonDown += OnDragStart;
+            Container.MouseMove           += OnDragging;
+            Container.MouseLeftButtonUp   += OnDragEnd;
+        }
 
         // 選択（トンネリング: 子要素のクリックでも発火する）
         Container.PreviewMouseLeftButtonDown += (_, _) => Selected?.Invoke(this, EventArgs.Empty);
-
-        // 移動ドラッグ（バブリング: ボタン・ハンドルが消費した後の空き領域でのみ発火）
-        Container.MouseLeftButtonDown += OnDragStart;
-        Container.MouseMove           += OnDragging;
-        Container.MouseLeftButtonUp   += OnDragEnd;
 
         // 起動中アプリ一覧からのドロップ受付
         Container.AllowDrop = true;

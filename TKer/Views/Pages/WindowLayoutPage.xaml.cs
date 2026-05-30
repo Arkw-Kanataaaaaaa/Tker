@@ -130,14 +130,11 @@ public partial class WindowLayoutPage : Page, IRefreshable
     }
 
     // ── ツールバー ────────────────────────────────────
-    /// <summary>追加ボタン: まずパターン選択ダイアログを出し、選ばれたら編集画面へ遷移する。</summary>
+    /// <summary>追加ボタン: 編集画面へ遷移する（パターン選択は編集画面のサイドバーで行う）。</summary>
     private void ToolbarAdd_Click(object sender, RoutedEventArgs e)
     {
-        var dlg = new WindowLayoutPatternPickerDialog { Owner = Window.GetWindow(this) };
-        if (dlg.ShowDialog() != true || string.IsNullOrEmpty(dlg.SelectedPatternId)) return;
-
-        _vm.EditingWindowLayoutId            = null;
-        _vm.EditingWindowLayoutPatternId     = dlg.SelectedPatternId;
+        _vm.EditingWindowLayoutId        = null;
+        _vm.EditingWindowLayoutPatternId = null;
         _vm.NavigateToCommand.Execute("WindowLayoutEdit");
     }
 

@@ -1031,12 +1031,13 @@ public partial class MainWindow : Window
         // 既存アニメーションをクリアしてから計測（前回の保持値による誤差を防ぐ）
         PopupRoot.BeginAnimation(WidthProperty, null);
         PopupRoot.BeginAnimation(HeightProperty, null);
+        PopupRoot.Width = 320;
 
-        // 最終サイズ（高さ）を最終幅(320)でコンテンツから測る
-        PopupRoot.Width  = 320;
-        PopupRoot.Height = double.NaN;
-        PopupRoot.Measure(new Size(320, double.PositiveInfinity));
-        double targetH = PopupRoot.DesiredSize.Height;
+        // 高さはコンテンツ(PopupContent)のみから測る。
+        // 背景サムネイル画像を含む PopupRoot を測ると画像の縦サイズに引っ張られて
+        // 大きくなるため、コンテンツだけを測定して固定する。
+        PopupContent.Measure(new Size(320, double.PositiveInfinity));
+        double targetH = PopupContent.DesiredSize.Height;
         if (double.IsNaN(targetH) || targetH < 40) targetH = 150;
 
         double startW = MediaPanel.Width;   // 200
@@ -1045,17 +1046,11 @@ public partial class MainWindow : Window
         var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
         var dur  = TimeSpan.FromMilliseconds(190);
 
-        var hAnim = new DoubleAnimation(startH, targetH, dur) { EasingFunction = ease };
-        hAnim.Completed += (_, _) =>
-        {
-            // 完了後は実コンテンツ寸法(Auto)に確定（計測誤差で広すぎ/狭すぎを防ぐ）
-            PopupRoot.BeginAnimation(HeightProperty, null);
-            PopupRoot.Height = double.NaN;
-        };
-
+        // 最終高さは測定値で固定（Auto に戻すと画像が高さを押し広げるため）
         PopupRoot.BeginAnimation(WidthProperty,
             new DoubleAnimation(startW, 320, dur) { EasingFunction = ease });
-        PopupRoot.BeginAnimation(HeightProperty, hAnim);
+        PopupRoot.BeginAnimation(HeightProperty,
+            new DoubleAnimation(startH, targetH, dur) { EasingFunction = ease });
 
         // 中身は少し遅れてフェードイン（拡大後に現れる感じ）
         PopupContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,

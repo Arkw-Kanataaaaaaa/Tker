@@ -68,8 +68,6 @@ public class AppSettings
     public PomodoroSettings Pomodoro { get; set; } = new();
     /// <summary>カレンダーウィジェット設定</summary>
     public CalendarWidgetSettings CalendarWidget { get; set; } = new();
-    /// <summary>栞ウィジェット設定</summary>
-    public BookmarkWidgetSettings BookmarkWidget { get; set; } = new();
     /// <summary>ログローテーション設定</summary>
     public LogRotationSettings LogRotation { get; set; } = new();
     /// <summary>ユーザーが作成したテーマプリセット</summary>
@@ -123,27 +121,6 @@ public class CalendarWidgetSettings
     public bool ShowTasks    { get; set; } = true;
     /// <summary>ウィジェットを表示するかどうか。</summary>
     public bool IsVisible    { get; set; } = false;
-}
-
-// ══════════════════════════════════════════════
-//  栞ウィジェット設定
-// ══════════════════════════════════════════════
-/// <summary>栞ウィジェットの表示位置・可視状態を保持するクラス。</summary>
-public class BookmarkWidgetSettings
-{
-    /// <summary>
-    /// タブの画面 Left 座標。NaN = 未設定（初回起動時に右端へ自動配置）
-    /// ウィンドウ Left ではなく「タブの左端」を保存する点に注意。
-    /// パネルが閉じているとき: Window.Left == TabLeft
-    /// パネルが開いているとき: Window.Left == TabLeft - PanelWidth
-    /// </summary>
-    public double TabLeft   { get; set; } = double.NaN;
-    /// <summary>タブの画面 Top 座標。NaN = 未設定。</summary>
-    public double TabTop    { get; set; } = double.NaN;
-    /// <summary>ウィジェットを表示するかどうか。</summary>
-    public bool   IsVisible { get; set; } = true;
-    /// <summary>位置を固定するかどうか。true の場合は端への自動スナップを行わない。</summary>
-    public bool   IsPinned  { get; set; } = false;
 }
 
 // ══════════════════════════════════════════════

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -7,77 +6,17 @@ using TKer.Helpers;
 using TKer.Models;
 using TKer.Services;
 using TKer.Views;
-using TKer.WidgetHost;
 
 namespace TKer;
 
-/// <summary>アプリケーションのエントリポイント。通常モードとウィジェット専用モードの起動を振り分ける。</summary>
+/// <summary>アプリケーションのエントリポイント。</summary>
 public partial class App : Application
 {
-    private WidgetHostApp? _widgetHostApp;
-
-    /// <summary>起動引数を確認してウィジェット専用モードまたは通常モードで起動する。</summary>
+    /// <summary>通常モードでメインウィンドウを起動する。</summary>
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-
-        // ── ウィジェット専用モード ──────────────────────────
-        if (e.Args.Contains("--widget"))
-        {
-            StartWidgetMode();
-            return;
-        }
-
-        // ── 通常モード ──────────────────────────────────────
         StartNormalMode();
-    }
-
-    // ── ウィジェット専用プロセス ──────────────────────────
-    /// <summary>ウィジェット専用プロセスとしてトレイアイコン常駐モードで起動する。</summary>
-    private void StartWidgetMode()
-    {
-        // 二重起動チェック
-        if (WidgetHostApp.IsAlreadyRunning())
-        {
-            System.Windows.MessageBox.Show(
-                "ウィジェットは既に起動しています。\nタスクトレイを確認してください。",
-                "TKer ウィジェット",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            Shutdown();
-            return;
-        }
-
-        // WPF をトレイアイコン常駐モードで動作させる
-        ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
-        // 透明ダミーウィンドウ（WPF のメインウィンドウとして必要）
-        var dummyWindow = new Window
-        {
-            Width  = 0, Height = 0,
-            WindowStyle = WindowStyle.None,
-            AllowsTransparency = true,
-            Background = System.Windows.Media.Brushes.Transparent,
-            ShowInTaskbar = false,
-            IsHitTestVisible = false,
-            Opacity = 0
-        };
-        dummyWindow.Show();
-        MainWindow = dummyWindow;
-
-        // テーマ適用（ウィジェットも AppTheme を使う）
-        var settingsSvc = new AppSettingsService();
-        ApplyTheme(settingsSvc.Theme);
-
-        // 未処理例外ハンドラ
-        DispatcherUnhandledException += (s, ex) =>
-        {
-            AppLogger.Instance.Error("App", "DispatcherUnhandledException", ex.Exception.Message, ex.Exception);
-            ex.Handled = true;
-        };
-
-        // ウィジェットホスト起動
-        _widgetHostApp = new WidgetHostApp();
-        _widgetHostApp.Start();
     }
 
     // ── 通常モード ────────────────────────────────────────
@@ -110,13 +49,6 @@ public partial class App : Application
         var mainWindow = new MainWindow();
         MainWindow = mainWindow;
         mainWindow.Show();
-    }
-
-    /// <summary>アプリ終了時にウィジェットホストを破棄する。</summary>
-    protected override void OnExit(ExitEventArgs e)
-    {
-        _widgetHostApp?.Dispose();
-        base.OnExit(e);
     }
 
     /// <summary>テーマカラー設定をアプリケーションリソースに反映してUI全体の配色を更新する。</summary>

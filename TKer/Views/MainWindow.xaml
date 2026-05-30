@@ -502,25 +502,6 @@
                                 </StackPanel>
                             </MenuItem.Header>
                         </MenuItem>
-                        <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                  Click="MenuBookmarkWidget_Click">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="🔖" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="栞ウィジェット" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
-                        <Separator Style="{StaticResource DarkMenuSeparator}"/>
-                        <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                  Click="MenuLaunchWidgetProcess_Click">
-                            <MenuItem.Header>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="🖥" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="ウィジェットを別プロセスで起動" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </MenuItem.Header>
-                        </MenuItem>
                     </MenuItem>
 
                     <MenuItem Style="{StaticResource TopMenuItemStyle}"

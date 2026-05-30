@@ -11,7 +11,6 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using TKer.ViewModels;
 using TKer.Views.Pages;
-using TKer.Views.Widgets;
 
 namespace TKer.Views;
 
@@ -26,9 +25,6 @@ public partial class MainWindow : Window
 
     // トップメニューから遷移直後に実行する保留アクション（"add"）
     private string? _pendingPageAction;
-
-    // ── ウィジェット ────────────────────────────────────────
-    private BookmarkWidget?  _bookmarkWidget;
 
     /// <summary>メインウィンドウを初期化し、ViewModelのバインド・背景・ウィジェットを設定する。</summary>
     public MainWindow()
@@ -65,9 +61,6 @@ public partial class MainWindow : Window
 
         // Windows 標準アニメーションを有効化（SourceInitialized 後に実行）
         SourceInitialized += (_, _) => EnableNativeAnimations();
-
-        // ウィジェット初期化
-        InitBookmarkWidget();
 
         // 再生中メディア（システム）の取得開始
         InitMediaSession();
@@ -628,66 +621,13 @@ public partial class MainWindow : Window
             : new Thickness(0);
     }
 
-    /// <summary>WidgetServiceProvider を構築して BookmarkWidget インスタンスを初期化する。</summary>
-    private void InitBookmarkWidget()
-    {
-        var svc = new TKer.Services.WidgetServiceProvider(
-            _vm.AppSettingsService,
-            _vm.ScheduleService,
-            _vm.ProjectService,
-            _vm.TodoService,
-            view =>
-            {
-                _vm.NavigateToCommand.Execute(view);
-                Application.Current.MainWindow?.Activate();
-            });
-        _bookmarkWidget = new BookmarkWidget(svc);
-    }
-
-    /// <summary>栞ウィジェットの表示・非表示をトグルする。</summary>
-    private void MenuBookmarkWidget_Click(object sender, System.Windows.RoutedEventArgs e)
-    {
-        if (_bookmarkWidget == null) InitBookmarkWidget();
-
-        if (_bookmarkWidget!.IsVisible)
-            _bookmarkWidget.Hide();
-        else
-            _bookmarkWidget.ShowWidget();
-    }
-
-    /// <summary>ウィジェット専用プロセスを --widget 引数付きで起動する。</summary>
-    private void MenuLaunchWidgetProcess_Click(object sender, System.Windows.RoutedEventArgs e)
-    {
-        try
-        {
-            var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
-            if (string.IsNullOrEmpty(exePath))
-            {
-                MessageBox.Show("実行ファイルのパスを取得できませんでした。");
-                return;
-            }
-
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName        = exePath,
-                Arguments       = "--widget",
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"ウィジェットプロセスの起動に失敗しました:\n{ex.Message}");
-        }
-    }
-
-    /// <summary>ウィンドウを閉じる前にプロジェクトを保存しウィジェットを強制終了する。</summary>
+    /// <summary>ウィンドウを閉じる前にプロジェクトを保存する。</summary>
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
         if (_vm.IsProjectLoaded)
             _vm.ProjectService.SaveProject();
 
-        try { _bookmarkWidget?.ForceClose(); } catch { }
         _mediaTimer?.Stop();
         _popupTimer?.Stop();
     }

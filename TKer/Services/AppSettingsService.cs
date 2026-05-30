@@ -238,15 +238,6 @@ public class AppSettingsService
         Save();
     }
 
-    // ── 栞ウィジェット ─────────────────────────────
-    public BookmarkWidgetSettings BookmarkWidgetSettings => _settings.BookmarkWidget;
-    /// <summary>栞ウィジェット設定を保存する。</summary>
-    public void SaveBookmarkSettings(BookmarkWidgetSettings bs)
-    {
-        _settings.BookmarkWidget = bs;
-        Save();
-    }
-
     // ── ログローテーション ────────────────────────
     public LogRotationSettings LogRotation => _settings.LogRotation;
     /// <summary>ログローテーション設定を保存する。</summary>

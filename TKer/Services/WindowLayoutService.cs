@@ -92,11 +92,11 @@ public class WindowLayoutService
     /// <summary>
     /// レイアウトを現在のデスクトップに適用する。
     /// 未起動のウィンドウは実行ファイルを起動して最大 LAUNCH_WAIT_MS 待ってから配置する。
-    /// 配置できなかったエントリのタイトル一覧を返す。
+    /// 成功・失敗それぞれのエントリのタイトル一覧を返す。
     /// </summary>
-    public List<string> Apply(WindowLayout layout)
+    public ApplyResult Apply(WindowLayout layout)
     {
-        var failed = new List<string>();
+        var result = new ApplyResult();
         // 既に何かの配置で割り当てたハンドルは再利用しない（同一exe複数インスタンスの取り違え対策）
         var usedHandles = new HashSet<IntPtr>();
 
@@ -112,7 +112,7 @@ public class WindowLayoutService
                 {
                     if (!TryLaunch(entry.ExePath))
                     {
-                        failed.Add(entry.Title);
+                        result.Failed.Add(entry.Title);
                         continue;
                     }
                     // 起動後ポーリング待機
@@ -123,19 +123,21 @@ public class WindowLayoutService
                         hwnd = FindWindowForEntry(entry, usedHandles);
                         if (hwnd != IntPtr.Zero) break;
                     }
-                    if (hwnd == IntPtr.Zero) { failed.Add(entry.Title); continue; }
+                    if (hwnd == IntPtr.Zero) { result.Failed.Add(entry.Title); continue; }
                 }
 
                 usedHandles.Add(hwnd);
-                if (!Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState))
-                    failed.Add(entry.Title);
+                if (Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState))
+                    result.Succeeded.Add(entry.Title);
+                else
+                    result.Failed.Add(entry.Title);
             }
             catch
             {
-                failed.Add(entry.Title);
+                result.Failed.Add(entry.Title);
             }
         }
-        return failed;
+        return result;
     }
 
     /// <summary>
@@ -215,4 +217,13 @@ public class WindowLayoutService
         var json = JsonConvert.SerializeObject(_layouts, Formatting.Indented);
         File.WriteAllText(DATA_FILE, json);
     }
+}
+
+/// <summary>ウィンドウレイアウト適用の結果（成功・失敗それぞれのタイトル一覧）。</summary>
+public class ApplyResult
+{
+    /// <summary>配置に成功したエントリのタイトル一覧。</summary>
+    public List<string> Succeeded { get; } = new();
+    /// <summary>配置に失敗したエントリのタイトル一覧。</summary>
+    public List<string> Failed    { get; } = new();
 }

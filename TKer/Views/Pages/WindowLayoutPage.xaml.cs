@@ -1,11 +1,14 @@
 using System;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using TKer.Helpers;
 using TKer.Models;
+using TKer.Services;
 using TKer.ViewModels;
+using TKer.Views.Dialogs;
 
 namespace TKer.Views.Pages;
 
@@ -153,24 +156,37 @@ public partial class WindowLayoutPage : Page, IRefreshable
     }
 
     // ── 適用 ─────────────────────────────────────────
-    /// <summary>レイアウトを現在のデスクトップに適用し、配置失敗があれば一覧通知する。</summary>
+    /// <summary>レイアウトを現在のデスクトップに適用し、成功・失敗を TKer 標準ダイアログで通知する。</summary>
     private void ApplyLayout(WindowLayout layout)
     {
+        ApplyResult result;
         Mouse.OverrideCursor = Cursors.Wait;
-        try
+        try     { result = _vm.WindowLayoutService.Apply(layout); }
+        finally { Mouse.OverrideCursor = null; }
+
+        ShowApplyResultDialog(result, "適用結果");
+    }
+
+    /// <summary>適用結果（成功・失敗一覧）を TKer 標準ダイアログで表示する。</summary>
+    private void ShowApplyResultDialog(ApplyResult result, string title)
+    {
+        var sb = new StringBuilder();
+        if (result.Succeeded.Count > 0)
         {
-            var failed = _vm.WindowLayoutService.Apply(layout);
-            Mouse.OverrideCursor = null;
-            if (failed.Count > 0)
-            {
-                MessageBox.Show(Window.GetWindow(this),
-                    "以下のウィンドウは配置できませんでした:\n\n" + string.Join("\n", failed),
-                    "適用結果", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            sb.AppendLine($"✓ 成功 ({result.Succeeded.Count}件)");
+            foreach (var name in result.Succeeded) sb.AppendLine($"   ・{name}");
         }
-        finally
+        if (result.Failed.Count > 0)
         {
-            Mouse.OverrideCursor = null;
+            if (sb.Length > 0) sb.AppendLine();
+            sb.AppendLine($"✗ 失敗 ({result.Failed.Count}件)");
+            foreach (var name in result.Failed) sb.AppendLine($"   ・{name}");
         }
+
+        var owner = Window.GetWindow(this);
+        if (result.Failed.Count == 0)
+            AppDialog.ShowInfo(sb.ToString().TrimEnd(), title, owner);
+        else
+            AppDialog.ShowWarning(sb.ToString().TrimEnd(), title, owner);
     }
 }

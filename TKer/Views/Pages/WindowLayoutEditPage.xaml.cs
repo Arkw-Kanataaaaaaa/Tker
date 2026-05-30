@@ -221,6 +221,10 @@ internal class SnapRect
     private Point  _dragStart;
     private double _origX, _origY;
 
+    // Aero Snap 風のゴーストプレビュー（ドラッグ中に画面端に接触したら表示する）
+    private Border? _ghost;
+    private (double X, double Y, double W, double H)? _ghostTarget;
+
     private bool _isSelected;
     /// <summary>選択中の見た目（縁色強調・リサイズハンドル可視）に切り替える。</summary>
     public bool IsSelected
@@ -349,6 +353,7 @@ internal class SnapRect
         ny = Math.Clamp(ny, 0, Math.Max(0, _parent.Height - Container.Height));
         Canvas.SetLeft(Container, nx);
         Canvas.SetTop(Container,  ny);
+        UpdateGhost();
     }
 
     private void OnDragEnd(object sender, MouseButtonEventArgs e)
@@ -356,6 +361,90 @@ internal class SnapRect
         if (!_isDragging) return;
         _isDragging = false;
         Container.ReleaseMouseCapture();
+        ApplyGhostIfAny();
+    }
+
+    // ── Aero Snap 風ゴースト ────────────────────────
+    /// <summary>
+    /// 現在のスナップ位置と画面端の接触状況から自動想定枠の配置を決定し、
+    /// 該当する場合はゴーストプレビューを表示する。
+    /// 接触判定: 左=x≈0、上=y≈0、右=x+w≈canvas.w
+    /// 接触組合せ別の想定枠:
+    ///   左のみ      → 左半分（縦2分割の左）
+    ///   右のみ      → 右半分
+    ///   上のみ      → 全画面（最大化）
+    ///   上+左       → 左上1/4
+    ///   上+右       → 右上1/4
+    /// </summary>
+    private void UpdateGhost()
+    {
+        const double TOL = 0.5;
+
+        double x  = Canvas.GetLeft(Container);
+        double y  = Canvas.GetTop(Container);
+        double w  = Container.Width;
+        double cw = _parent.Width;
+        double ch = _parent.Height;
+
+        bool atLeft  = x <= TOL;
+        bool atRight = (x + w) >= (cw - TOL);
+        bool atTop   = y <= TOL;
+
+        double tx, ty, tw, th;
+        if (atTop && atLeft)        { tx = 0;      ty = 0; tw = cw / 2; th = ch / 2; }
+        else if (atTop && atRight)  { tx = cw / 2; ty = 0; tw = cw / 2; th = ch / 2; }
+        else if (atTop)             { tx = 0;      ty = 0; tw = cw;     th = ch;     }
+        else if (atLeft)            { tx = 0;      ty = 0; tw = cw / 2; th = ch;     }
+        else if (atRight)           { tx = cw / 2; ty = 0; tw = cw / 2; th = ch;     }
+        else { HideGhost(); return; }
+
+        EnsureGhost();
+        Canvas.SetLeft(_ghost!, tx);
+        Canvas.SetTop(_ghost!,  ty);
+        _ghost!.Width  = tw;
+        _ghost!.Height = th;
+        _ghostTarget = (tx, ty, tw, th);
+    }
+
+    /// <summary>ゴースト Border をキャンバス最背面に作成する。</summary>
+    private void EnsureGhost()
+    {
+        if (_ghost != null) return;
+        _ghost = new Border
+        {
+            Background      = new SolidColorBrush(Color.FromArgb(0x55, 0x3D, 0x7E, 0xFF)),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(0xFF, 0x3D, 0x7E, 0xFF)),
+            BorderThickness = new Thickness(3),
+            CornerRadius    = new CornerRadius(4),
+            IsHitTestVisible = false,
+            SnapsToDevicePixels = true
+        };
+        // 既存スナップの背面に配置（操作の邪魔をしない）
+        _parent.Children.Insert(0, _ghost);
+    }
+
+    /// <summary>表示中のゴーストを削除して状態をクリアする。</summary>
+    private void HideGhost()
+    {
+        if (_ghost != null)
+        {
+            _parent.Children.Remove(_ghost);
+            _ghost = null;
+        }
+        _ghostTarget = null;
+    }
+
+    /// <summary>ゴーストが表示されていれば、スナップ位置・サイズをゴースト枠に揃えてから消す。</summary>
+    private void ApplyGhostIfAny()
+    {
+        if (_ghostTarget is { } t)
+        {
+            Canvas.SetLeft(Container, t.X);
+            Canvas.SetTop(Container,  t.Y);
+            Container.Width  = t.W;
+            Container.Height = t.H;
+        }
+        HideGhost();
     }
 
     // ── リサイズハンドル ─────────────────────────────

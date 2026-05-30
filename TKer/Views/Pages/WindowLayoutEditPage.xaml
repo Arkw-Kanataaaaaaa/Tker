@@ -36,50 +36,23 @@
                 <ColumnDefinition Width="340"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ─── 中央: パターン横並び + 仮想デスクトップ ─── -->
+            <!-- ─── 中央: 仮想デスクトップ ─── -->
             <Grid Grid.Column="0" Background="#1f1f24"
                   MouseLeftButtonDown="OuterArea_MouseLeftButtonDown">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!-- パターン横並び（仮想画面の上） -->
-                <Border Grid.Row="0" Padding="16,12"
-                        Background="{StaticResource BgSecondaryBrush}"
-                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-                    <StackPanel x:Name="PatternList" Orientation="Horizontal"
-                                HorizontalAlignment="Center"/>
-                </Border>
-
-                <!-- 仮想デスクトップ + テスト適用 -->
-                <Grid Grid.Row="1">
-                    <Viewbox Stretch="Uniform" Margin="32">
-                        <Border x:Name="DesktopBg" BorderBrush="#666" BorderThickness="2"
-                                Background="#0d0f14">
-                            <Canvas x:Name="EditorCanvas" Background="Transparent" ClipToBounds="True"
-                                    MouseLeftButtonDown="Canvas_MouseLeftButtonDown"/>
-                        </Border>
-                    </Viewbox>
-
-                    <!-- テスト適用ボタン（右上に絶対配置） -->
-                    <Button x:Name="BtnTestApply"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Margin="0,12,12,0" Width="40" Height="40"
-                            Background="#CC1A1F2E" BorderBrush="#666" BorderThickness="1"
-                            ToolTip="テスト適用" IsEnabled="False"
-                            Cursor="Hand" Click="TestApply_Click">
-                        <Path Data="{StaticResource Bi.PlayFill}" Style="{StaticResource BiIconLg}"
-                              Fill="{StaticResource TextPrimaryBrush}"/>
-                    </Button>
-                </Grid>
+                <Viewbox Stretch="Uniform" Margin="32">
+                    <Border x:Name="DesktopBg" BorderBrush="#666" BorderThickness="2"
+                            Background="#0d0f14">
+                        <Canvas x:Name="EditorCanvas" Background="Transparent" ClipToBounds="True"
+                                MouseLeftButtonDown="Canvas_MouseLeftButtonDown"/>
+                    </Border>
+                </Viewbox>
             </Grid>
 
             <!-- ─── 右パネル ─── -->
             <Border Grid.Column="1" Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
                 <DockPanel>
-                    <!-- 最下部: 保存・キャンセル -->
+                    <!-- 最下部: キャンセル・保存・テスト適用 -->
                     <Border DockPanel.Dock="Bottom" Padding="20,14"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -88,8 +61,12 @@
                                     Click="Cancel_Click"/>
                             <Button x:Name="BtnSave" Content="保存"
                                     Style="{StaticResource PrimaryButton}"
-                                    Padding="22,6"
+                                    Padding="22,6" Margin="0,0,8,0"
                                     Click="Save_Click"/>
+                            <Button x:Name="BtnTestApply" Content="テスト適用"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="14,6" IsEnabled="False"
+                                    Click="TestApply_Click"/>
                         </StackPanel>
                     </Border>
 
@@ -143,7 +120,24 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- 上部: 起動中アプリ一覧（残り領域を埋める） -->
+                    <!-- 最上部: パターン選択 -->
+                    <Border DockPanel.Dock="Top"
+                            Background="{StaticResource BgPrimaryBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Padding="20,12"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <TextBlock Text="パターン選択"
+                                           FontFamily="Yu Gothic UI"
+                                           FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Border>
+                            <StackPanel x:Name="PatternList" Orientation="Horizontal"
+                                        HorizontalAlignment="Center" Margin="0,12,0,12"/>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- 下に詰めずに残り領域: 起動中アプリ一覧 -->
                     <Border Background="{StaticResource BgPrimaryBrush}">
                         <DockPanel>
                             <Border DockPanel.Dock="Top" Padding="20,12"

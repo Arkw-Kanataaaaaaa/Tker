@@ -152,23 +152,9 @@
                 </Border>
 
                 <Border x:Name="ContentBorder" Grid.Row="1">
+                <Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8,8,8,8">
                     <StackPanel>
-                        <Border x:Name="NoProjectBanner" Visibility="Collapsed"
-                                Background="{StaticResource BgCardBrush}"
-                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                CornerRadius="10" Padding="24,20" Margin="0,0,0,12">
-                            <StackPanel HorizontalAlignment="Center">
-                                <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
-                                      HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                                <TextBlock Text="プロジェクトがありません"
-                                           FontSize="14" Foreground="{StaticResource TextSecondaryBrush}"
-                                           HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                                <TextBlock Text="左のツールバーから新規作成または既存を開いてください"
-                                           FontSize="12" Foreground="{StaticResource TextDimBrush}"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
 
                         <!-- グリッド表示 -->
                         <ItemsControl x:Name="ProjectGridControl">
@@ -253,24 +239,28 @@
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MinWidth="120"/>
-                                        <ColumnDefinition Width="170"/>
-                                        <ColumnDefinition Width="110"/>
-                                        <ColumnDefinition Width="120"/>
-                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="プロジェクト名" Grid.Column="0"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"
+                                               Margin="0,0,18,0"/>
                                     <TextBlock Text="プロジェクト期間" Grid.Column="1"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"
+                                               Margin="0,0,18,0"/>
                                     <TextBlock Text="進捗率" Grid.Column="2"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"
+                                               Margin="0,0,18,0"/>
                                     <TextBlock Text="作成日時" Grid.Column="3"
                                                FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
+                                               Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"
+                                               Margin="0,0,18,0"/>
                                     <TextBlock Text="更新日時" Grid.Column="4"
                                                FontSize="11" FontWeight="SemiBold"
                                                Foreground="{StaticResource TextDimBrush}" HorizontalAlignment="Left"/>
@@ -298,14 +288,15 @@
                                             </Border.Style>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" MinWidth="120"/>
-                                                    <ColumnDefinition Width="170"/>
-                                                    <ColumnDefinition Width="110"/>
-                                                    <ColumnDefinition Width="120"/>
-                                                    <ColumnDefinition Width="120"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <!-- 名前列 -->
-                                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center"
+                                                            Margin="0,0,18,0">
                                                     <Path Data="{StaticResource Bi.StarFill}" Style="{StaticResource BiIconSm}"
                                                           Fill="{StaticResource AccentYellowBrush}" Margin="0,0,6,0"
                                                           VerticalAlignment="Center"
@@ -319,10 +310,12 @@
                                                 <TextBlock Grid.Column="1" Text="{Binding PeriodLabel}"
                                                            FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
                                                            HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"/>
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Margin="0,0,18,0"/>
                                                 <!-- 進捗率列 -->
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal"
-                                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                            Margin="0,0,18,0">
                                                     <Grid Width="50" Height="4" VerticalAlignment="Center" Margin="0,0,6,0">
                                                         <Border CornerRadius="2" Background="{StaticResource BorderBrush}"/>
                                                         <Border CornerRadius="2" Background="{StaticResource AccentGreenBrush}"
@@ -339,7 +332,8 @@
                                                 <!-- 作成日時列 -->
                                                 <TextBlock Grid.Column="3" Text="{Binding CreatedAtLabel}"
                                                            FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                                                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                                           HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                           Margin="0,0,18,0"/>
                                                 <!-- 更新日時列 -->
                                                 <TextBlock Grid.Column="4" Text="{Binding UpdatedAtLabel}"
                                                            FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
@@ -352,6 +346,18 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- 空状態（領域中央） -->
+                <StackPanel x:Name="NoProjectBanner" Visibility="Collapsed"
+                            VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconXl}"
+                          Fill="{StaticResource TextDimBrush}"
+                          HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                    <TextBlock Text="プロジェクトがありません"
+                               FontSize="15" Foreground="{StaticResource TextDimBrush}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
 
@@ -362,28 +368,29 @@
                 <Grid>
 
                     <!-- プロジェクト詳細パネル -->
-                    <ScrollViewer x:Name="DetailDrawerScroll" Width="500" HorizontalAlignment="Left"
-                                  Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Margin="24,20,24,24">
-                            <!-- ヘッダー行 -->
-                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                                    Padding="24,0,24,12" Margin="-24,0,-24,16">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
-                                            ToolTip="閉じる" Click="CloseDetailPanel_Click">
-                                        <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
-                                    </Button>
-                                    <TextBlock x:Name="DetailPanelTitle"
-                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
-                                               Foreground="{StaticResource TextPrimaryBrush}"
-                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                </DockPanel>
-                            </Border>
-                            <StackPanel x:Name="ProjectInfoContent"/>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <DockPanel x:Name="DetailDrawerScroll" Width="500" HorizontalAlignment="Left"
+                               Visibility="Collapsed">
+                        <!-- ヘッダー行（固定） -->
+                        <Border DockPanel.Dock="Top"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                                Padding="24,14">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        ToolTip="閉じる" Click="CloseDetailPanel_Click">
+                                    <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <TextBlock x:Name="DetailPanelTitle"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                        <!-- コンテンツ（スクロール） -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="ProjectInfoContent" Margin="24,16,24,24"/>
+                        </ScrollViewer>
+                    </DockPanel>
 
                     <!-- 新規作成パネル -->
                     <DockPanel x:Name="AddDrawerScroll" Width="500" HorizontalAlignment="Left"
@@ -414,7 +421,7 @@
                                             ToolTip="閉じる" Click="CancelAddProject_Click">
                                         <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                                     </Button>
-                                    <TextBlock Text="新規プロジェクト"
+                                    <TextBlock Text="プロジェクト追加"
                                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                VerticalAlignment="Center"/>
@@ -565,7 +572,7 @@
                                             ToolTip="閉じる" Click="CancelEditProject_Click">
                                         <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIconSm}"/>
                                     </Button>
-                                    <TextBlock Text="プロジェクトを編集"
+                                    <TextBlock Text="プロジェクト編集"
                                                FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="18"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                VerticalAlignment="Center"/>
@@ -754,7 +761,8 @@
 
         <!-- ソート選択ポップアップ -->
         <Popup x:Name="SortPopup" StaysOpen="False" Placement="Bottom"
-               PlacementTarget="{Binding ElementName=BtnSortToggle}">
+               PlacementTarget="{Binding ElementName=BtnSortToggle}"
+               AllowsTransparency="True">
             <Border Background="{DynamicResource BgCardBrush}"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                     CornerRadius="6" Padding="4" MinWidth="150">

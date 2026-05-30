@@ -84,6 +84,168 @@
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                             VerticalAlignment="Center"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
+
+                    <!-- 再生中メディア（システム）— 何も再生していなければ非表示 -->
+                    <Border x:Name="MediaPanel" Width="200" Height="24"
+                            CornerRadius="11" Margin="0,0,12,0"
+                            ClipToBounds="True" Visibility="Collapsed"
+                            Cursor="Hand" MouseLeftButtonUp="MediaPanel_Click">
+                        <DockPanel LastChildFill="True">
+                            <!-- 左端：再生中アプリのアイコン（原色そのまま / 代替は白音符） -->
+                            <Grid DockPanel.Dock="Left" Width="26">
+                                <Image x:Name="AppIconImage" Width="16" Height="16"
+                                       Stretch="Uniform" Visibility="Collapsed"
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Path x:Name="AppIconFallback"
+                                      Data="{StaticResource Bi.MusicNoteBeamed}"
+                                      Fill="White" Stretch="Uniform" Width="13" Height="13"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="3"
+                                                          ShadowDepth="0" Opacity="0.5"/>
+                                    </Path.Effect>
+                                </Path>
+                            </Grid>
+                            <!-- 残り：流れるタイトル（自然幅でレンダリングしクリップ領域内を移動） -->
+                            <Canvas x:Name="MarqueeCanvas" ClipToBounds="True">
+                                <TextBlock x:Name="MediaTrackName" Text="---" Canvas.Top="4"
+                                           Foreground="White"
+                                           FontFamily="Yu Gothic UI" FontSize="11" FontWeight="SemiBold">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="3"
+                                                          ShadowDepth="0" Opacity="0.6"/>
+                                    </TextBlock.Effect>
+                                    <TextBlock.RenderTransform>
+                                        <TranslateTransform x:Name="MarqueeTransform" X="4"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </Canvas>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Now Playing ポップアップ -->
+                    <Popup x:Name="MediaPopup"
+                           PlacementTarget="{Binding ElementName=MediaPanel}"
+                           Placement="Bottom" VerticalOffset="6" HorizontalOffset="0"
+                           StaysOpen="True" AllowsTransparency="True"
+                           PopupAnimation="None" Closed="MediaPopup_Closed">
+                        <Border x:Name="PopupRoot" Width="320" CornerRadius="14"
+                                RenderTransformOrigin="0,0"
+                                SizeChanged="PopupRoot_SizeChanged">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="PopupScale" ScaleX="1" ScaleY="1"/>
+                            </Border.RenderTransform>
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="18"
+                                                  ShadowDepth="3" Opacity="0.55"/>
+                            </Border.Effect>
+                            <Border.Resources>
+                                <!-- ポップアップ用の透明丸ボタン -->
+                                <Style x:Key="PopupCtrlBtn" TargetType="Button">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" CornerRadius="22"
+                                                        Background="{TemplateBinding Background}"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#33FFFFFF"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Border.Resources>
+
+                            <Grid>
+                                <!-- 背景：サムネイルをぼかしたもの -->
+                                <Image x:Name="PopupBgImage" Stretch="UniformToFill"
+                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Effect>
+                                        <BlurEffect Radius="45" KernelType="Gaussian"/>
+                                    </Image.Effect>
+                                </Image>
+                                <!-- 可読性のための暗いスクリム -->
+                                <Border Background="#A8000000"/>
+
+                                <StackPanel x:Name="PopupContent" Margin="18,16,18,10">
+                                    <!-- タイトル行：左上にアプリアイコン -->
+                                    <DockPanel>
+                                        <Image x:Name="PopupAppIcon" DockPanel.Dock="Left"
+                                               Width="34" Height="34" Stretch="Uniform"
+                                               VerticalAlignment="Top" Margin="0,0,12,0"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Name="PopupTitle" Text="---"
+                                                       Foreground="White"
+                                                       FontFamily="Yu Gothic UI" FontSize="14" FontWeight="Bold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="PopupSubtitle" Text=""
+                                                       Foreground="#CCFFFFFF"
+                                                       FontFamily="Yu Gothic UI" FontSize="12"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <!-- 再生時間バー（クリックでシーク） -->
+                                    <Grid x:Name="ProgressTrack" Height="6" Margin="0,16,0,0"
+                                          Background="Transparent" Cursor="Hand"
+                                          MouseLeftButtonDown="ProgressTrack_Click">
+                                        <Border Height="4" CornerRadius="2"
+                                                Background="#40FFFFFF" VerticalAlignment="Center"/>
+                                        <Border x:Name="ProgressFill" Height="4" CornerRadius="2"
+                                                Background="White" Width="0"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- 時間表示：左=現在 / 右=全体 -->
+                                    <DockPanel Margin="0,4,0,0">
+                                        <TextBlock x:Name="PopupCurTime" DockPanel.Dock="Left"
+                                                   Text="0:00" Foreground="#CCFFFFFF"
+                                                   FontFamily="Consolas" FontSize="10"/>
+                                        <TextBlock x:Name="PopupTotTime" DockPanel.Dock="Right"
+                                                   Text="0:00" Foreground="#CCFFFFFF"
+                                                   FontFamily="Consolas" FontSize="10"
+                                                   HorizontalAlignment="Right"/>
+                                    </DockPanel>
+
+                                    <!-- 操作：前 / 再生・一時停止 / 次 -->
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Center" Margin="0,14,0,0">
+                                        <Button Style="{StaticResource PopupCtrlBtn}"
+                                                Padding="9" ToolTip="前のトラック"
+                                                Click="MediaPrev_Click">
+                                            <Path Data="{StaticResource Bi.SkipStartFill}"
+                                                  Fill="White" Stretch="Uniform" Width="16" Height="16"/>
+                                        </Button>
+                                        <Button Style="{StaticResource PopupCtrlBtn}"
+                                                Padding="12" Margin="10,0" ToolTip="再生 / 一時停止"
+                                                Click="MediaPlayPause_Click">
+                                            <Path x:Name="PopupPlayIcon"
+                                                  Data="{StaticResource Bi.PlayFill}"
+                                                  Fill="White" Stretch="Uniform" Width="20" Height="20"/>
+                                        </Button>
+                                        <Button Style="{StaticResource PopupCtrlBtn}"
+                                                Padding="9" ToolTip="次のトラック"
+                                                Click="MediaNext_Click">
+                                            <Path Data="{StaticResource Bi.SkipEndFill}"
+                                                  Fill="White" Stretch="Uniform" Width="16" Height="16"/>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Popup>
+
                     <TextBlock Text="{Binding ProjectTitle}"
                                FontFamily="Consolas" FontSize="11"
                                Foreground="{StaticResource TextDimBrush}"
@@ -157,33 +319,59 @@
                                 </MenuItem.Header>
                             </MenuItem>
                             <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                      Click="OpenProject_Click">
+                                      Click="ProjectLoad_Click">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
-                                        <TextBlock Text="開く" VerticalAlignment="Center"/>
+                                        <TextBlock Text="読み込み" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
                             <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                      Click="NewProject_Click">
+                                      Click="ProjectAdd_Click">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
-                                        <TextBlock Text="新規作成" VerticalAlignment="Center"/>
+                                        <TextBlock Text="追加" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
                         </MenuItem>
-                        <MenuItem Style="{StaticResource SubMenuItemStyle}"
-                                  Command="{Binding NavigateToCommand}"
-                                  CommandParameter="Collection">
+                        <MenuItem Style="{StaticResource SubParentMenuItemStyle}">
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="📦" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <Path Data="{StaticResource Bi.BookFill}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
                                     <TextBlock Text="コレクション" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </MenuItem.Header>
+                            <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                      Command="{Binding NavigateToCommand}"
+                                      CommandParameter="Collection">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="一覧" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                      Click="CollectionLoad_Click">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Bi.Folder2Open}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="読み込み" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                            <MenuItem Style="{StaticResource SubMenuItemStyle}"
+                                      Click="CollectionAdd_Click">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Bi.PlusLg}" Style="{StaticResource BiIconSm}" Margin="0,0,5,0"/>
+                                        <TextBlock Text="追加" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
                         </MenuItem>
                     </MenuItem>
 

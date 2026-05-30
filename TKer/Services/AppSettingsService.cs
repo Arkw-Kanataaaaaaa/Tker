@@ -74,6 +74,32 @@ public class AppSettingsService
         Save();
     }
 
+    // ── コレクションファイルパス管理 ─────────────────
+    /// <summary>コレクションのファイルパスを登録する（重複は無視）。</summary>
+    public void AddCollectionFilePath(string path)
+    {
+        if (!_settings.CollectionFilePaths.Contains(path))
+            _settings.CollectionFilePaths.Add(path);
+        Save();
+    }
+
+    /// <summary>コレクションのファイルパスを削除して保存する。</summary>
+    public void RemoveCollectionFilePath(string path)
+    {
+        _settings.CollectionFilePaths.Remove(path);
+        Save();
+    }
+
+    /// <summary>コレクションのファイルパス一覧を置き換えて保存する。</summary>
+    public void SyncCollectionFilePaths(IEnumerable<string> paths)
+    {
+        _settings.CollectionFilePaths = paths.ToList();
+        Save();
+    }
+
+    /// <summary>登録済みコレクションファイルパスの一覧を返す。</summary>
+    public IReadOnlyList<string> CollectionFilePaths => _settings.CollectionFilePaths;
+
     /// <summary>指定パスのプロジェクトを最近の一覧から削除して保存する。</summary>
     public void RemoveProject(string dataFilePath)
     {
@@ -461,6 +487,13 @@ public class AppSettingsService
     }
 
     // ── ロード / セーブ ───────────────────────────
+    /// <summary>settings.json をディスクから再読み込みし、サマリーキャッシュをクリアする。</summary>
+    public void Reload()
+    {
+        _settings     = Load();
+        _summaryCache = null;
+    }
+
     /// <summary>設定ファイルを読み込んで返す（ファイル不在・破損時は新規設定を返す）。</summary>
     private AppSettings Load()
     {

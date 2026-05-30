@@ -751,7 +751,8 @@ public partial class MainWindow : Window
                 == global::Windows.Media.Control
                     .GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
 
-            MediaPanel.Visibility = Visibility.Visible;
+            // ポップアップ表示中は欄を隠したままにする（変形演出のため）
+            if (!MediaPopup.IsOpen) MediaPanel.Visibility = Visibility.Visible;
 
             // 再生アプリが変わったらアイコンを更新
             var aumid = session.SourceAppUserModelId ?? "";
@@ -1027,6 +1028,10 @@ public partial class MainWindow : Window
     /// <summary>メディア欄のサイズ(200x24)から本来のサイズへ拡大し、欄が広がったように開く。</summary>
     private void AnimatePopupOpen()
     {
+        // 既存アニメーションをクリアしてから計測（前回の保持値による誤差を防ぐ）
+        PopupRoot.BeginAnimation(WidthProperty, null);
+        PopupRoot.BeginAnimation(HeightProperty, null);
+
         // 最終サイズ（高さ）を最終幅(320)でコンテンツから測る
         PopupRoot.Width  = 320;
         PopupRoot.Height = double.NaN;
@@ -1040,10 +1045,17 @@ public partial class MainWindow : Window
         var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
         var dur  = TimeSpan.FromMilliseconds(190);
 
+        var hAnim = new DoubleAnimation(startH, targetH, dur) { EasingFunction = ease };
+        hAnim.Completed += (_, _) =>
+        {
+            // 完了後は実コンテンツ寸法(Auto)に確定（計測誤差で広すぎ/狭すぎを防ぐ）
+            PopupRoot.BeginAnimation(HeightProperty, null);
+            PopupRoot.Height = double.NaN;
+        };
+
         PopupRoot.BeginAnimation(WidthProperty,
             new DoubleAnimation(startW, 320, dur) { EasingFunction = ease });
-        PopupRoot.BeginAnimation(HeightProperty,
-            new DoubleAnimation(startH, targetH, dur) { EasingFunction = ease });
+        PopupRoot.BeginAnimation(HeightProperty, hAnim);
 
         // 中身は少し遅れてフェードイン（拡大後に現れる感じ）
         PopupContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,

@@ -82,6 +82,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
 
         UpdateMinimizeToggleVisual();
+        UpdateTestApplyEnabled();
         RefreshRunningAppsList();
         StartAppsRefreshTimer();
     }
@@ -113,9 +114,16 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         var snap = new SnapRect(EditorCanvas, x, y, w, h);
         snap.Selected         += (_, _) => OnSnapSelected(snap);
         snap.PickAppRequested += (_, _) => OnPickApp(snap);
+        snap.AppAssigned      += (_, _) => UpdateTestApplyEnabled();
         EditorCanvas.Children.Add(snap.Container);
         _snaps.Add(snap);
         return snap;
+    }
+
+    /// <summary>アプリ設定済みのスナップが1つでもあればテスト適用ボタンを有効化する。</summary>
+    private void UpdateTestApplyEnabled()
+    {
+        BtnTestApply.IsEnabled = _snaps.Any(s => !string.IsNullOrEmpty(s.ExePath));
     }
 
     /// <summary>
@@ -197,6 +205,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
         _selectedList.Clear();
         BtnDeleteSnap.IsEnabled = false;
+        UpdateTestApplyEnabled();
     }
 
     /// <summary>配置されたスナップをすべて削除する（確認なし）。</summary>
@@ -207,19 +216,14 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         _snaps.Clear();
         _selectedList.Clear();
         BtnDeleteSnap.IsEnabled = false;
+        UpdateTestApplyEnabled();
     }
 
     /// <summary>現在のスナップ構成を保存せずに即座に適用してテストする。</summary>
     private void TestApply_Click(object sender, RoutedEventArgs e)
     {
         var entries = BuildEntries();
-        if (entries.Count == 0)
-        {
-            MessageBox.Show(Window.GetWindow(this),
-                "適用可能なスナップがありません（アプリが設定されたスナップを配置してください）。",
-                "テスト適用", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
+        if (entries.Count == 0) return; // ボタンが活性のときは entries が空でないことが保証される
         var tempLayout = new WindowLayout
         {
             Name           = "(テスト)",
@@ -484,6 +488,8 @@ internal class SnapRect
     public event EventHandler? Selected;
     /// <summary>中央のアプリボタンがクリックされたとき発火するイベント。</summary>
     public event EventHandler? PickAppRequested;
+    /// <summary>アプリが設定された（変更された）とき発火するイベント。</summary>
+    public event EventHandler? AppAssigned;
 
     private readonly Canvas    _parent;
     private readonly Grid      _content;
@@ -616,6 +622,7 @@ internal class SnapRect
             _appButton.Content        = _placeholderText;
         }
         _appButton.ToolTip = $"{Path.GetFileName(exePath)}（クリックで変更）";
+        AppAssigned?.Invoke(this, EventArgs.Empty);
     }
 
     // ── 移動ドラッグ ───────────────────────────────

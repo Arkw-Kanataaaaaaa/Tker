@@ -960,26 +960,38 @@ public partial class MainWindow : Window
         await RefreshNowPlaying();
     }
 
-    /// <summary>ポップアップをメディア領域から広がるようにスケールアニメーションで開く。</summary>
+    /// <summary>メディア欄のサイズ(200x24)から本来のサイズへ拡大し、欄が変形したように開く。</summary>
     private void AnimatePopupOpen()
     {
-        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-        var dur  = TimeSpan.FromMilliseconds(180);
+        // 最終サイズ（高さ）を最終幅(320)でコンテンツから測る
+        PopupRoot.Width  = 320;
+        PopupRoot.Height = double.NaN;
+        PopupRoot.Measure(new Size(320, double.PositiveInfinity));
+        double targetH = PopupRoot.DesiredSize.Height;
+        if (double.IsNaN(targetH) || targetH < 40) targetH = 150;
 
-        // 左上（メディア欄の位置）を原点に小さく→等倍へ広げる
-        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
-            new DoubleAnimation(0.18, 1, dur) { EasingFunction = ease });
-        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
-            new DoubleAnimation(0.18, 1, dur) { EasingFunction = ease });
-        PopupRoot.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
+        double startW = MediaPanel.Width;   // 200
+        double startH = MediaPanel.Height;  // 24
+
+        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        var dur  = TimeSpan.FromMilliseconds(190);
+
+        PopupRoot.BeginAnimation(WidthProperty,
+            new DoubleAnimation(startW, 320, dur) { EasingFunction = ease });
+        PopupRoot.BeginAnimation(HeightProperty,
+            new DoubleAnimation(startH, targetH, dur) { EasingFunction = ease });
+
+        // 中身は少し遅れてフェードイン（拡大後に現れる感じ）
+        PopupContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
+            TimeSpan.FromMilliseconds(150)) { BeginTime = TimeSpan.FromMilliseconds(90) });
     }
 
     /// <summary>角丸でクリップするため、サイズ確定時に丸角矩形のクリップを設定する。</summary>
     private void PopupRoot_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        double r = Math.Min(14, e.NewSize.Height / 2);
         PopupRoot.Clip = new System.Windows.Media.RectangleGeometry(
-            new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 16, 16);
+            new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), r, r);
     }
 
     /// <summary>ポップアップが閉じたらタイマーを止め、メディアパネルを再表示する。</summary>

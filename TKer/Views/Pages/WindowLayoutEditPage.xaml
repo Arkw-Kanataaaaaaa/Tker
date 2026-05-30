@@ -9,51 +9,34 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- ヘッダー -->
-        <Border x:Name="PageHeader" Grid.Row="0" Padding="24,12"
+        <!-- ヘッダー: パンくずリスト -->
+        <Border x:Name="PageHeader" Grid.Row="0" Padding="24,14"
                 Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="キャンセル" Width="90" Padding="0,5" Margin="0,0,8,0"
-                            Click="Cancel_Click"/>
-                    <Button Content="保存" Width="90" Padding="0,5"
-                            Background="{DynamicResource AccentCyanBrush}"
-                            Foreground="White" BorderThickness="0"
-                            Click="Save_Click"/>
-                </StackPanel>
-                <StackPanel>
-                    <TextBlock x:Name="HeaderTitle" Text="ウィンドウレイアウト編集"
-                               FontFamily="Yu Gothic UI" FontSize="18" FontWeight="Bold"
-                               Foreground="{DynamicResource TextPrimaryBrush}"/>
-                    <Grid Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="220"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="名前:" Margin="0,0,6,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <TextBox  Grid.Column="1" x:Name="TxtName" Padding="4" Margin="0,0,16,0"/>
-                        <TextBlock Grid.Column="2" Text="説明:" Margin="0,0,6,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <TextBox  Grid.Column="3" x:Name="TxtDescription" Padding="4"/>
-                    </Grid>
-                </StackPanel>
-            </DockPanel>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="ウィンドウレイアウト" FontWeight="Bold" FontSize="18"
+                           Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Cursor="Hand"
+                           ToolTip="ウィンドウレイアウト一覧へ戻る"
+                           MouseLeftButtonUp="LayoutCrumb_Click"/>
+                <TextBlock Text="›" FontWeight="Bold" FontSize="18"
+                           Foreground="{StaticResource TextDimBrush}"
+                           VerticalAlignment="Center" Margin="10,0,10,0"/>
+                <TextBlock x:Name="HeaderTitle" Text="ウィンドウレイアウト追加"
+                           FontWeight="Bold" FontSize="18"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
         </Border>
 
-        <!-- メインエリア（縦ツールバー + 仮想デスクトップ） -->
+        <!-- メインエリア（縦ツールバー + 仮想デスクトップ + フッター） -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="52"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ─── 縦ツールバー（スナップ操作のみ） ─── -->
+            <!-- ─── 縦ツールバー（スナップ追加・削除・初期化） ─── -->
             <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
                 <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
@@ -66,18 +49,59 @@
                             Click="DeleteSnap_Click">
                         <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                     </Button>
+                    <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
+                    <Button Style="{StaticResource VToolbarBtn}"
+                            ToolTip="配置されたスナップをすべて削除（初期化）"
+                            Click="ResetSnaps_Click">
+                        <Path Data="{StaticResource Bi.ArrowClockwise}" Style="{StaticResource BiIconLg}"/>
+                    </Button>
                 </StackPanel>
             </Border>
 
-            <!-- ─── 仮想デスクトップ表示エリア ─── -->
-            <Grid Grid.Column="1" Background="#1f1f24" MouseLeftButtonDown="OuterArea_MouseLeftButtonDown">
-                <!-- 実画面サイズの Canvas を Viewbox で 1:1 維持しながら縮小表示する -->
-                <Viewbox Stretch="Uniform" Margin="32">
-                    <Border BorderBrush="#666" BorderThickness="2" Background="#0d0f14">
-                        <Canvas x:Name="EditorCanvas" Background="Transparent" ClipToBounds="True"
-                                MouseLeftButtonDown="Canvas_MouseLeftButtonDown"/>
-                    </Border>
-                </Viewbox>
+            <!-- ─── 右側エリア: 仮想デスクトップ + フッター ─── -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 仮想デスクトップ表示エリア -->
+                <Grid Grid.Row="0" Background="#1f1f24"
+                      MouseLeftButtonDown="OuterArea_MouseLeftButtonDown">
+                    <Viewbox Stretch="Uniform" Margin="32">
+                        <Border BorderBrush="#666" BorderThickness="2" Background="#0d0f14">
+                            <Canvas x:Name="EditorCanvas" Background="Transparent" ClipToBounds="True"
+                                    MouseLeftButtonDown="Canvas_MouseLeftButtonDown"/>
+                        </Border>
+                    </Viewbox>
+                </Grid>
+
+                <!-- フッター: レイアウト名・説明 + 保存ボタン -->
+                <Border Grid.Row="1" Padding="24,14"
+                        Background="{DynamicResource BgSecondaryBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="220"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="名前:" Margin="0,0,6,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBox  Grid.Column="1" x:Name="TxtName" Padding="4" Margin="0,0,16,0"/>
+                        <TextBlock Grid.Column="2" Text="説明:" Margin="0,0,6,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <TextBox  Grid.Column="3" x:Name="TxtDescription" Padding="4" Margin="0,0,16,0"/>
+                        <Button   Grid.Column="4" Content="保存" Width="110" Padding="0,6"
+                                  Background="{DynamicResource AccentCyanBrush}"
+                                  Foreground="White" BorderThickness="0"
+                                  Click="Save_Click"/>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
     </Grid>

@@ -68,7 +68,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
         else
         {
-            HeaderTitle.Text = "ウィンドウレイアウト新規作成";
+            HeaderTitle.Text = "ウィンドウレイアウト追加";
         }
     }
 
@@ -121,6 +121,20 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         SetSelected(null);
     }
 
+    private void ResetSnaps_Click(object sender, RoutedEventArgs e)
+    {
+        if (_snaps.Count == 0) return;
+        var result = MessageBox.Show(Window.GetWindow(this),
+            "配置されたスナップをすべて削除しますか?",
+            "確認", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (result != MessageBoxResult.OK) return;
+
+        foreach (var snap in _snaps.ToList())
+            EditorCanvas.Children.Remove(snap.Container);
+        _snaps.Clear();
+        SetSelected(null);
+    }
+
     // ── 空領域クリックで選択解除 ────────────────────────
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -135,8 +149,9 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             SetSelected(null);
     }
 
-    // ── 保存・キャンセル ─────────────────────────────
-    private void Cancel_Click(object sender, RoutedEventArgs e)
+    // ── ナビゲーション・保存 ───────────────────────
+    /// <summary>パンくずリストの「ウィンドウレイアウト」クリックで一覧画面に戻る（編集破棄）。</summary>
+    private void LayoutCrumb_Click(object sender, MouseButtonEventArgs e)
     {
         _vm.EditingWindowLayoutId = null;
         _vm.NavigateToCommand.Execute("WindowLayout");
@@ -372,7 +387,7 @@ internal class SnapRect
     /// 接触組合せ別の想定枠:
     ///   上+左 → 左上1/4   上+右 → 右上1/4
     ///   下+左 → 左下1/4   下+右 → 右下1/4
-    ///   上のみ → 最大化   下のみ → 下半分
+    ///   上のみ → 上半分   下のみ → 下半分
     ///   左のみ → 左半分   右のみ → 右半分
     /// </summary>
     private void UpdateGhost()
@@ -396,7 +411,7 @@ internal class SnapRect
         else if (atTop    && atRight) { tx = cw / 2; ty = 0;      tw = cw / 2; th = ch / 2; }
         else if (atBottom && atLeft)  { tx = 0;      ty = ch / 2; tw = cw / 2; th = ch / 2; }
         else if (atBottom && atRight) { tx = cw / 2; ty = ch / 2; tw = cw / 2; th = ch / 2; }
-        else if (atTop)               { tx = 0;      ty = 0;      tw = cw;     th = ch;     }
+        else if (atTop)               { tx = 0;      ty = 0;      tw = cw;     th = ch / 2; }
         else if (atBottom)            { tx = 0;      ty = ch / 2; tw = cw;     th = ch / 2; }
         else if (atLeft)              { tx = 0;      ty = 0;      tw = cw / 2; th = ch;     }
         else if (atRight)             { tx = cw / 2; ty = 0;      tw = cw / 2; th = ch;     }
@@ -412,19 +427,19 @@ internal class SnapRect
 
     /// <summary>
     /// Windows 11 スナップレイアウト風のゴースト Border をキャンバス最背面に作成する。
-    /// アクリル風の半透明白＋アクセントカラーの薄枠、ソフトな青色グロー、丸角で構成。
+    /// アクリル風の半透明白＋灰色の薄枠、ソフトな灰色グロー、丸角で構成。
     /// </summary>
     private void EnsureGhost()
     {
         if (_ghost != null) return;
-        // Win11 アクセント青（System.Accent.Default 相当）
-        var accent = Color.FromRgb(0x00, 0x78, 0xD4);
+        // 灰色アクセント（中間グレー）
+        var accent = Color.FromRgb(0x9A, 0x9A, 0x9A);
 
         _ghost = new Border
         {
             Background = new LinearGradientBrush(
                 Color.FromArgb(0x96, 0xFF, 0xFF, 0xFF),
-                Color.FromArgb(0x6E, 0xC8, 0xE4, 0xFF),
+                Color.FromArgb(0x6E, 0xD8, 0xD8, 0xD8),
                 angle: 90),
             BorderBrush     = new SolidColorBrush(Color.FromArgb(0xCC, accent.R, accent.G, accent.B)),
             BorderThickness = new Thickness(4),
@@ -433,7 +448,7 @@ internal class SnapRect
             {
                 BlurRadius  = 60,
                 ShadowDepth = 0,
-                Color       = accent,
+                Color       = Color.FromRgb(0xE0, 0xE0, 0xE0),
                 Opacity     = 0.55
             },
             IsHitTestVisible    = false,

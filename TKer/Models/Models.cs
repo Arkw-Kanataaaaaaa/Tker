@@ -974,6 +974,8 @@ public class WindowLayout
     public string   Name        { get; set; } = "";
     /// <summary>レイアウトの説明。</summary>
     public string   Description { get; set; } = "";
+    /// <summary>選択されたレイアウトパターンID（LayoutPatterns.All の Id）。空=旧形式の自由座標。</summary>
+    public string   PatternId   { get; set; } = "";
     /// <summary>レイアウトに含まれるウィンドウ一覧。</summary>
     public List<WindowEntry> Windows { get; set; } = new();
     /// <summary>適用時に他のウィンドウをすべて最小化するか。</summary>
@@ -1003,10 +1005,6 @@ public class WindowEntry
     public int    Height    { get; set; }
     /// <summary>表示状態 (1=通常, 3=最大化, 6=最小化、Win32 SW_* 準拠)。</summary>
     public int    ShowState { get; set; } = 1;
-    /// <summary>
-    /// Windows スナップゾーン。Win+矢印で配置するための位置種別。
-    /// "Maximize" / "LeftHalf" / "RightHalf" / "TopLeft" / "TopRight" /
-    /// "BottomLeft" / "BottomRight" / ""(=未指定: 座標で配置)
-    /// </summary>
-    public string SnapZone { get; set; } = "";
+    /// <summary>レイアウトパターン内のゾーン番号（0始まり）。-1=未指定（旧形式の自由座標）。</summary>
+    public int    ZoneIndex { get; set; } = -1;
 }

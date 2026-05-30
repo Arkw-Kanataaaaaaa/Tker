@@ -50,6 +50,8 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>編集モードでウィンドウレイアウト編集画面に渡す対象 ID。null=新規作成。</summary>
     public string? EditingWindowLayoutId { get; set; }
+    /// <summary>新規作成モードで編集画面に渡す選択済みパターン ID。null=未選択。</summary>
+    public string? EditingWindowLayoutPatternId { get; set; }
 
     /// <summary>コレクション詳細ページで表示するコレクション。</summary>
     public Collection? SelectedCollection { get; set; }

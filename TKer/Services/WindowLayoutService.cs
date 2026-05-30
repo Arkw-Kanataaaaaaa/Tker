@@ -115,28 +115,15 @@ public class WindowLayoutService
     }
 
     /// <summary>
-    /// 配置先の物理ピクセル座標を解決する。
-    /// PatternId と ZoneIndex が有効なら、パターンの正規化ゾーン×現在の画面サイズで計算する。
-    /// そうでない場合は旧形式の保存座標 (entry.X/Y/Width/Height) をそのまま使う。
+    /// レイアウトとエントリから Windows 標準スナップゾーン種別を解決する。
+    /// 見つからない場合は空文字（=スキップ対象）を返す。
     /// </summary>
-    private static (int X, int Y, int W, int H) ResolveTargetRect(WindowEntry entry, WindowLayout layout)
+    private static string ResolveSnapZone(WindowEntry entry, WindowLayout layout)
     {
-        if (!string.IsNullOrEmpty(layout.PatternId) && entry.ZoneIndex >= 0)
-        {
-            var pattern = LayoutPatterns.FindById(layout.PatternId);
-            if (pattern != null && entry.ZoneIndex < pattern.Zones.Count)
-            {
-                var z = pattern.Zones[entry.ZoneIndex];
-                var (sw, sh) = Win32Window.GetPrimaryScreenPixelSize();
-                return (
-                    (int)Math.Round(z.X * sw),
-                    (int)Math.Round(z.Y * sh),
-                    (int)Math.Round(z.W * sw),
-                    (int)Math.Round(z.H * sh)
-                );
-            }
-        }
-        return (entry.X, entry.Y, entry.Width, entry.Height);
+        if (string.IsNullOrEmpty(layout.PatternId) || entry.ZoneIndex < 0) return "";
+        var pattern = LayoutPatterns.FindById(layout.PatternId);
+        if (pattern == null || entry.ZoneIndex >= pattern.Zones.Count) return "";
+        return pattern.Zones[entry.ZoneIndex].Snap;
     }
 
     /// <summary>1エントリを実機に適用する。必要なら起動を試み、配置成否を返す。</summary>
@@ -165,9 +152,9 @@ public class WindowLayoutService
             // 起動直後のアプリは初期レイアウト確定に時間がかかるため少し長めに待つ
             if (wasJustLaunched) Thread.Sleep(800);
 
-            // パターン基準の座標を取得（旧形式は保存座標を返す）
-            var (tx, ty, tw, th) = ResolveTargetRect(entry, layout);
-            return Win32Window.ApplyPlacement(hwnd, tx, ty, tw, th, entry.ShowState);
+            // Windows 標準スナップゾーンを Win+矢印で発火する
+            var zone = ResolveSnapZone(entry, layout);
+            return Win32Window.FocusAndSnap(hwnd, zone);
         }
         catch { return false; }
     }

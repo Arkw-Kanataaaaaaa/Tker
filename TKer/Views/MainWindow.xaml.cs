@@ -68,6 +68,9 @@ public partial class MainWindow : Window
 
         // ウィジェット初期化
         InitBookmarkWidget();
+
+        // 再生中メディア（システム）の取得開始
+        InitMediaSession();
     }
 
     // ── 動画壁紙の拡張子リスト ────────────────────────────
@@ -679,92 +682,101 @@ public partial class MainWindow : Window
 
         try { _bookmarkWidget?.ForceClose(); } catch { }
         _mediaTimer?.Stop();
-        AudioPlayer.Stop();
     }
 
-    // ── 簡易メディアプレイヤー ───────────────────────────────
+    // ── 再生中メディア（システム）の取得・操作 ─────────────────
+    // Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager を
+    // 用いて OS が把握している「現在再生中」のセッション（Spotify, ブラウザ等）
+    // からタイトル・アーティスト・再生状態を取得し、再生/一時停止/前後送りを行う。
 
-    private enum MediaPlayState { Stopped, Playing, Paused }
-    private MediaPlayState _mediaState = MediaPlayState.Stopped;
+    private global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager? _smtcManager;
     private DispatcherTimer? _mediaTimer;
 
-    /// <summary>音楽ファイルを選択して AudioPlayer にロードする。</summary>
-    private void MediaOpen_Click(object sender, RoutedEventArgs e)
+    /// <summary>SMTC セッションマネージャーを初期化し、ポーリングタイマーを開始する。</summary>
+    private async void InitMediaSession()
     {
-        var dlg = new Microsoft.Win32.OpenFileDialog
+        try
         {
-            Title  = "音楽ファイルを開く",
-            Filter = "音楽ファイル|*.mp3;*.wav;*.flac;*.aac;*.wma;*.m4a|すべてのファイル|*.*"
-        };
-        if (dlg.ShowDialog(this) != true) return;
+            _smtcManager = await global::Windows.Media.Control
+                .GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+        }
+        catch
+        {
+            // WinRT が利用できない環境では機能を無効化（パネルは非表示のまま）
+            return;
+        }
 
-        AudioPlayer.Stop();
-        AudioPlayer.Source = new Uri(dlg.FileName, UriKind.Absolute);
-        AudioPlayer.Play();
-        _mediaState = MediaPlayState.Playing;
-
-        MediaTrackName.Text      = Path.GetFileNameWithoutExtension(dlg.FileName);
-        MediaPlayIcon.Data       = (System.Windows.Media.Geometry)FindResource("Bi.PauseFill");
-        BtnMediaPlay.IsEnabled   = true;
-        BtnMediaStop.IsEnabled   = true;
-        MediaTimeText.Text       = "0:00";
-
-        _mediaTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _mediaTimer.Tick -= MediaTimer_Tick;
-        _mediaTimer.Tick += MediaTimer_Tick;
+        _mediaTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _mediaTimer.Tick += async (_, _) => await RefreshNowPlaying();
         _mediaTimer.Start();
+        await RefreshNowPlaying();
     }
 
-    /// <summary>再生/一時停止を切り替える。</summary>
-    private void MediaPlayPause_Click(object sender, RoutedEventArgs e)
+    /// <summary>現在のセッションからタイトル・再生状態を取得して UI を更新する。</summary>
+    private async Task RefreshNowPlaying()
     {
-        switch (_mediaState)
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null)
         {
-            case MediaPlayState.Playing:
-                AudioPlayer.Pause();
-                _mediaState = MediaPlayState.Paused;
-                MediaPlayIcon.Data = (System.Windows.Media.Geometry)FindResource("Bi.PlayFill");
-                _mediaTimer?.Stop();
-                break;
+            MediaPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
 
-            case MediaPlayState.Paused:
-                AudioPlayer.Play();
-                _mediaState = MediaPlayState.Playing;
-                MediaPlayIcon.Data = (System.Windows.Media.Geometry)FindResource("Bi.PauseFill");
-                _mediaTimer?.Start();
-                break;
+        try
+        {
+            var props = await session.TryGetMediaPropertiesAsync();
+            var info  = session.GetPlaybackInfo();
+
+            var title  = props?.Title  ?? "";
+            var artist = props?.Artist ?? "";
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                MediaPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            MediaTrackName.Text = string.IsNullOrWhiteSpace(artist)
+                ? title : $"{title} — {artist}";
+
+            bool playing = info?.PlaybackStatus
+                == global::Windows.Media.Control
+                    .GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+            MediaPlayIcon.Data = (System.Windows.Media.Geometry)
+                FindResource(playing ? "Bi.PauseFill" : "Bi.PlayFill");
+
+            MediaPanel.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            MediaPanel.Visibility = Visibility.Collapsed;
         }
     }
 
-    /// <summary>再生を停止して先頭に戻す。</summary>
-    private void MediaStop_Click(object sender, RoutedEventArgs e)
+    /// <summary>再生/一時停止を切り替える。</summary>
+    private async void MediaPlayPause_Click(object sender, RoutedEventArgs e)
     {
-        AudioPlayer.Stop();
-        AudioPlayer.Position = TimeSpan.Zero;
-        _mediaState          = MediaPlayState.Stopped;
-        MediaPlayIcon.Data   = (System.Windows.Media.Geometry)FindResource("Bi.PlayFill");
-        MediaTimeText.Text   = "0:00";
-        _mediaTimer?.Stop();
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TryTogglePlayPauseAsync(); } catch { }
+        await RefreshNowPlaying();
     }
 
-    /// <summary>メディアが開かれたとき（Natural duration が確定）。</summary>
-    private void AudioPlayer_MediaOpened(object sender, RoutedEventArgs e) { }
-
-    /// <summary>再生が終端に達したときに停止状態へリセットする。</summary>
-    private void AudioPlayer_MediaEnded(object sender, RoutedEventArgs e)
+    /// <summary>前のトラックへスキップする。</summary>
+    private async void MediaPrev_Click(object sender, RoutedEventArgs e)
     {
-        AudioPlayer.Position = TimeSpan.Zero;
-        _mediaState          = MediaPlayState.Stopped;
-        MediaPlayIcon.Data   = (System.Windows.Media.Geometry)FindResource("Bi.PlayFill");
-        MediaTimeText.Text   = "0:00";
-        _mediaTimer?.Stop();
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TrySkipPreviousAsync(); } catch { }
+        await RefreshNowPlaying();
     }
 
-    /// <summary>500ms ごとに経過時間表示を更新する。</summary>
-    private void MediaTimer_Tick(object? sender, EventArgs e)
+    /// <summary>次のトラックへスキップする。</summary>
+    private async void MediaNext_Click(object sender, RoutedEventArgs e)
     {
-        var pos = AudioPlayer.Position;
-        MediaTimeText.Text = $"{(int)pos.TotalMinutes}:{pos.Seconds:D2}";
+        var session = _smtcManager?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TrySkipNextAsync(); } catch { }
+        await RefreshNowPlaying();
     }
 }
 

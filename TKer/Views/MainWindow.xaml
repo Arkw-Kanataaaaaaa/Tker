@@ -35,14 +35,6 @@
                       LoadedBehavior="Manual" UnloadedBehavior="Stop"
                       Volume="0" IsMuted="True"/>
 
-        <!-- 音楽プレイヤー用 MediaElement（非表示・音声のみ） -->
-        <MediaElement x:Name="AudioPlayer"
-                      Visibility="Collapsed" IsHitTestVisible="False"
-                      LoadedBehavior="Manual" UnloadedBehavior="Stop"
-                      Volume="1" IsMuted="False"
-                      MediaOpened="AudioPlayer_MediaOpened"
-                      MediaEnded="AudioPlayer_MediaEnded"/>
-
         <!-- ═══════════════════════════════════════ TOP TOOLBAR -->
         <Border Grid.Row="0"
                 Background="{StaticResource BgSecondaryBrush}"
@@ -88,60 +80,56 @@
                     </Button>
                 </StackPanel>
 
-                <!-- メディアプレイヤー（簡易） -->
-                <Border DockPanel.Dock="Right"
-                        VerticalAlignment="Center" Margin="0,0,6,0"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="1" Height="18" Margin="0,0,8,0"
-                                Background="{StaticResource BorderBrush}"/>
-                        <!-- ファイルを開く -->
-                        <Button x:Name="BtnMediaOpen"
-                                Style="{StaticResource SecondaryButton}"
-                                Padding="6,4" ToolTip="音楽ファイルを開く"
-                                Click="MediaOpen_Click">
-                            <Path Data="{StaticResource Bi.MusicNoteBeamed}"
-                                  Style="{StaticResource BiIconSm}"/>
-                        </Button>
-                        <!-- トラック名 -->
+                <!-- 右側アクション -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+
+                    <!-- 再生中メディア（システム）— 何も再生していなければ非表示 -->
+                    <StackPanel x:Name="MediaPanel" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="0,0,12,0"
+                                Visibility="Collapsed">
+                        <Path Data="{StaticResource Bi.MusicNoteBeamed}"
+                              Style="{StaticResource BiIconSm}"
+                              Fill="{StaticResource AccentCyanBrush}"
+                              VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <!-- トラック名（タイトル — アーティスト） -->
                         <TextBlock x:Name="MediaTrackName"
                                    Text="---"
-                                   MaxWidth="120" TextTrimming="CharacterEllipsis"
-                                   FontFamily="Consolas" FontSize="11"
-                                   Foreground="{StaticResource TextDimBrush}"
-                                   VerticalAlignment="Center" Margin="6,0"/>
+                                   MaxWidth="160" TextTrimming="CharacterEllipsis"
+                                   FontFamily="Yu Gothic UI" FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <!-- 前へ -->
+                        <Button x:Name="BtnMediaPrev"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="5,3" ToolTip="前のトラック"
+                                Click="MediaPrev_Click">
+                            <Path Data="{StaticResource Bi.SkipStartFill}"
+                                  Style="{StaticResource BiIconSm}"/>
+                        </Button>
                         <!-- 再生/一時停止 -->
                         <Button x:Name="BtnMediaPlay"
                                 Style="{StaticResource SecondaryButton}"
-                                Padding="6,4" ToolTip="再生 / 一時停止"
-                                IsEnabled="False"
+                                Padding="5,3" Margin="2,0,0,0" ToolTip="再生 / 一時停止"
                                 Click="MediaPlayPause_Click">
                             <Path x:Name="MediaPlayIcon"
                                   Data="{StaticResource Bi.PlayFill}"
                                   Style="{StaticResource BiIconSm}"/>
                         </Button>
-                        <!-- 停止 -->
-                        <Button x:Name="BtnMediaStop"
+                        <!-- 次へ -->
+                        <Button x:Name="BtnMediaNext"
                                 Style="{StaticResource SecondaryButton}"
-                                Padding="6,4" Margin="2,0,0,0" ToolTip="停止"
-                                IsEnabled="False"
-                                Click="MediaStop_Click">
-                            <Path Data="{StaticResource Bi.StopFill}"
+                                Padding="5,3" Margin="2,0,0,0" ToolTip="次のトラック"
+                                Click="MediaNext_Click">
+                            <Path Data="{StaticResource Bi.SkipEndFill}"
                                   Style="{StaticResource BiIconSm}"/>
                         </Button>
-                        <!-- 経過時間 -->
-                        <TextBlock x:Name="MediaTimeText"
-                                   Text="0:00"
-                                   FontFamily="Consolas" FontSize="10"
-                                   Foreground="{StaticResource TextDimBrush}"
-                                   VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        <!-- 区切り -->
+                        <Border Width="1" Height="18" Margin="12,0,0,0"
+                                Background="{StaticResource BorderBrush}"/>
                     </StackPanel>
-                </Border>
 
-                <!-- 右側アクション -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                            VerticalAlignment="Center"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <TextBlock Text="{Binding ProjectTitle}"
                                FontFamily="Consolas" FontSize="11"
                                Foreground="{StaticResource TextDimBrush}"

@@ -77,29 +77,40 @@
                 </Grid>
 
                 <!-- フッター: レイアウト名・説明 + 保存ボタン -->
-                <Border Grid.Row="1" Padding="24,14"
+                <Border Grid.Row="1" Padding="24,16"
                         Background="{DynamicResource BgSecondaryBrush}"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="220"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="260"/>
+                            <ColumnDefinition Width="16"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="名前:" Margin="0,0,6,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <TextBox  Grid.Column="1" x:Name="TxtName" Padding="4" Margin="0,0,16,0"/>
-                        <TextBlock Grid.Column="2" Text="説明:" Margin="0,0,6,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
-                        <TextBox  Grid.Column="3" x:Name="TxtDescription" Padding="4" Margin="0,0,16,0"/>
-                        <Button   Grid.Column="4" Content="保存" Width="110" Padding="0,6"
-                                  Background="{DynamicResource AccentCyanBrush}"
-                                  Foreground="White" BorderThickness="0"
-                                  Click="Save_Click"/>
+
+                        <!-- 名前 -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="レイアウト名 *" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}"
+                                       Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtName" Style="{StaticResource DarkTextBox}"/>
+                        </StackPanel>
+
+                        <!-- 説明 -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="説明" FontSize="12"
+                                       Foreground="{StaticResource TextDimBrush}"
+                                       Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtDescription" Style="{StaticResource DarkTextBox}"/>
+                        </StackPanel>
+
+                        <!-- 保存 -->
+                        <Button Grid.Column="4" Content="保存"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="26,6"
+                                VerticalAlignment="Bottom"
+                                Click="Save_Click"/>
                     </Grid>
                 </Border>
             </Grid>

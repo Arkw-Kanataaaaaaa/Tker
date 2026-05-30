@@ -8,7 +8,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using TKer.Helpers;
 using TKer.Models;
@@ -187,7 +186,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         var stroke = new SolidColorBrush(Color.FromArgb(0xCC, 0x3D, 0x7E, 0xFF));
         foreach (var z in pattern.Zones)
         {
-            var rect = new Rectangle
+            var rect = new System.Windows.Shapes.Rectangle
             {
                 Width  = z.W * w - 2,
                 Height = z.H * h - 2,

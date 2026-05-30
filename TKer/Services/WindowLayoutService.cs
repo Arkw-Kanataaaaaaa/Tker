@@ -103,7 +103,7 @@ public class WindowLayoutService
 
         foreach (var entry in layout.Windows)
         {
-            bool success = TryApplyEntry(entry, usedHandles);
+            bool success = TryApplyEntry(entry, usedHandles, layout);
             result.Entries.Add(new ApplyResultEntry
             {
                 Title   = entry.Title,
@@ -114,8 +114,33 @@ public class WindowLayoutService
         return result;
     }
 
+    /// <summary>
+    /// 配置先の物理ピクセル座標を解決する。
+    /// PatternId と ZoneIndex が有効なら、パターンの正規化ゾーン×現在の画面サイズで計算する。
+    /// そうでない場合は旧形式の保存座標 (entry.X/Y/Width/Height) をそのまま使う。
+    /// </summary>
+    private static (int X, int Y, int W, int H) ResolveTargetRect(WindowEntry entry, WindowLayout layout)
+    {
+        if (!string.IsNullOrEmpty(layout.PatternId) && entry.ZoneIndex >= 0)
+        {
+            var pattern = LayoutPatterns.FindById(layout.PatternId);
+            if (pattern != null && entry.ZoneIndex < pattern.Zones.Count)
+            {
+                var z = pattern.Zones[entry.ZoneIndex];
+                var (sw, sh) = Win32Window.GetPrimaryScreenPixelSize();
+                return (
+                    (int)Math.Round(z.X * sw),
+                    (int)Math.Round(z.Y * sh),
+                    (int)Math.Round(z.W * sw),
+                    (int)Math.Round(z.H * sh)
+                );
+            }
+        }
+        return (entry.X, entry.Y, entry.Width, entry.Height);
+    }
+
     /// <summary>1エントリを実機に適用する。必要なら起動を試み、配置成否を返す。</summary>
-    private static bool TryApplyEntry(WindowEntry entry, HashSet<IntPtr> usedHandles)
+    private static bool TryApplyEntry(WindowEntry entry, HashSet<IntPtr> usedHandles, WindowLayout layout)
     {
         try
         {
@@ -140,7 +165,9 @@ public class WindowLayoutService
             // 起動直後のアプリは初期レイアウト確定に時間がかかるため少し長めに待つ
             if (wasJustLaunched) Thread.Sleep(800);
 
-            return Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState);
+            // パターン基準の座標を取得（旧形式は保存座標を返す）
+            var (tx, ty, tw, th) = ResolveTargetRect(entry, layout);
+            return Win32Window.ApplyPlacement(hwnd, tx, ty, tw, th, entry.ShowState);
         }
         catch { return false; }
     }

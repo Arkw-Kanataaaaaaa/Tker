@@ -129,8 +129,8 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         catch { }
     }
 
-    // ── パターン一覧サイドバー ───────────────────────
-    /// <summary>サイドバーに 9 種類のパターンカードを縦に並べる。</summary>
+    // ── パターン横並び（仮想画面の上） ───────────────────────
+    /// <summary>仮想画面上部に 3 種類のパターンカードを横に並べる。</summary>
     private void BuildPatternList()
     {
         PatternList.Children.Clear();
@@ -143,30 +143,30 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         }
     }
 
-    /// <summary>パターン1件分の縦並びサムネイル付きカードを構築する。</summary>
+    /// <summary>パターン1件分のコンパクトなサムネ付き横並びカードを構築する。</summary>
     private Border BuildPatternCard(LayoutPattern pattern)
     {
         var border = new Border
         {
-            Margin          = new Thickness(0, 0, 0, 8),
-            Padding         = new Thickness(8),
-            Background      = (Brush)FindResource("BgSecondaryBrush"),
+            Margin          = new Thickness(4, 0, 4, 0),
+            Padding         = new Thickness(6),
+            Background      = (Brush)FindResource("BgCardBrush"),
             BorderBrush     = (Brush)FindResource("BorderBrush"),
             BorderThickness = new Thickness(1),
-            CornerRadius    = new CornerRadius(6),
+            CornerRadius    = new CornerRadius(5),
             Cursor          = Cursors.Hand
         };
 
         var stack = new StackPanel();
-        stack.Children.Add(BuildPreviewCanvas(pattern, 180, 100));
+        stack.Children.Add(BuildPreviewCanvas(pattern, 88, 50));
         stack.Children.Add(new TextBlock
         {
             Text         = pattern.Name,
-            FontSize     = 11, FontWeight = FontWeights.SemiBold,
+            FontSize     = 10, FontWeight = FontWeights.SemiBold,
             Foreground   = (Brush)FindResource("TextPrimaryBrush"),
             HorizontalAlignment = HorizontalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin       = new Thickness(0, 6, 0, 0)
+            Margin       = new Thickness(0, 4, 0, 0)
         });
         border.Child = stack;
 

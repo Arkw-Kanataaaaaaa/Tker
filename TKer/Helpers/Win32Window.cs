@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using TKer.Services;
 
 namespace TKer.Helpers;
 
@@ -210,6 +211,9 @@ public static class Win32Window
         ShowWindow(hwnd, SW_RESTORE);
         System.Threading.Thread.Sleep(120);
 
+        AppLogger.Instance.Debug("WindowLayout", "ApplyPlacement",
+            $"目標 x={x} y={y} w={width} h={height}");
+
         // 1回目: 目標座標を外枠としてそのまま配置
         bool ok = SetWindowPos(hwnd, IntPtr.Zero, x, y, width, height,
             SWP_NOZORDER | SWP_NOACTIVATE);
@@ -219,8 +223,15 @@ public static class Win32Window
         {
             System.Threading.Thread.Sleep(120);
 
-            if (!TryGetVisibleRect(hwnd, out RECT visible) || !GetWindowRect(hwnd, out RECT outer))
+            bool gotVisible = TryGetVisibleRect(hwnd, out RECT visible);
+            bool gotOuter   = GetWindowRect(hwnd, out RECT outer);
+
+            if (!gotVisible || !gotOuter)
+            {
+                AppLogger.Instance.Debug("WindowLayout", "ApplyPlacement",
+                    $"[{i}] 実測不可 visibleOk={gotVisible} outerOk={gotOuter} → 補正中断");
                 break; // DWM 実測不可 → 素の配置のまま（過補正しない）
+            }
 
             int visW = visible.Right - visible.Left;
             int visH = visible.Bottom - visible.Top;
@@ -230,10 +241,18 @@ public static class Win32Window
             int errW = width  - visW;
             int errH = height - visH;
 
+            AppLogger.Instance.Debug("WindowLayout", "ApplyPlacement",
+                $"[{i}] outer=({outer.Left},{outer.Top},{outer.Right},{outer.Bottom}) " +
+                $"visible=({visible.Left},{visible.Top},{visible.Right},{visible.Bottom}) " +
+                $"err=({errX},{errY},{errW},{errH})");
+
             // 1px 以内に収束したら終了
             if (System.Math.Abs(errX) <= 1 && System.Math.Abs(errY) <= 1 &&
                 System.Math.Abs(errW) <= 1 && System.Math.Abs(errH) <= 1)
+            {
+                AppLogger.Instance.Debug("WindowLayout", "ApplyPlacement", $"[{i}] 収束");
                 break;
+            }
 
             int newOuterX = outer.Left + errX;
             int newOuterY = outer.Top  + errY;

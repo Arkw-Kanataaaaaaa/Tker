@@ -251,10 +251,13 @@ public static class Win32Window
                 int tP = visible.Top   - actual.Top;
                 int rP = actual.Right  - visible.Right;
                 int bP = actual.Bottom - visible.Bottom;
-                if (lP >= 0 && lP <= 30) leftPad   = lP;
+                // 左右下は Win11 では必ず数px のボーダーがあるため、3px 未満は
+                // 測定失敗（0 が返る既知の挙動）とみなしてフォールバックを維持する。
+                // 上辺は本来 0 のことが多いので 0 も妥当値として採用する。
+                if (lP >= 3 && lP <= 30) leftPad   = lP;
                 if (tP >= 0 && tP <= 30) topPad    = tP;
-                if (rP >= 0 && rP <= 30) rightPad  = rP;
-                if (bP >= 0 && bP <= 30) bottomPad = bP;
+                if (rP >= 3 && rP <= 30) rightPad  = rP;
+                if (bP >= 3 && bP <= 30) bottomPad = bP;
             }
         }
         catch { /* 実測失敗時はフォールバック */ }

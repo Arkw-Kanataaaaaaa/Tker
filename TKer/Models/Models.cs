@@ -1003,4 +1003,10 @@ public class WindowEntry
     public int    Height    { get; set; }
     /// <summary>表示状態 (1=通常, 3=最大化, 6=最小化、Win32 SW_* 準拠)。</summary>
     public int    ShowState { get; set; } = 1;
+    /// <summary>
+    /// Windows スナップゾーン。Win+矢印で配置するための位置種別。
+    /// "Maximize" / "LeftHalf" / "RightHalf" / "TopLeft" / "TopRight" /
+    /// "BottomLeft" / "BottomRight" / ""(=未指定: 座標で配置)
+    /// </summary>
+    public string SnapZone { get; set; } = "";
 }

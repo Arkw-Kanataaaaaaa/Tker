@@ -62,8 +62,25 @@ public static class Win32Window
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
                                             int X, int Y, int cx, int cy, uint uFlags);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
     private const uint SWP_NOZORDER   = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
+
+    // 仮想キーコード
+    private const byte VK_LWIN   = 0x5B;
+    private const byte VK_MENU   = 0x12; // Alt
+    private const byte VK_ESCAPE = 0x1B;
+    private const byte VK_LEFT   = 0x25;
+    private const byte VK_UP     = 0x26;
+    private const byte VK_RIGHT  = 0x27;
+    private const byte VK_DOWN   = 0x28;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -174,6 +191,62 @@ public static class Win32Window
 
     /// <summary>指定ハンドルのウィンドウを最小化する。</summary>
     public static void MinimizeWindow(IntPtr hwnd) => ShowWindow(hwnd, SW_MINIMIZE);
+
+    /// <summary>
+    /// ウィンドウを前面化し、Windows 標準の Win+矢印スナップで指定ゾーンに配置する。
+    /// これにより本物のスナップ状態になり、境界線調整も Windows 標準で効く。
+    /// zone: "Maximize"/"LeftHalf"/"RightHalf"/"TopLeft"/"TopRight"/"BottomLeft"/"BottomRight"
+    /// 既知ゾーンなら true を返す。未知ゾーンは何もせず false（呼び出し側で座標配置にフォールバック）。
+    /// </summary>
+    public static bool FocusAndSnap(IntPtr hwnd, string zone)
+    {
+        if (string.IsNullOrEmpty(zone)) return false;
+
+        // 復元して前面へ（Alt タップで SetForegroundWindow のフォアグラウンドロックを解除）
+        ShowWindow(hwnd, SW_RESTORE);
+        System.Threading.Thread.Sleep(80);
+        keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        SetForegroundWindow(hwnd);
+        System.Threading.Thread.Sleep(150);
+
+        switch (zone)
+        {
+            case "Maximize":
+                ShowWindow(hwnd, SW_MAXIMIZE);
+                return true;
+            case "LeftHalf":
+                WinChord(VK_LEFT);  break;
+            case "RightHalf":
+                WinChord(VK_RIGHT); break;
+            case "TopLeft":
+                WinChord(VK_LEFT);  System.Threading.Thread.Sleep(200); WinChord(VK_UP);   break;
+            case "BottomLeft":
+                WinChord(VK_LEFT);  System.Threading.Thread.Sleep(200); WinChord(VK_DOWN); break;
+            case "TopRight":
+                WinChord(VK_RIGHT); System.Threading.Thread.Sleep(200); WinChord(VK_UP);   break;
+            case "BottomRight":
+                WinChord(VK_RIGHT); System.Threading.Thread.Sleep(200); WinChord(VK_DOWN); break;
+            default:
+                return false;
+        }
+
+        // 半分スナップ後に出る Snap Assist（残り領域のウィンドウ選択）を Esc で閉じ、
+        // 次のウィンドウのスナップを邪魔しないようにする。
+        System.Threading.Thread.Sleep(200);
+        keybd_event(VK_ESCAPE, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_ESCAPE, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        return true;
+    }
+
+    /// <summary>Win + 指定キー のショートカットを1回送出する。</summary>
+    private static void WinChord(byte vk)
+    {
+        keybd_event(VK_LWIN, 0, 0, UIntPtr.Zero);
+        keybd_event(vk,      0, 0, UIntPtr.Zero);
+        keybd_event(vk,      0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
 
     /// <summary>現在のデスクトップ壁紙ファイルのフルパスを取得する。存在しない場合は null。</summary>
     public static string? GetDesktopWallpaperPath()

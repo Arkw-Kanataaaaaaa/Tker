@@ -138,8 +138,13 @@ public class WindowLayoutService
             usedHandles.Add(hwnd);
 
             // 起動直後のアプリは初期レイアウト確定に時間がかかるため少し長めに待つ
-            // （我々の配置がアプリ側の初期サイズ設定で上書きされるのを避ける）
             if (wasJustLaunched) Thread.Sleep(800);
+
+            // 標準スナップゾーンが指定されていれば Win+矢印でネイティブにスナップ。
+            // これで本物のスナップグループになり境界線調整も Windows 標準で効く。
+            // 未指定（標準ゾーン外）なら従来の座標配置にフォールバック。
+            if (!string.IsNullOrEmpty(entry.SnapZone) && Win32Window.FocusAndSnap(hwnd, entry.SnapZone))
+                return true;
 
             return Win32Window.ApplyPlacement(hwnd, entry.X, entry.Y, entry.Width, entry.Height, entry.ShowState);
         }

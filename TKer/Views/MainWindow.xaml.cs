@@ -704,6 +704,7 @@ public partial class MainWindow : Window
     private string? _lastMediaTitle;
     private string? _lastMediaAumid;
     private bool _marqueeRunning;
+    private bool _popupAnimating;
 
     /// <summary>SMTC セッションマネージャーを初期化し、ポーリングタイマーを開始する。</summary>
     private async void InitMediaSession()
@@ -722,6 +723,11 @@ public partial class MainWindow : Window
         _mediaTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _mediaTimer.Tick += async (_, _) => await RefreshNowPlaying();
         _mediaTimer.Start();
+
+        // ポップアップ外クリック／ウィンドウ非アクティブで閉じる
+        PreviewMouseDown += Window_PreviewMouseDownForPopup;
+        Deactivated += (_, _) => { if (MediaPopup.IsOpen && !_popupAnimating) MediaPopup.IsOpen = false; };
+
         await RefreshNowPlaying();
     }
 
@@ -788,6 +794,7 @@ public partial class MainWindow : Window
         _lastMediaTitle = null;
         _lastMediaAumid = null;
         StopMarquee();
+        if (MediaPopup.IsOpen) { _popupAnimating = false; MediaPopup.IsOpen = false; }
     }
 
     /// <summary>再生中アプリのアイコンを取得し、白シルエットで表示する。</summary>
@@ -941,14 +948,17 @@ public partial class MainWindow : Window
 
     // ── Now Playing ポップアップ ─────────────────────────────
 
-    /// <summary>メディアパネルのクリックでポップアップを開く。開いている間はパネルを隠す。</summary>
+    /// <summary>メディアパネルのクリックでポップアップを開閉する（開＝拡大 / 閉＝縮小）。</summary>
     private async void MediaPanel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (MediaPopup.IsOpen) return;
+        if (_popupAnimating) return;
 
-        // パネルがポップアップに「移動した」ように見せるため、パネルは隠す
-        // （Hidden でレイアウト幅は保持し、プロジェクト名の位置をずらさない）
-        MediaPanel.Visibility = Visibility.Hidden;
+        if (MediaPopup.IsOpen)
+        {
+            ClosePopupAnimated();
+            return;
+        }
+
         MediaPopup.IsOpen = true;
         AnimatePopupOpen();
 
@@ -960,7 +970,55 @@ public partial class MainWindow : Window
         await RefreshNowPlaying();
     }
 
-    /// <summary>メディア欄のサイズ(200x24)から本来のサイズへ拡大し、欄が変形したように開く。</summary>
+    /// <summary>ポップアップ外クリックで縮小アニメーションして閉じる。</summary>
+    private void Window_PreviewMouseDownForPopup(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!MediaPopup.IsOpen || _popupAnimating) return;
+        // メディア欄上のクリックは MediaPanel_Click（トグル）に任せる
+        if (IsWithin(e.OriginalSource as DependencyObject, MediaPanel)) return;
+        ClosePopupAnimated();
+    }
+
+    /// <summary>指定要素が祖先 target の配下にあるか判定する。</summary>
+    private static bool IsWithin(DependencyObject? node, DependencyObject target)
+    {
+        while (node != null)
+        {
+            if (ReferenceEquals(node, target)) return true;
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node)
+                   ?? (node as FrameworkElement)?.Parent;
+        }
+        return false;
+    }
+
+    /// <summary>ポップアップをメディア欄のサイズへ縮小しながら閉じる。</summary>
+    private void ClosePopupAnimated()
+    {
+        if (!MediaPopup.IsOpen || _popupAnimating) return;
+        _popupAnimating = true;
+        _popupTimer?.Stop();
+
+        double curW = PopupRoot.ActualWidth, curH = PopupRoot.ActualHeight;
+        var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
+        var dur  = TimeSpan.FromMilliseconds(160);
+
+        var hAnim = new DoubleAnimation(curH, MediaPanel.Height, dur) { EasingFunction = ease };
+        hAnim.Completed += (_, _) =>
+        {
+            MediaPopup.IsOpen = false;
+            PopupRoot.BeginAnimation(WidthProperty, null);
+            PopupRoot.BeginAnimation(HeightProperty, null);
+            _popupAnimating = false;
+        };
+
+        PopupContent.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(90)));
+        PopupRoot.BeginAnimation(WidthProperty,
+            new DoubleAnimation(curW, MediaPanel.Width, dur) { EasingFunction = ease });
+        PopupRoot.BeginAnimation(HeightProperty, hAnim);
+    }
+
+    /// <summary>メディア欄のサイズ(200x24)から本来のサイズへ拡大し、欄が広がったように開く。</summary>
     private void AnimatePopupOpen()
     {
         // 最終サイズ（高さ）を最終幅(320)でコンテンツから測る
@@ -994,12 +1052,10 @@ public partial class MainWindow : Window
             new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), r, r);
     }
 
-    /// <summary>ポップアップが閉じたらタイマーを止め、メディアパネルを再表示する。</summary>
+    /// <summary>ポップアップが閉じたらタイマーを止める。</summary>
     private void MediaPopup_Closed(object? sender, EventArgs e)
     {
         _popupTimer?.Stop();
-        if (MediaPanel.Visibility != Visibility.Collapsed)
-            MediaPanel.Visibility = Visibility.Visible;
     }
 
     private async void PopupTimer_Tick(object? sender, EventArgs e)

@@ -127,8 +127,8 @@
                     <!-- Now Playing ポップアップ -->
                     <Popup x:Name="MediaPopup"
                            PlacementTarget="{Binding ElementName=MediaPanel}"
-                           Placement="Bottom" VerticalOffset="-24" HorizontalOffset="0"
-                           StaysOpen="False" AllowsTransparency="True"
+                           Placement="Bottom" VerticalOffset="6" HorizontalOffset="0"
+                           StaysOpen="True" AllowsTransparency="True"
                            PopupAnimation="None" Closed="MediaPopup_Closed">
                         <Border x:Name="PopupRoot" Width="320" CornerRadius="14"
                                 BorderBrush="#33FFFFFF" BorderThickness="1"

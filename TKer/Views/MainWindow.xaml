@@ -86,49 +86,24 @@
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
 
                     <!-- 再生中メディア（システム）— 何も再生していなければ非表示 -->
-                    <StackPanel x:Name="MediaPanel" Orientation="Horizontal"
-                                VerticalAlignment="Center" Margin="0,0,12,0"
-                                Visibility="Collapsed">
-                        <Path Data="{StaticResource Bi.MusicNoteBeamed}"
-                              Style="{StaticResource BiIconSm}"
-                              Fill="{StaticResource AccentCyanBrush}"
-                              VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <!-- トラック名（タイトル — アーティスト） -->
-                        <TextBlock x:Name="MediaTrackName"
-                                   Text="---"
-                                   MaxWidth="160" TextTrimming="CharacterEllipsis"
-                                   FontFamily="Yu Gothic UI" FontSize="11"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <!-- 前へ -->
-                        <Button x:Name="BtnMediaPrev"
-                                Style="{StaticResource SecondaryButton}"
-                                Padding="5,3" ToolTip="前のトラック"
-                                Click="MediaPrev_Click">
-                            <Path Data="{StaticResource Bi.SkipStartFill}"
-                                  Style="{StaticResource BiIconSm}"/>
-                        </Button>
-                        <!-- 再生/一時停止 -->
-                        <Button x:Name="BtnMediaPlay"
-                                Style="{StaticResource SecondaryButton}"
-                                Padding="5,3" Margin="2,0,0,0" ToolTip="再生 / 一時停止"
-                                Click="MediaPlayPause_Click">
-                            <Path x:Name="MediaPlayIcon"
-                                  Data="{StaticResource Bi.PlayFill}"
-                                  Style="{StaticResource BiIconSm}"/>
-                        </Button>
-                        <!-- 次へ -->
-                        <Button x:Name="BtnMediaNext"
-                                Style="{StaticResource SecondaryButton}"
-                                Padding="5,3" Margin="2,0,0,0" ToolTip="次のトラック"
-                                Click="MediaNext_Click">
-                            <Path Data="{StaticResource Bi.SkipEndFill}"
-                                  Style="{StaticResource BiIconSm}"/>
-                        </Button>
-                        <!-- 区切り -->
-                        <Border Width="1" Height="18" Margin="12,0,0,0"
-                                Background="{StaticResource BorderBrush}"/>
-                    </StackPanel>
+                    <Border x:Name="MediaPanel" Width="200" Height="24"
+                            CornerRadius="11" Margin="0,0,12,0"
+                            ClipToBounds="True" Visibility="Collapsed">
+                        <Grid ClipToBounds="True">
+                            <TextBlock x:Name="MediaTrackName" Text="---"
+                                       Foreground="White"
+                                       FontFamily="Yu Gothic UI" FontSize="11" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" HorizontalAlignment="Left">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="3"
+                                                      ShadowDepth="0" Opacity="0.6"/>
+                                </TextBlock.Effect>
+                                <TextBlock.RenderTransform>
+                                    <TranslateTransform x:Name="MarqueeTransform" X="10"/>
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
 
                     <TextBlock Text="{Binding ProjectTitle}"
                                FontFamily="Consolas" FontSize="11"

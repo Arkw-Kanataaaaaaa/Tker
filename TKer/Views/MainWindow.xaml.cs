@@ -684,13 +684,16 @@ public partial class MainWindow : Window
         _mediaTimer?.Stop();
     }
 
-    // ── 再生中メディア（システム）の取得・操作 ─────────────────
-    // Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager を
-    // 用いて OS が把握している「現在再生中」のセッション（Spotify, ブラウザ等）
-    // からタイトル・アーティスト・再生状態を取得し、再生/一時停止/前後送りを行う。
+    // ── 再生中メディア（システム）の取得・表示 ─────────────────
+    // Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager で
+    // OS が把握する「現在再生中」のセッション（Spotify, ブラウザ等）から
+    // タイトル・アーティスト・サムネイルを取得し、サムネイルの主要色を背景に、
+    // 白文字で曲名を表示する。再生中はタイトルを右→左へマーキー表示する。
 
     private global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager? _smtcManager;
     private DispatcherTimer? _mediaTimer;
+    private string? _lastMediaTitle;
+    private bool _marqueeRunning;
 
     /// <summary>SMTC セッションマネージャーを初期化し、ポーリングタイマーを開始する。</summary>
     private async void InitMediaSession()
@@ -712,15 +715,11 @@ public partial class MainWindow : Window
         await RefreshNowPlaying();
     }
 
-    /// <summary>現在のセッションからタイトル・再生状態を取得して UI を更新する。</summary>
+    /// <summary>現在のセッションからタイトル・サムネイルを取得して表示を更新する。</summary>
     private async Task RefreshNowPlaying()
     {
         var session = _smtcManager?.GetCurrentSession();
-        if (session == null)
-        {
-            MediaPanel.Visibility = Visibility.Collapsed;
-            return;
-        }
+        if (session == null) { HideMedia(); return; }
 
         try
         {
@@ -729,54 +728,166 @@ public partial class MainWindow : Window
 
             var title  = props?.Title  ?? "";
             var artist = props?.Artist ?? "";
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                MediaPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
+            if (string.IsNullOrWhiteSpace(title)) { HideMedia(); return; }
 
-            MediaTrackName.Text = string.IsNullOrWhiteSpace(artist)
-                ? title : $"{title} — {artist}";
-
+            var display = string.IsNullOrWhiteSpace(artist) ? title : $"{title} — {artist}";
             bool playing = info?.PlaybackStatus
                 == global::Windows.Media.Control
                     .GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
-            MediaPlayIcon.Data = (System.Windows.Media.Geometry)
-                FindResource(playing ? "Bi.PauseFill" : "Bi.PlayFill");
 
             MediaPanel.Visibility = Visibility.Visible;
+
+            if (display != _lastMediaTitle)
+            {
+                // 曲が変わったとき：テキスト・背景色・マーキーを作り直す
+                _lastMediaTitle    = display;
+                MediaTrackName.Text = display;
+                _ = UpdateBackgroundFromThumbnail(props);
+                SetupMarquee(playing);
+            }
+            else
+            {
+                // 同じ曲：再生状態に応じてマーキーの開始/停止のみ同期
+                if (playing && !_marqueeRunning)      SetupMarquee(true);
+                else if (!playing && _marqueeRunning) StopMarquee();
+            }
         }
         catch
         {
-            MediaPanel.Visibility = Visibility.Collapsed;
+            HideMedia();
         }
     }
 
-    /// <summary>再生/一時停止を切り替える。</summary>
-    private async void MediaPlayPause_Click(object sender, RoutedEventArgs e)
+    /// <summary>メディア表示を隠し、マーキーを停止する。</summary>
+    private void HideMedia()
     {
-        var session = _smtcManager?.GetCurrentSession();
-        if (session == null) return;
-        try { await session.TryTogglePlayPauseAsync(); } catch { }
-        await RefreshNowPlaying();
+        MediaPanel.Visibility = Visibility.Collapsed;
+        _lastMediaTitle = null;
+        StopMarquee();
     }
 
-    /// <summary>前のトラックへスキップする。</summary>
-    private async void MediaPrev_Click(object sender, RoutedEventArgs e)
+    /// <summary>マーキー（右→左ループ）を設定する。再生中のみ流れ、停止中は左寄せ静止。</summary>
+    private void SetupMarquee(bool playing)
     {
-        var session = _smtcManager?.GetCurrentSession();
-        if (session == null) return;
-        try { await session.TrySkipPreviousAsync(); } catch { }
-        await RefreshNowPlaying();
+        MarqueeTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+        _marqueeRunning = false;
+
+        MediaTrackName.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double textW = MediaTrackName.DesiredSize.Width;
+        double viewW = MediaPanel.Width;
+
+        if (!playing)
+        {
+            MarqueeTransform.X = 10;
+            return;
+        }
+
+        // 右端外（X=viewW）から左端外（X=-textW）へ一定速度で流し、無限ループ
+        double start    = viewW;
+        double end      = -textW;
+        double distance = start - end;
+        const double speed = 45; // px/sec
+        var anim = new DoubleAnimation(start, end, TimeSpan.FromSeconds(distance / speed))
+        {
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        MarqueeTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+        _marqueeRunning = true;
     }
 
-    /// <summary>次のトラックへスキップする。</summary>
-    private async void MediaNext_Click(object sender, RoutedEventArgs e)
+    /// <summary>マーキーを停止して左寄せ静止にする。</summary>
+    private void StopMarquee()
     {
-        var session = _smtcManager?.GetCurrentSession();
-        if (session == null) return;
-        try { await session.TrySkipNextAsync(); } catch { }
-        await RefreshNowPlaying();
+        MarqueeTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+        MarqueeTransform.X = 10;
+        _marqueeRunning = false;
+    }
+
+    /// <summary>サムネイルから主要色を抽出し、ぼかし風グラデーション背景を設定する。</summary>
+    private async Task UpdateBackgroundFromThumbnail(
+        global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties? props)
+    {
+        try
+        {
+            var thumbRef = props?.Thumbnail;
+            if (thumbRef == null) { SetMediaBackground(System.Windows.Media.Color.FromRgb(45, 45, 48)); return; }
+
+            using var ras = await thumbRef.OpenReadAsync();
+            using var net = ras.AsStreamForRead();
+            var ms = new MemoryStream();
+            await net.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+
+            SetMediaBackground(GetDominantColor(bmp));
+        }
+        catch
+        {
+            SetMediaBackground(System.Windows.Media.Color.FromRgb(45, 45, 48));
+        }
+    }
+
+    /// <summary>画像を縮小し、最も出現比率の高い色（量子化バケットの代表色）を返す。</summary>
+    private static System.Windows.Media.Color GetDominantColor(BitmapSource src)
+    {
+        const int w = 16, h = 16;
+        var scaled = new TransformedBitmap(src,
+            new System.Windows.Media.ScaleTransform((double)w / src.PixelWidth, (double)h / src.PixelHeight));
+        var conv = new FormatConvertedBitmap(scaled, System.Windows.Media.PixelFormats.Bgra32, null, 0);
+
+        int stride = w * 4;
+        var pixels = new byte[h * stride];
+        conv.CopyPixels(pixels, stride, 0);
+
+        // 量子化バケットごとに出現数と実色の合計を集計
+        var count = new Dictionary<int, int>();
+        var rSum  = new Dictionary<int, long>();
+        var gSum  = new Dictionary<int, long>();
+        var bSum  = new Dictionary<int, long>();
+
+        for (int i = 0; i < pixels.Length; i += 4)
+        {
+            byte b = pixels[i], g = pixels[i + 1], r = pixels[i + 2], a = pixels[i + 3];
+            if (a < 128) continue;
+            int key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+            count.TryGetValue(key, out int c);
+            count[key] = c + 1;
+            rSum[key] = (rSum.TryGetValue(key, out long rs) ? rs : 0) + r;
+            gSum[key] = (gSum.TryGetValue(key, out long gs) ? gs : 0) + g;
+            bSum[key] = (bSum.TryGetValue(key, out long bs) ? bs : 0) + b;
+        }
+
+        if (count.Count == 0) return System.Windows.Media.Color.FromRgb(45, 45, 48);
+
+        int best = count.OrderByDescending(kv => kv.Value).First().Key;
+        int n = count[best];
+        return System.Windows.Media.Color.FromRgb(
+            (byte)(rSum[best] / n), (byte)(gSum[best] / n), (byte)(bSum[best] / n));
+    }
+
+    /// <summary>主要色から左右が暗いぼかし風の横グラデーション背景を設定する。</summary>
+    private void SetMediaBackground(System.Windows.Media.Color c)
+    {
+        System.Windows.Media.Color Mul(double f) => System.Windows.Media.Color.FromRgb(
+            (byte)(c.R * f), (byte)(c.G * f), (byte)(c.B * f));
+
+        var dark = Mul(0.5);
+        var brush = new System.Windows.Media.LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint   = new Point(1, 0),
+        };
+        brush.GradientStops.Add(new System.Windows.Media.GradientStop(dark, 0));
+        brush.GradientStops.Add(new System.Windows.Media.GradientStop(c,    0.5));
+        brush.GradientStops.Add(new System.Windows.Media.GradientStop(dark, 1));
+        brush.Freeze();
+        MediaPanel.Background = brush;
     }
 }
 

@@ -92,71 +92,79 @@
                     </Border>
 
                     <!-- その上: 設定情報セクション（名前 / 説明 / 設定） -->
-                    <Border DockPanel.Dock="Bottom" Padding="20,14"
+                    <Border DockPanel.Dock="Bottom"
                             Background="{StaticResource BgPrimaryBrush}"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-                        <StackPanel>
-                            <TextBlock Text="設定情報"
-                                       FontSize="13" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       Margin="0,0,0,12"/>
-                            <TextBlock Text="レイアウト名 *" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtName" Style="{StaticResource DarkTextBox}"
-                                     Margin="0,0,0,12"/>
-                            <TextBlock Text="説明" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtDescription" Style="{StaticResource DarkTextBox}"
-                                     Margin="0,0,0,12"/>
-
-                            <!-- 設定（説明の下） -->
-                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
-                                    Padding="0,12,0,0">
-                                <DockPanel>
-                                    <Border x:Name="MinimizeToggleSwitch" DockPanel.Dock="Right"
-                                            Width="44" Height="24" CornerRadius="12"
-                                            Background="{StaticResource BorderBrush}"
-                                            Cursor="Hand" VerticalAlignment="Center"
-                                            MouseLeftButtonUp="ToggleMinimize_Click">
-                                        <Grid>
-                                            <Border x:Name="MinimizeToggleThumb" Width="20" Height="20"
-                                                    CornerRadius="10" Background="White"
-                                                    HorizontalAlignment="Left"
-                                                    Margin="2,0,0,0" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </Border>
-                                    <TextBlock Text="全ウィンドウ最小化後、レイアウト適用"
-                                               FontSize="12" FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,12,0"
-                                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                                </DockPanel>
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Padding="20,12"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <TextBlock Text="設定情報"
+                                           FontFamily="Yu Gothic UI"
+                                           FontSize="18" FontWeight="Bold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
                             </Border>
-                        </StackPanel>
+                            <StackPanel Margin="20,14">
+                                <TextBlock Text="レイアウト名 *" FontSize="12"
+                                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtName" Style="{StaticResource DarkTextBox}"
+                                         Margin="0,0,0,12"/>
+                                <TextBlock Text="説明" FontSize="12"
+                                           Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtDescription" Style="{StaticResource DarkTextBox}"
+                                         Margin="0,0,0,12"/>
+
+                                <!-- 設定（説明の下） -->
+                                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                                        Padding="0,12,0,0">
+                                    <DockPanel>
+                                        <Border x:Name="MinimizeToggleSwitch" DockPanel.Dock="Right"
+                                                Width="44" Height="24" CornerRadius="12"
+                                                Background="{StaticResource BorderBrush}"
+                                                Cursor="Hand" VerticalAlignment="Center"
+                                                MouseLeftButtonUp="ToggleMinimize_Click">
+                                            <Grid>
+                                                <Border x:Name="MinimizeToggleThumb" Width="20" Height="20"
+                                                        CornerRadius="10" Background="White"
+                                                        HorizontalAlignment="Left"
+                                                        Margin="2,0,0,0" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <TextBlock Text="全ウィンドウ最小化後、レイアウト適用"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </DockPanel>
                     </Border>
 
                     <!-- 上部: 起動中アプリ一覧（残り領域を埋める） -->
-                    <DockPanel>
-                        <Border DockPanel.Dock="Top" Padding="20,12"
-                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="起動中のアプリ"
-                                           FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{StaticResource TextPrimaryBrush}"/>
-                                <TextBlock Text="ドラッグしてスナップにドロップ"
-                                           FontSize="10"
-                                           Foreground="{StaticResource TextDimBrush}"
-                                           Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Border>
-                        <ListBox x:Name="RunningAppsList" Background="Transparent"
-                                 BorderThickness="0" Padding="6"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                 PreviewMouseLeftButtonDown="RunningAppsList_PreviewMouseDown"
-                                 PreviewMouseMove="RunningAppsList_PreviewMouseMove"/>
-                    </DockPanel>
+                    <Border Background="{StaticResource BgPrimaryBrush}">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Padding="20,12"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="起動中のアプリ"
+                                               FontFamily="Yu Gothic UI"
+                                               FontSize="18" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="ドラッグしてスナップにドロップ"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextDimBrush}"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <ListBox x:Name="RunningAppsList" Background="Transparent"
+                                     BorderThickness="0" Padding="6"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     PreviewMouseLeftButtonDown="RunningAppsList_PreviewMouseDown"
+                                     PreviewMouseMove="RunningAppsList_PreviewMouseMove"/>
+                        </DockPanel>
+                    </Border>
                 </DockPanel>
             </Border>
         </Grid>

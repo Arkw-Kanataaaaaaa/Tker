@@ -24,6 +24,12 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     private readonly List<SnapRect> _snaps = new();
     private SnapRect?      _selected;
 
+    // 「他ウィンドウを最小化」トグルの状態
+    private bool _minimizeOthers;
+
+    // 起動中アプリ一覧のドラッグ開始判定
+    private Point _appDragStartPoint;
+
     /// <summary>ViewModel を受け取り初期化する。</summary>
     public WindowLayoutEditPage(MainViewModel vm)
     {
@@ -57,6 +63,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
                 HeaderTitle.Text    = "ウィンドウレイアウト編集";
                 TxtName.Text        = existing.Name;
                 TxtDescription.Text = existing.Description;
+                _minimizeOthers     = existing.MinimizeOthers;
                 foreach (var entry in existing.Windows)
                 {
                     var snap = CreateSnap(entry.X, entry.Y, entry.Width, entry.Height);
@@ -70,6 +77,9 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         {
             HeaderTitle.Text = "ウィンドウレイアウト追加";
         }
+
+        UpdateMinimizeToggleVisual();
+        LoadRunningApps();
     }
 
     // ── スナップ生成・選択 ─────────────────────────────
@@ -187,19 +197,121 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             var existing = _vm.WindowLayoutService.All.FirstOrDefault(l => l.Id == _editingId);
             if (existing != null)
             {
-                existing.Name        = TxtName.Text.Trim();
-                existing.Description = TxtDescription.Text.Trim();
-                existing.Windows     = entries;
+                existing.Name           = TxtName.Text.Trim();
+                existing.Description    = TxtDescription.Text.Trim();
+                existing.Windows        = entries;
+                existing.MinimizeOthers = _minimizeOthers;
                 _vm.WindowLayoutService.Update(existing);
             }
         }
         else
         {
-            _vm.WindowLayoutService.Create(TxtName.Text.Trim(), TxtDescription.Text.Trim(), entries);
+            var created = _vm.WindowLayoutService.Create(
+                TxtName.Text.Trim(), TxtDescription.Text.Trim(), entries);
+            created.MinimizeOthers = _minimizeOthers;
+            _vm.WindowLayoutService.Update(created);
         }
 
         _vm.EditingWindowLayoutId = null;
         _vm.NavigateToCommand.Execute("WindowLayout");
+    }
+
+    // ── 「他ウィンドウを最小化」トグル ───────────────────
+    private void ToggleMinimize_Click(object sender, MouseButtonEventArgs e)
+    {
+        _minimizeOthers = !_minimizeOthers;
+        UpdateMinimizeToggleVisual();
+    }
+
+    /// <summary>トグルスイッチの色とつまみ位置を現在の状態に合わせて更新する。</summary>
+    private void UpdateMinimizeToggleVisual()
+    {
+        MinimizeToggleSwitch.Background = new SolidColorBrush(_minimizeOthers
+            ? Color.FromRgb(0x23, 0x83, 0xE2)   // ON: アクセント青
+            : Color.FromRgb(0x50, 0x50, 0x50)); // OFF: グレー
+        MinimizeToggleThumb.Margin = new Thickness(
+            _minimizeOthers ? 22 : 2, 0, 0, 0);
+    }
+
+    // ── 起動中アプリ一覧 ────────────────────────────
+    /// <summary>現在の可視ウィンドウから一意の実行ファイル一覧を抽出してリストに表示する。</summary>
+    private void LoadRunningApps()
+    {
+        RunningAppsList.Items.Clear();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var w in Win32Window.EnumerateVisibleWindows())
+        {
+            if (string.IsNullOrEmpty(w.ExePath)) continue;
+            if (!seen.Add(w.ExePath)) continue;
+            RunningAppsList.Items.Add(BuildAppRow(w.ExePath, w.Title));
+        }
+    }
+
+    /// <summary>アプリ1件分のリスト行（アイコン+名前+タイトル）を構築して返す。</summary>
+    private ListBoxItem BuildAppRow(string exePath, string title)
+    {
+        var sp = new StackPanel { Orientation = Orientation.Horizontal };
+        var icon = AppPickerDialog.TryGetExeIcon(exePath);
+        if (icon != null)
+            sp.Children.Add(new Image
+            {
+                Width = 22, Height = 22, Source = icon,
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+        var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        textPanel.Children.Add(new TextBlock
+        {
+            Text = Path.GetFileName(exePath), FontSize = 12, FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        if (!string.IsNullOrEmpty(title))
+            textPanel.Children.Add(new TextBlock
+            {
+                Text = title, FontSize = 10,
+                Foreground = (Brush)FindResource("TextDimBrush"),
+                TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 240
+            });
+        sp.Children.Add(textPanel);
+
+        return new ListBoxItem
+        {
+            Tag     = exePath,
+            Content = sp,
+            Padding = new Thickness(6, 5, 6, 5),
+            Cursor  = Cursors.Hand,
+            ToolTip = $"{exePath}\n(ドラッグしてスナップにドロップ)"
+        };
+    }
+
+    private void RefreshApps_Click(object sender, RoutedEventArgs e) => LoadRunningApps();
+
+    /// <summary>ListBox 上でマウスダウン時の位置を保存（後の距離判定でドラッグ開始判定に使う）。</summary>
+    private void RunningAppsList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _appDragStartPoint = e.GetPosition(null);
+    }
+
+    /// <summary>ドラッグ閾値を超えたら DragDrop を開始してドラッグソースとなる。</summary>
+    private void RunningAppsList_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+        var delta = e.GetPosition(null) - _appDragStartPoint;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+        var src = e.OriginalSource as DependencyObject;
+        ListBoxItem? item = null;
+        while (src != null && item == null)
+        {
+            if (src is ListBoxItem li) item = li;
+            else src = VisualTreeHelper.GetParent(src);
+        }
+        if (item?.Tag is not string exePath) return;
+
+        DragDrop.DoDragDrop(item, new DataObject("ExePath", exePath), DragDropEffects.Copy);
     }
 }
 
@@ -321,6 +433,17 @@ internal class SnapRect
         Container.MouseLeftButtonDown += OnDragStart;
         Container.MouseMove           += OnDragging;
         Container.MouseLeftButtonUp   += OnDragEnd;
+
+        // 起動中アプリ一覧からのドロップ受付
+        Container.AllowDrop = true;
+        Container.Drop += (_, e) =>
+        {
+            if (!e.Data.GetDataPresent("ExePath")) return;
+            var path = e.Data.GetData("ExePath") as string;
+            if (string.IsNullOrEmpty(path)) return;
+            SetExePath(path, Path.GetFileNameWithoutExtension(path));
+            e.Handled = true;
+        };
 
         IsSelected = false; // ハンドルを非表示初期化
     }

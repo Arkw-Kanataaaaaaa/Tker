@@ -100,6 +100,9 @@ public class WindowLayoutService
         // 既に何かの配置で割り当てたハンドルは再利用しない（同一exe複数インスタンスの取り違え対策）
         var usedHandles = new HashSet<IntPtr>();
 
+        // 他ウィンドウ最小化オプション
+        if (layout.MinimizeOthers) MinimizeAllExceptSelf();
+
         foreach (var entry in layout.Windows)
         {
             try
@@ -162,6 +165,24 @@ public class WindowLayoutService
         }
 
         return candidates[0].Handle;
+    }
+
+    /// <summary>TKer 本体ウィンドウを除く全ての可視ウィンドウを最小化する。</summary>
+    private static void MinimizeAllExceptSelf()
+    {
+        IntPtr selfHwnd = IntPtr.Zero;
+        try
+        {
+            var mw = System.Windows.Application.Current?.MainWindow;
+            if (mw != null) selfHwnd = new System.Windows.Interop.WindowInteropHelper(mw).Handle;
+        }
+        catch { }
+
+        foreach (var w in Win32Window.EnumerateVisibleWindows())
+        {
+            if (w.Handle == selfHwnd) continue;
+            try { Win32Window.MinimizeWindow(w.Handle); } catch { }
+        }
     }
 
     /// <summary>実行ファイルを起動する。失敗時は false を返す。</summary>

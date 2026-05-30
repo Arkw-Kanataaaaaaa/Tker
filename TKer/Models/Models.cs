@@ -976,6 +976,8 @@ public class WindowLayout
     public string   Description { get; set; } = "";
     /// <summary>レイアウトに含まれるウィンドウ一覧。</summary>
     public List<WindowEntry> Windows { get; set; } = new();
+    /// <summary>適用時に他のウィンドウをすべて最小化するか。</summary>
+    public bool MinimizeOthers { get; set; } = false;
     /// <summary>レイアウトの作成日時。</summary>
     public DateTime CreatedAt   { get; set; } = DateTime.Now;
     /// <summary>レイアウトの最終更新日時。</summary>

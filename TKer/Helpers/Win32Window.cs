@@ -53,6 +53,10 @@ public static class Win32Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowPlacement(IntPtr hWnd, [In] ref WINDOWPLACEMENT lpwndpl);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -127,6 +131,9 @@ public static class Win32Window
 
         return list;
     }
+
+    /// <summary>指定ハンドルのウィンドウを最小化する。</summary>
+    public static void MinimizeWindow(IntPtr hwnd) => ShowWindow(hwnd, SW_MINIMIZE);
 
     /// <summary>指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する。</summary>
     public static bool ApplyPlacement(IntPtr hwnd, int x, int y, int width, int height, int showState)

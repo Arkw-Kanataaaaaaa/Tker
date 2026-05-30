@@ -29,14 +29,15 @@
             </StackPanel>
         </Border>
 
-        <!-- メインエリア（縦ツールバー + 仮想デスクトップ + フッター） -->
+        <!-- メインエリア（縦ツールバー + 仮想デスクトップ + 右パネル） -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="52"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="340"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ─── 縦ツールバー（スナップ追加・削除・初期化） ─── -->
+            <!-- ─── 縦ツールバー ─── -->
             <Border Grid.Column="0" Background="{StaticResource BgSecondaryBrush}"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
                 <StackPanel VerticalAlignment="Top" Margin="0,8,0,0">
@@ -57,63 +58,103 @@
                 </StackPanel>
             </Border>
 
-            <!-- ─── 右側エリア: 仮想デスクトップ + フッター ─── -->
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+            <!-- ─── 仮想デスクトップ ─── -->
+            <Grid Grid.Column="1" Background="#1f1f24"
+                  MouseLeftButtonDown="OuterArea_MouseLeftButtonDown">
+                <Viewbox Stretch="Uniform" Margin="32">
+                    <Border BorderBrush="#666" BorderThickness="2" Background="#0d0f14">
+                        <Canvas x:Name="EditorCanvas" Background="Transparent" ClipToBounds="True"
+                                MouseLeftButtonDown="Canvas_MouseLeftButtonDown"/>
+                    </Border>
+                </Viewbox>
+            </Grid>
 
-                <!-- 仮想デスクトップ表示エリア -->
-                <Grid Grid.Row="0" Background="#1f1f24"
-                      MouseLeftButtonDown="OuterArea_MouseLeftButtonDown">
-                    <Viewbox Stretch="Uniform" Margin="32">
-                        <Border BorderBrush="#666" BorderThickness="2" Background="#0d0f14">
-                            <Canvas x:Name="EditorCanvas" Background="Transparent" ClipToBounds="True"
-                                    MouseLeftButtonDown="Canvas_MouseLeftButtonDown"/>
-                        </Border>
-                    </Viewbox>
-                </Grid>
+            <!-- ─── 右パネル ─── -->
+            <Border Grid.Column="2" Background="{StaticResource BgSecondaryBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <DockPanel>
+                    <!-- 保存ボタン（最下部） -->
+                    <Border DockPanel.Dock="Bottom" Padding="20,14"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                        <Button Content="保存"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="32,10" FontSize="15" FontWeight="SemiBold"
+                                HorizontalAlignment="Stretch"
+                                Click="Save_Click"/>
+                    </Border>
 
-                <!-- フッター: レイアウト名・説明 + 保存ボタン -->
-                <Border Grid.Row="1" Padding="24,16"
-                        Background="{DynamicResource BgSecondaryBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="260"/>
-                            <ColumnDefinition Width="16"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- 名前 -->
-                        <StackPanel Grid.Column="0">
+                    <!-- 名前・説明（保存の上） -->
+                    <Border DockPanel.Dock="Bottom" Padding="20,14">
+                        <StackPanel>
                             <TextBlock Text="レイアウト名 *" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}"
-                                       Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtName" Style="{StaticResource DarkTextBox}"/>
-                        </StackPanel>
-
-                        <!-- 説明 -->
-                        <StackPanel Grid.Column="2">
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="TxtName" Style="{StaticResource DarkTextBox}"
+                                     Margin="0,0,0,12"/>
                             <TextBlock Text="説明" FontSize="12"
-                                       Foreground="{StaticResource TextDimBrush}"
-                                       Margin="0,0,0,4"/>
+                                       Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
                             <TextBox x:Name="TxtDescription" Style="{StaticResource DarkTextBox}"/>
                         </StackPanel>
+                    </Border>
 
-                        <!-- 保存（入力欄と同じ高さに揃える） -->
-                        <Button Grid.Column="4" Content="保存"
-                                Style="{StaticResource PrimaryButton}"
-                                Padding="32,8"
-                                FontSize="15" FontWeight="SemiBold"
-                                VerticalAlignment="Bottom"
-                                Click="Save_Click"/>
-                    </Grid>
-                </Border>
-            </Grid>
+                    <!-- 設定トグル（名前の上） -->
+                    <Border DockPanel.Dock="Bottom" Padding="20,12"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                        <DockPanel>
+                            <Border x:Name="MinimizeToggleSwitch" DockPanel.Dock="Right"
+                                    Width="44" Height="24" CornerRadius="12"
+                                    Background="{StaticResource BorderBrush}"
+                                    Cursor="Hand" VerticalAlignment="Center"
+                                    MouseLeftButtonUp="ToggleMinimize_Click">
+                                <Grid>
+                                    <Border x:Name="MinimizeToggleThumb" Width="20" Height="20"
+                                            CornerRadius="10" Background="White"
+                                            HorizontalAlignment="Left"
+                                            Margin="2,0,0,0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Text="他ウィンドウを最小化"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock Text="このレイアウト適用前に他の起動中ウィンドウをすべて最小化"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}"
+                                           TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- 起動中アプリ一覧（上部、残り領域を埋める） -->
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Padding="20,12"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource VToolbarBtn}"
+                                        Width="28" Height="28"
+                                        ToolTip="一覧を更新" Click="RefreshApps_Click">
+                                    <Path Data="{StaticResource Bi.ArrowClockwise}"
+                                          Style="{StaticResource BiIconSm}"/>
+                                </Button>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="起動中のアプリ"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="ドラッグしてスナップにドロップ"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextDimBrush}"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <ListBox x:Name="RunningAppsList" Background="Transparent"
+                                 BorderThickness="0" Padding="6"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 PreviewMouseLeftButtonDown="RunningAppsList_PreviewMouseDown"
+                                 PreviewMouseMove="RunningAppsList_PreviewMouseMove"/>
+                    </DockPanel>
+                </DockPanel>
+            </Border>
         </Grid>
     </Grid>
 </Page>

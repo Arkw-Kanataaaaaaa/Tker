@@ -89,20 +89,41 @@
                     <Border x:Name="MediaPanel" Width="200" Height="24"
                             CornerRadius="11" Margin="0,0,12,0"
                             ClipToBounds="True" Visibility="Collapsed">
-                        <Grid ClipToBounds="True">
-                            <TextBlock x:Name="MediaTrackName" Text="---"
-                                       Foreground="White"
-                                       FontFamily="Yu Gothic UI" FontSize="11" FontWeight="SemiBold"
-                                       VerticalAlignment="Center" HorizontalAlignment="Left">
-                                <TextBlock.Effect>
-                                    <DropShadowEffect Color="#000000" BlurRadius="3"
-                                                      ShadowDepth="0" Opacity="0.6"/>
-                                </TextBlock.Effect>
-                                <TextBlock.RenderTransform>
-                                    <TranslateTransform x:Name="MarqueeTransform" X="10"/>
-                                </TextBlock.RenderTransform>
-                            </TextBlock>
-                        </Grid>
+                        <DockPanel LastChildFill="True">
+                            <!-- 左端：再生中アプリのアイコン（白シルエット / 代替は白音符） -->
+                            <Grid DockPanel.Dock="Left" Width="26">
+                                <Rectangle x:Name="AppIconShape" Width="14" Height="14"
+                                           Fill="White" Visibility="Collapsed"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Rectangle.OpacityMask>
+                                        <ImageBrush x:Name="AppIconBrush"/>
+                                    </Rectangle.OpacityMask>
+                                </Rectangle>
+                                <Path x:Name="AppIconFallback"
+                                      Data="{StaticResource Bi.MusicNoteBeamed}"
+                                      Fill="White" Stretch="Uniform" Width="13" Height="13"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Path.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="3"
+                                                          ShadowDepth="0" Opacity="0.5"/>
+                                    </Path.Effect>
+                                </Path>
+                            </Grid>
+                            <!-- 残り：流れるタイトル（自然幅でレンダリングしクリップ領域内を移動） -->
+                            <Canvas x:Name="MarqueeCanvas" ClipToBounds="True">
+                                <TextBlock x:Name="MediaTrackName" Text="---" Canvas.Top="4"
+                                           Foreground="White"
+                                           FontFamily="Yu Gothic UI" FontSize="11" FontWeight="SemiBold">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="3"
+                                                          ShadowDepth="0" Opacity="0.6"/>
+                                    </TextBlock.Effect>
+                                    <TextBlock.RenderTransform>
+                                        <TranslateTransform x:Name="MarqueeTransform" X="4"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </Canvas>
+                        </DockPanel>
                     </Border>
 
                     <TextBlock Text="{Binding ProjectTitle}"

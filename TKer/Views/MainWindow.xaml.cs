@@ -693,6 +693,7 @@ public partial class MainWindow : Window
     private global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager? _smtcManager;
     private DispatcherTimer? _mediaTimer;
     private string? _lastMediaTitle;
+    private string? _lastMediaAumid;
     private bool _marqueeRunning;
 
     /// <summary>SMTC セッションマネージャーを初期化し、ポーリングタイマーを開始する。</summary>
@@ -737,6 +738,14 @@ public partial class MainWindow : Window
 
             MediaPanel.Visibility = Visibility.Visible;
 
+            // 再生アプリが変わったらアイコンを更新
+            var aumid = session.SourceAppUserModelId ?? "";
+            if (aumid != _lastMediaAumid)
+            {
+                _lastMediaAumid = aumid;
+                _ = UpdateAppIcon(aumid);
+            }
+
             if (display != _lastMediaTitle)
             {
                 // 曲が変わったとき：テキスト・背景色・マーキーを作り直す
@@ -763,7 +772,43 @@ public partial class MainWindow : Window
     {
         MediaPanel.Visibility = Visibility.Collapsed;
         _lastMediaTitle = null;
+        _lastMediaAumid = null;
         StopMarquee();
+    }
+
+    /// <summary>再生中アプリの AppUserModelId からロゴを取得し、白シルエットで表示する。</summary>
+    private async Task UpdateAppIcon(string aumid)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(aumid)) throw new InvalidOperationException();
+
+            var appInfo = global::Windows.ApplicationModel.AppInfo.GetFromAppUserModelId(aumid);
+            var logoRef = appInfo.DisplayInfo.GetLogo(new global::Windows.Foundation.Size(32, 32));
+
+            using var ras = await logoRef.OpenReadAsync();
+            using var net = ras.AsStreamForRead();
+            var ms = new MemoryStream();
+            await net.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+
+            AppIconBrush.ImageSource   = bmp;
+            AppIconShape.Visibility    = Visibility.Visible;
+            AppIconFallback.Visibility = Visibility.Collapsed;
+        }
+        catch
+        {
+            // 取得不可（Win32 アプリ等）：白音符アイコンにフォールバック
+            AppIconShape.Visibility    = Visibility.Collapsed;
+            AppIconFallback.Visibility = Visibility.Visible;
+        }
     }
 
     /// <summary>マーキー（右→左ループ）を設定する。再生中のみ流れ、停止中は左寄せ静止。</summary>
@@ -774,11 +819,12 @@ public partial class MainWindow : Window
 
         MediaTrackName.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double textW = MediaTrackName.DesiredSize.Width;
-        double viewW = MediaPanel.Width;
+        // マーキー領域（アイコン分を除いた幅）。レイアウト前は実幅が 0 なので固定値で補う
+        double viewW = MarqueeCanvas.ActualWidth > 0 ? MarqueeCanvas.ActualWidth : 174;
 
         if (!playing)
         {
-            MarqueeTransform.X = 10;
+            MarqueeTransform.X = 4;
             return;
         }
 
@@ -799,7 +845,7 @@ public partial class MainWindow : Window
     private void StopMarquee()
     {
         MarqueeTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
-        MarqueeTransform.X = 10;
+        MarqueeTransform.X = 4;
         _marqueeRunning = false;
     }
 

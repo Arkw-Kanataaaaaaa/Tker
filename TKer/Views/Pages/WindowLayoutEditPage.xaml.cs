@@ -368,13 +368,12 @@ internal class SnapRect
     /// <summary>
     /// 現在のスナップ位置と画面端の接触状況から自動想定枠の配置を決定し、
     /// 該当する場合はゴーストプレビューを表示する。
-    /// 接触判定: 左=x≈0、上=y≈0、右=x+w≈canvas.w
+    /// 接触判定: 左=x≈0、上=y≈0、右=x+w≈canvas.w、下=y+h≈canvas.h
     /// 接触組合せ別の想定枠:
-    ///   左のみ      → 左半分（縦2分割の左）
-    ///   右のみ      → 右半分
-    ///   上のみ      → 全画面（最大化）
-    ///   上+左       → 左上1/4
-    ///   上+右       → 右上1/4
+    ///   上+左 → 左上1/4   上+右 → 右上1/4
+    ///   下+左 → 左下1/4   下+右 → 右下1/4
+    ///   上のみ → 最大化   下のみ → 下半分
+    ///   左のみ → 左半分   右のみ → 右半分
     /// </summary>
     private void UpdateGhost()
     {
@@ -383,19 +382,24 @@ internal class SnapRect
         double x  = Canvas.GetLeft(Container);
         double y  = Canvas.GetTop(Container);
         double w  = Container.Width;
+        double h  = Container.Height;
         double cw = _parent.Width;
         double ch = _parent.Height;
 
-        bool atLeft  = x <= TOL;
-        bool atRight = (x + w) >= (cw - TOL);
-        bool atTop   = y <= TOL;
+        bool atLeft   = x <= TOL;
+        bool atRight  = (x + w) >= (cw - TOL);
+        bool atTop    = y <= TOL;
+        bool atBottom = (y + h) >= (ch - TOL);
 
         double tx, ty, tw, th;
-        if (atTop && atLeft)        { tx = 0;      ty = 0; tw = cw / 2; th = ch / 2; }
-        else if (atTop && atRight)  { tx = cw / 2; ty = 0; tw = cw / 2; th = ch / 2; }
-        else if (atTop)             { tx = 0;      ty = 0; tw = cw;     th = ch;     }
-        else if (atLeft)            { tx = 0;      ty = 0; tw = cw / 2; th = ch;     }
-        else if (atRight)           { tx = cw / 2; ty = 0; tw = cw / 2; th = ch;     }
+        if      (atTop    && atLeft)  { tx = 0;      ty = 0;      tw = cw / 2; th = ch / 2; }
+        else if (atTop    && atRight) { tx = cw / 2; ty = 0;      tw = cw / 2; th = ch / 2; }
+        else if (atBottom && atLeft)  { tx = 0;      ty = ch / 2; tw = cw / 2; th = ch / 2; }
+        else if (atBottom && atRight) { tx = cw / 2; ty = ch / 2; tw = cw / 2; th = ch / 2; }
+        else if (atTop)               { tx = 0;      ty = 0;      tw = cw;     th = ch;     }
+        else if (atBottom)            { tx = 0;      ty = ch / 2; tw = cw;     th = ch / 2; }
+        else if (atLeft)              { tx = 0;      ty = 0;      tw = cw / 2; th = ch;     }
+        else if (atRight)             { tx = cw / 2; ty = 0;      tw = cw / 2; th = ch;     }
         else { HideGhost(); return; }
 
         EnsureGhost();
@@ -406,17 +410,33 @@ internal class SnapRect
         _ghostTarget = (tx, ty, tw, th);
     }
 
-    /// <summary>ゴースト Border をキャンバス最背面に作成する。</summary>
+    /// <summary>
+    /// Windows 11 スナップレイアウト風のゴースト Border をキャンバス最背面に作成する。
+    /// アクリル風の半透明白＋アクセントカラーの薄枠、ソフトな青色グロー、丸角で構成。
+    /// </summary>
     private void EnsureGhost()
     {
         if (_ghost != null) return;
+        // Win11 アクセント青（System.Accent.Default 相当）
+        var accent = Color.FromRgb(0x00, 0x78, 0xD4);
+
         _ghost = new Border
         {
-            Background      = new SolidColorBrush(Color.FromArgb(0x55, 0x3D, 0x7E, 0xFF)),
-            BorderBrush     = new SolidColorBrush(Color.FromArgb(0xFF, 0x3D, 0x7E, 0xFF)),
-            BorderThickness = new Thickness(3),
-            CornerRadius    = new CornerRadius(4),
-            IsHitTestVisible = false,
+            Background = new LinearGradientBrush(
+                Color.FromArgb(0x96, 0xFF, 0xFF, 0xFF),
+                Color.FromArgb(0x6E, 0xC8, 0xE4, 0xFF),
+                angle: 90),
+            BorderBrush     = new SolidColorBrush(Color.FromArgb(0xCC, accent.R, accent.G, accent.B)),
+            BorderThickness = new Thickness(4),
+            CornerRadius    = new CornerRadius(24),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius  = 60,
+                ShadowDepth = 0,
+                Color       = accent,
+                Opacity     = 0.55
+            },
+            IsHitTestVisible    = false,
             SnapsToDevicePixels = true
         };
         // 既存スナップの背面に配置（操作の邪魔をしない）

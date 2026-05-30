@@ -444,6 +444,13 @@ public partial class MainWindow : Window
     [DllImport("dwmapi.dll", PreserveSig = false)]
     private static extern void DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint ExtractIconEx(string szFileName, int nIconIndex,
+        IntPtr[]? phiconLarge, IntPtr[]? phiconSmall, uint nIcons);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
     private const int SW_MINIMIZE                     = 6;
     private const int DWMWA_TRANSITIONS_FORCEDISABLED = 3;
     private const int WM_NCHITTEST                    = 0x0084;
@@ -776,12 +783,35 @@ public partial class MainWindow : Window
         StopMarquee();
     }
 
-    /// <summary>再生中アプリの AppUserModelId からロゴを取得し、白シルエットで表示する。</summary>
+    /// <summary>再生中アプリのアイコンを取得し、白シルエットで表示する。</summary>
     private async Task UpdateAppIcon(string aumid)
+    {
+        // ① パッケージアプリ（Store 版など）：AppInfo からロゴ取得
+        var src = await TryGetPackagedAppLogo(aumid);
+
+        // ② Win32 アプリ（Spotify デスクトップ等）：実行ファイルからアイコン抽出
+        src ??= TryGetWin32AppIcon(aumid);
+
+        if (src != null)
+        {
+            AppIconBrush.ImageSource   = src;
+            AppIconShape.Visibility    = Visibility.Visible;
+            AppIconFallback.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            // ③ いずれも不可：白音符アイコンにフォールバック
+            AppIconShape.Visibility    = Visibility.Collapsed;
+            AppIconFallback.Visibility = Visibility.Visible;
+        }
+    }
+
+    /// <summary>パッケージアプリのロゴを AppInfo 経由で取得する（失敗時は null）。</summary>
+    private static async Task<BitmapSource?> TryGetPackagedAppLogo(string aumid)
     {
         try
         {
-            if (string.IsNullOrEmpty(aumid)) throw new InvalidOperationException();
+            if (string.IsNullOrEmpty(aumid)) return null;
 
             var appInfo = global::Windows.ApplicationModel.AppInfo.GetFromAppUserModelId(aumid);
             var logoRef = appInfo.DisplayInfo.GetLogo(new global::Windows.Foundation.Size(32, 32));
@@ -798,17 +828,67 @@ public partial class MainWindow : Window
             bmp.StreamSource = ms;
             bmp.EndInit();
             bmp.Freeze();
+            return bmp;
+        }
+        catch { return null; }
+    }
 
-            AppIconBrush.ImageSource   = bmp;
-            AppIconShape.Visibility    = Visibility.Visible;
-            AppIconFallback.Visibility = Visibility.Collapsed;
-        }
-        catch
+    /// <summary>Win32 アプリの実行ファイルパスを解決し、アイコンを抽出する（失敗時は null）。</summary>
+    private static BitmapSource? TryGetWin32AppIcon(string aumid)
+    {
+        try
         {
-            // 取得不可（Win32 アプリ等）：白音符アイコンにフォールバック
-            AppIconShape.Visibility    = Visibility.Collapsed;
-            AppIconFallback.Visibility = Visibility.Visible;
+            var exePath = ResolveExecutablePath(aumid);
+            if (exePath == null) return null;
+
+            var large = new IntPtr[1];
+            uint extracted = ExtractIconEx(exePath, 0, large, null, 1);
+            if (extracted == 0 || large[0] == IntPtr.Zero) return null;
+
+            try
+            {
+                var src = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                    large[0], System.Windows.Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+                src.Freeze();
+                return src;
+            }
+            finally
+            {
+                DestroyIcon(large[0]);
+            }
         }
+        catch { return null; }
+    }
+
+    /// <summary>AppUserModelId（exe 名・パス）から実行ファイルのフルパスを解決する。</summary>
+    private static string? ResolveExecutablePath(string aumid)
+    {
+        if (string.IsNullOrEmpty(aumid)) return null;
+
+        // すでにフルパスならそのまま
+        if (aumid.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(aumid))
+            return aumid;
+
+        // "Spotify.exe" や AUMID から実行プロセス名を推定して MainModule を引く
+        var name = Path.GetFileNameWithoutExtension(aumid);
+        if (string.IsNullOrEmpty(name)) return null;
+
+        try
+        {
+            foreach (var p in System.Diagnostics.Process.GetProcessesByName(name))
+            {
+                try
+                {
+                    var path = p.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(path) && File.Exists(path)) return path;
+                }
+                catch { /* アクセス不可プロセスはスキップ */ }
+            }
+        }
+        catch { }
+
+        return null;
     }
 
     /// <summary>マーキー（右→左ループ）を設定する。再生中のみ流れ、停止中は左寄せ静止。</summary>

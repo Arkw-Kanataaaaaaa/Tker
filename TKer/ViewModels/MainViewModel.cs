@@ -34,6 +34,8 @@ public partial class MainViewModel : ObservableObject
     public TodoService            TodoService            { get; }
     /// <summary>プロジェクトフォルダの整合性チェックを担うサービス。</summary>
     public FolderIntegrityService FolderIntegrityService { get; }
+    /// <summary>ウィンドウレイアウトの保存・適用を担うサービス。</summary>
+    public WindowLayoutService    WindowLayoutService    { get; }
     /// <summary>ユーザー定義カテゴリーテンプレートの読み書きを担うサービス。</summary>
     public CategoryTemplateService CategoryTemplateService { get; }
 
@@ -92,6 +94,7 @@ public partial class MainViewModel : ObservableObject
         FileWatcherService     = new FileWatcherService();
         TodoService            = new TodoService();
         FolderIntegrityService     = new FolderIntegrityService(ProjectService);
+        WindowLayoutService        = new WindowLayoutService();
         CategoryTemplateService    = new CategoryTemplateService();
 
         // ロガー設定の適用
@@ -208,7 +211,8 @@ public partial class MainViewModel : ObservableObject
     {
         // Home / Setup / EnvSetup / ProjectList / ツール系はプロジェクト未ロードでも開ける
         var noAuthViews = new[] { "Home", "Setup", "Shortcuts", "ProjectList", "AppSettings",
-                                   "UiCustomize", "Pomodoro", "Article", "Collection", "CollectionItems" };
+                                   "UiCustomize", "Pomodoro", "Article", "Collection", "CollectionItems",
+                                   "WindowLayout" };
         if (!IsProjectLoaded && !noAuthViews.Contains(view)) return;
         CurrentView = view;
     }

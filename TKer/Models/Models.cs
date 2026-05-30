@@ -961,3 +961,44 @@ public class ProgressCondition
     /// <summary>条件が達成された日時。</summary>
     public DateTime?             AchievedAt{ get; set; }
 }
+
+// ══════════════════════════════════════════════
+//  ウィンドウレイアウト
+// ══════════════════════════════════════════════
+/// <summary>保存されたデスクトップ上のウィンドウ配置一式を表すクラス。</summary>
+public class WindowLayout
+{
+    /// <summary>レイアウトの一意識別子。</summary>
+    public string   Id          { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    /// <summary>レイアウトの表示名。</summary>
+    public string   Name        { get; set; } = "";
+    /// <summary>レイアウトの説明。</summary>
+    public string   Description { get; set; } = "";
+    /// <summary>レイアウトに含まれるウィンドウ一覧。</summary>
+    public List<WindowEntry> Windows { get; set; } = new();
+    /// <summary>レイアウトの作成日時。</summary>
+    public DateTime CreatedAt   { get; set; } = DateTime.Now;
+    /// <summary>レイアウトの最終更新日時。</summary>
+    public DateTime UpdatedAt   { get; set; } = DateTime.Now;
+}
+
+/// <summary>レイアウト内の1ウィンドウの識別情報と位置・サイズを保持するクラス。</summary>
+public class WindowEntry
+{
+    /// <summary>キャプチャ時のウィンドウタイトル（複数インスタンスのタイブレーク用）。</summary>
+    public string Title     { get; set; } = "";
+    /// <summary>ウィンドウを所有するプロセスの実行ファイルフルパス。</summary>
+    public string ExePath   { get; set; } = "";
+    /// <summary>ウィンドウクラス名。</summary>
+    public string ClassName { get; set; } = "";
+    /// <summary>復元時の X 座標（スクリーン）。</summary>
+    public int    X         { get; set; }
+    /// <summary>復元時の Y 座標（スクリーン）。</summary>
+    public int    Y         { get; set; }
+    /// <summary>復元時の幅。</summary>
+    public int    Width     { get; set; }
+    /// <summary>復元時の高さ。</summary>
+    public int    Height    { get; set; }
+    /// <summary>表示状態 (1=通常, 3=最大化, 6=最小化、Win32 SW_* 準拠)。</summary>
+    public int    ShowState { get; set; } = 1;
+}

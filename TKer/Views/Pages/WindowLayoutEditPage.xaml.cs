@@ -26,6 +26,9 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     private readonly List<SnapRect> _snaps        = new();
     private readonly List<SnapRect> _selectedList = new();
 
+    // 編集モード時の編集前スナップ（リセット時に復元する）
+    private List<WindowEntry>? _originalEntries;
+
     // 「全ウィンドウ最小化後、レイアウト適用」トグルの状態
     private bool _minimizeOthers;
 
@@ -69,6 +72,8 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
                 TxtName.Text        = existing.Name;
                 TxtDescription.Text = existing.Description;
                 _minimizeOthers     = existing.MinimizeOthers;
+                // リセット時に復元できるよう、編集前のエントリをディープコピーで保持
+                _originalEntries = existing.Windows.Select(CloneEntry).ToList();
                 foreach (var entry in existing.Windows)
                 {
                     var snap = CreateSnap(entry.X, entry.Y, entry.Width, entry.Height);
@@ -210,7 +215,11 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         UpdateTestApplyEnabled();
     }
 
-    /// <summary>配置されたスナップをすべて削除する（確認なし）。</summary>
+    /// <summary>
+    /// 配置されたスナップをリセットする。
+    /// 編集モード: 編集前の元レイアウトに戻す。
+    /// 追加モード: すべてのスナップを削除する。
+    /// </summary>
     private void ResetSnaps_Click(object sender, RoutedEventArgs e)
     {
         foreach (var snap in _snaps.ToList())
@@ -218,8 +227,32 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         _snaps.Clear();
         _selectedList.Clear();
         BtnDeleteSnap.IsEnabled = false;
+
+        if (_originalEntries != null)
+        {
+            foreach (var entry in _originalEntries)
+            {
+                var snap = CreateSnap(entry.X, entry.Y, entry.Width, entry.Height);
+                if (!string.IsNullOrEmpty(entry.ExePath))
+                    snap.SetExePath(entry.ExePath, entry.Title);
+            }
+        }
+
         UpdateTestApplyEnabled();
     }
+
+    /// <summary>WindowEntry を新しいインスタンスに複製する（編集前データのスナップショット用）。</summary>
+    private static WindowEntry CloneEntry(WindowEntry src) => new()
+    {
+        Title     = src.Title,
+        ExePath   = src.ExePath,
+        ClassName = src.ClassName,
+        X         = src.X,
+        Y         = src.Y,
+        Width     = src.Width,
+        Height    = src.Height,
+        ShowState = src.ShowState
+    };
 
     /// <summary>現在のスナップ構成を保存せずに即座に適用してテストする。</summary>
     private void TestApply_Click(object sender, RoutedEventArgs e)

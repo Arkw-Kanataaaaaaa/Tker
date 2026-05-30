@@ -19,7 +19,6 @@ public partial class WindowLayoutApplyResultDialog : Window
         Title             = title;
         TitleBarText.Text = title;
         HeaderTitle.Text  = title;
-        SummaryText.Text  = $"{result.Entries.Count}件中 ✓ 成功 {result.SuccessCount}件 / ✗ 失敗 {result.FailureCount}件";
         BuildRows(result);
     }
 

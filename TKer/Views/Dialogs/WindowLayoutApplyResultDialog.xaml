@@ -42,14 +42,11 @@
             </DockPanel>
         </Border>
 
-        <!-- ヘッダー: タイトル + サマリー -->
+        <!-- ヘッダー: タイトル -->
         <DockPanel Grid.Row="1" Margin="28,20,28,12">
-            <TextBlock x:Name="HeaderTitle" DockPanel.Dock="Top"
+            <TextBlock x:Name="HeaderTitle"
                        FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="16"
                        Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock x:Name="SummaryText" FontFamily="Yu Gothic UI" FontSize="12"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       Margin="0,6,0,0"/>
         </DockPanel>
 
         <!-- テーブル -->
@@ -67,7 +64,8 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="88"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="アプリ名" FontSize="11" FontWeight="SemiBold"
+                        <TextBlock Grid.Column="0" Grid.ColumnSpan="2"
+                                   Text="アプリ名" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextDimBrush}"/>
                         <TextBlock Grid.Column="2" Text="テスト結果" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextDimBrush}"

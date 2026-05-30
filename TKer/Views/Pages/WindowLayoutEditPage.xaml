@@ -49,7 +49,6 @@
                             Click="DeleteSnap_Click">
                         <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIconLg}"/>
                     </Button>
-                    <Separator Margin="8,4" Background="{StaticResource BorderBrush}"/>
                     <Button Style="{StaticResource VToolbarBtn}"
                             ToolTip="配置されたスナップをすべて削除（初期化）"
                             Click="ResetSnaps_Click">
@@ -105,10 +104,11 @@
                             <TextBox x:Name="TxtDescription" Style="{StaticResource DarkTextBox}"/>
                         </StackPanel>
 
-                        <!-- 保存 -->
+                        <!-- 保存（入力欄と同じ高さに揃える） -->
                         <Button Grid.Column="4" Content="保存"
                                 Style="{StaticResource PrimaryButton}"
-                                Padding="26,6"
+                                Padding="32,8"
+                                FontSize="15" FontWeight="SemiBold"
                                 VerticalAlignment="Bottom"
                                 Click="Save_Click"/>
                     </Grid>

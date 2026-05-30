@@ -99,11 +99,15 @@ public class WindowLayoutService
         var result = new ApplyResult();
         var usedHandles = new HashSet<IntPtr>();
 
+        // 配置先モニタの基準として TKer 本体ウィンドウのハンドルを取得する
+        // (各ウィンドウは Win+矢印 の前にこのモニタへ引き寄せられる)
+        IntPtr tkerHwnd = TryGetTkerWindowHandle();
+
         if (layout.MinimizeOthers) MinimizeAllExceptSelf();
 
         foreach (var entry in layout.Windows)
         {
-            bool success = TryApplyEntry(entry, usedHandles, layout);
+            bool success = TryApplyEntry(entry, usedHandles, layout, tkerHwnd);
             result.Entries.Add(new ApplyResultEntry
             {
                 Title   = entry.Title,
@@ -126,8 +130,20 @@ public class WindowLayoutService
         return pattern.Zones[entry.ZoneIndex].Snap;
     }
 
+    /// <summary>TKer 本体ウィンドウのハンドルを取得する。取得不可なら IntPtr.Zero。</summary>
+    private static IntPtr TryGetTkerWindowHandle()
+    {
+        try
+        {
+            var mw = System.Windows.Application.Current?.MainWindow;
+            if (mw != null) return new System.Windows.Interop.WindowInteropHelper(mw).Handle;
+        }
+        catch { }
+        return IntPtr.Zero;
+    }
+
     /// <summary>1エントリを実機に適用する。必要なら起動を試み、配置成否を返す。</summary>
-    private static bool TryApplyEntry(WindowEntry entry, HashSet<IntPtr> usedHandles, WindowLayout layout)
+    private static bool TryApplyEntry(WindowEntry entry, HashSet<IntPtr> usedHandles, WindowLayout layout, IntPtr referenceHwnd)
     {
         try
         {
@@ -153,8 +169,9 @@ public class WindowLayoutService
             if (wasJustLaunched) Thread.Sleep(800);
 
             // Windows 標準スナップゾーンを Win+矢印で発火する
+            // (referenceHwnd が乗っているモニタへ事前に移動してから Win+矢印を打つ)
             var zone = ResolveSnapZone(entry, layout);
-            return Win32Window.FocusAndSnap(hwnd, zone);
+            return Win32Window.FocusAndSnap(hwnd, zone, referenceHwnd);
         }
         catch { return false; }
     }

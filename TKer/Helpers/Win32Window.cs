@@ -66,6 +66,32 @@ public static class Win32Window
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+                                            int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    private const uint SWP_NOSIZE     = 0x0001;
+    private const uint SWP_NOZORDER   = 0x0004;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out int pvAttribute, int cbAttribute);
 
@@ -201,17 +227,27 @@ public static class Win32Window
 
     /// <summary>
     /// ウィンドウを前面化し、Windows 標準の Win+矢印スナップで指定ゾーンに配置する。
-    /// これにより本物のスナップ状態になり、境界線調整も Windows 標準で効く。
+    /// referenceHwnd が指定された場合、配置前にそのウィンドウが乗っているモニタへ
+    /// 対象ウィンドウを移動し、Win+矢印がそのモニタ内でスナップするようにする。
     /// zone: "Maximize" / "LeftHalf" / "RightHalf" / "TopLeft" / "TopRight" / "BottomLeft" / "BottomRight"
     /// 既知ゾーンなら true を返す。
     /// </summary>
-    public static bool FocusAndSnap(IntPtr hwnd, string zone)
+    public static bool FocusAndSnap(IntPtr hwnd, string zone, IntPtr referenceHwnd = default)
     {
         if (string.IsNullOrEmpty(zone)) return false;
 
-        // 復元して前面へ（Alt タップで SetForegroundWindow のフォアグラウンドロックを解除）
+        // 復元
         ShowWindow(hwnd, SW_RESTORE);
         System.Threading.Thread.Sleep(80);
+
+        // 参照ウィンドウが乗っているモニタへ事前移動（Win+矢印はそのモニタ内でスナップする）
+        if (referenceHwnd != IntPtr.Zero)
+        {
+            MoveWindowToMonitorOf(hwnd, referenceHwnd);
+            System.Threading.Thread.Sleep(80);
+        }
+
+        // 前面化（Alt タップで SetForegroundWindow のフォアグラウンドロックを解除）
         keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
         keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         SetForegroundWindow(hwnd);
@@ -253,5 +289,32 @@ public static class Win32Window
         keybd_event(vk,      0, 0, UIntPtr.Zero);
         keybd_event(vk,      0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    /// <summary>
+    /// referenceHwnd が乗っているモニタの作業領域 (タスクバー除く) 左上付近に
+    /// targetHwnd を移動する。サイズは変えず、位置だけ変更する。
+    /// Win+矢印はその後そのモニタ内でスナップする。
+    /// </summary>
+    private static void MoveWindowToMonitorOf(IntPtr targetHwnd, IntPtr referenceHwnd)
+    {
+        try
+        {
+            var monitor = MonitorFromWindow(referenceHwnd, MONITOR_DEFAULTTONEAREST);
+            if (monitor == IntPtr.Zero) return;
+
+            var info = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+            if (!GetMonitorInfo(monitor, ref info)) return;
+
+            // 既に同じモニタなら何もしない（無駄な動きを避ける）
+            var sameMon = MonitorFromWindow(targetHwnd, MONITOR_DEFAULTTONEAREST);
+            if (sameMon == monitor) return;
+
+            int x = info.rcWork.Left + 40;
+            int y = info.rcWork.Top  + 40;
+            SetWindowPos(targetHwnd, IntPtr.Zero, x, y, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        catch { /* モニタ取得失敗時は単に移動しない */ }
     }
 }

@@ -678,6 +678,93 @@ public partial class MainWindow : Window
             _vm.ProjectService.SaveProject();
 
         try { _bookmarkWidget?.ForceClose(); } catch { }
+        _mediaTimer?.Stop();
+        AudioPlayer.Stop();
+    }
+
+    // ── 簡易メディアプレイヤー ───────────────────────────────
+
+    private enum MediaPlayState { Stopped, Playing, Paused }
+    private MediaPlayState _mediaState = MediaPlayState.Stopped;
+    private DispatcherTimer? _mediaTimer;
+
+    /// <summary>音楽ファイルを選択して AudioPlayer にロードする。</summary>
+    private void MediaOpen_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "音楽ファイルを開く",
+            Filter = "音楽ファイル|*.mp3;*.wav;*.flac;*.aac;*.wma;*.m4a|すべてのファイル|*.*"
+        };
+        if (dlg.ShowDialog(this) != true) return;
+
+        AudioPlayer.Stop();
+        AudioPlayer.Source = new Uri(dlg.FileName, UriKind.Absolute);
+        AudioPlayer.Play();
+        _mediaState = MediaPlayState.Playing;
+
+        MediaTrackName.Text      = Path.GetFileNameWithoutExtension(dlg.FileName);
+        MediaPlayIcon.Data       = (System.Windows.Media.Geometry)FindResource("Bi.PauseFill");
+        BtnMediaPlay.IsEnabled   = true;
+        BtnMediaStop.IsEnabled   = true;
+        MediaTimeText.Text       = "0:00";
+
+        _mediaTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _mediaTimer.Tick -= MediaTimer_Tick;
+        _mediaTimer.Tick += MediaTimer_Tick;
+        _mediaTimer.Start();
+    }
+
+    /// <summary>再生/一時停止を切り替える。</summary>
+    private void MediaPlayPause_Click(object sender, RoutedEventArgs e)
+    {
+        switch (_mediaState)
+        {
+            case MediaPlayState.Playing:
+                AudioPlayer.Pause();
+                _mediaState = MediaPlayState.Paused;
+                MediaPlayIcon.Data = (System.Windows.Media.Geometry)FindResource("Bi.PlayFill");
+                _mediaTimer?.Stop();
+                break;
+
+            case MediaPlayState.Paused:
+                AudioPlayer.Play();
+                _mediaState = MediaPlayState.Playing;
+                MediaPlayIcon.Data = (System.Windows.Media.Geometry)FindResource("Bi.PauseFill");
+                _mediaTimer?.Start();
+                break;
+        }
+    }
+
+    /// <summary>再生を停止して先頭に戻す。</summary>
+    private void MediaStop_Click(object sender, RoutedEventArgs e)
+    {
+        AudioPlayer.Stop();
+        AudioPlayer.Position = TimeSpan.Zero;
+        _mediaState          = MediaPlayState.Stopped;
+        MediaPlayIcon.Data   = (System.Windows.Media.Geometry)FindResource("Bi.PlayFill");
+        MediaTimeText.Text   = "0:00";
+        _mediaTimer?.Stop();
+    }
+
+    /// <summary>メディアが開かれたとき（Natural duration が確定）。</summary>
+    private void AudioPlayer_MediaOpened(object sender, RoutedEventArgs e) { }
+
+    /// <summary>再生が終端に達したときに停止状態へリセットする。</summary>
+    private void AudioPlayer_MediaEnded(object sender, RoutedEventArgs e)
+    {
+        AudioPlayer.Position = TimeSpan.Zero;
+        _mediaState          = MediaPlayState.Stopped;
+        MediaPlayIcon.Data   = (System.Windows.Media.Geometry)FindResource("Bi.PlayFill");
+        MediaTimeText.Text   = "0:00";
+        _mediaTimer?.Stop();
+    }
+
+    /// <summary>500ms ごとに経過時間表示を更新する。</summary>
+    private void MediaTimer_Tick(object? sender, EventArgs e)
+    {
+        var pos = AudioPlayer.Position;
+        MediaTimeText.Text = $"{(int)pos.TotalMinutes}:{pos.Seconds:D2}";
     }
 }
 

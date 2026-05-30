@@ -963,6 +963,25 @@ public partial class MainWindow : Window
         // 欄がポップアップに変形したように見せるため、表示中は欄を隠す
         // （Hidden でレイアウト幅は保持し、配置基準・プロジェクト名位置を維持）
         MediaPanel.Visibility = Visibility.Hidden;
+
+        // コンテンツのみから高さを測り、ポップアップを実サイズで固定
+        // （背景画像に高さを引っ張られないようにする）
+        PopupContent.Measure(new Size(320, double.PositiveInfinity));
+        double targetH = PopupContent.DesiredSize.Height;
+        if (double.IsNaN(targetH) || targetH < 40) targetH = 150;
+        PopupRoot.Width  = 320;
+        PopupRoot.Height = targetH;
+
+        // 前回の保持アニメーションをクリアしてから開始値を設定
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+        PopupContent.BeginAnimation(OpacityProperty, null);
+
+        // 開始状態をメディア欄の縦横比に縮めておく（左上基準でスケール）
+        PopupScale.ScaleX  = MediaPanel.Width  / 320.0;
+        PopupScale.ScaleY  = MediaPanel.Height / targetH;
+        PopupContent.Opacity = 0;
+
         MediaPopup.IsOpen = true;
         AnimatePopupOpen();
 
@@ -998,63 +1017,50 @@ public partial class MainWindow : Window
         return false;
     }
 
-    /// <summary>ポップアップをメディア欄のサイズへ縮小しながら閉じる。</summary>
+    /// <summary>ポップアップをメディア欄の縦横比へスムーズに縮小しながら閉じる。</summary>
     private void ClosePopupAnimated()
     {
         if (!MediaPopup.IsOpen || _popupAnimating) return;
         _popupAnimating = true;
         _popupTimer?.Stop();
 
-        double curW = PopupRoot.ActualWidth, curH = PopupRoot.ActualHeight;
-        var ease = new QuadraticEase { EasingMode = EasingMode.EaseIn };
-        var dur  = TimeSpan.FromMilliseconds(160);
+        double endX = MediaPanel.Width  / Math.Max(1, PopupRoot.Width);
+        double endY = MediaPanel.Height / Math.Max(1, PopupRoot.Height);
 
-        var hAnim = new DoubleAnimation(curH, MediaPanel.Height, dur) { EasingFunction = ease };
-        hAnim.Completed += (_, _) =>
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var dur  = TimeSpan.FromMilliseconds(200);
+
+        var syAnim = new DoubleAnimation(PopupScale.ScaleY, endY, dur) { EasingFunction = ease };
+        syAnim.Completed += (_, _) =>
         {
             MediaPopup.IsOpen = false;
-            PopupRoot.BeginAnimation(WidthProperty, null);
-            PopupRoot.BeginAnimation(HeightProperty, null);
+            PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+            PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+            PopupScale.ScaleX = 1; PopupScale.ScaleY = 1;
             _popupAnimating = false;
         };
 
         PopupContent.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(90)));
-        PopupRoot.BeginAnimation(WidthProperty,
-            new DoubleAnimation(curW, MediaPanel.Width, dur) { EasingFunction = ease });
-        PopupRoot.BeginAnimation(HeightProperty, hAnim);
+            new DoubleAnimation(PopupContent.Opacity, 0, TimeSpan.FromMilliseconds(110)));
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(PopupScale.ScaleX, endX, dur) { EasingFunction = ease });
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, syAnim);
     }
 
-    /// <summary>メディア欄のサイズ(200x24)から本来のサイズへ拡大し、欄が広がったように開く。</summary>
+    /// <summary>メディア欄の縦横比から等倍へスムーズに拡大し、欄が広がったように開く。</summary>
     private void AnimatePopupOpen()
     {
-        // 既存アニメーションをクリアしてから計測（前回の保持値による誤差を防ぐ）
-        PopupRoot.BeginAnimation(WidthProperty, null);
-        PopupRoot.BeginAnimation(HeightProperty, null);
-        PopupRoot.Width = 320;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var dur  = TimeSpan.FromMilliseconds(240);
 
-        // 高さはコンテンツ(PopupContent)のみから測る。
-        // 背景サムネイル画像を含む PopupRoot を測ると画像の縦サイズに引っ張られて
-        // 大きくなるため、コンテンツだけを測定して固定する。
-        PopupContent.Measure(new Size(320, double.PositiveInfinity));
-        double targetH = PopupContent.DesiredSize.Height;
-        if (double.IsNaN(targetH) || targetH < 40) targetH = 150;
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(PopupScale.ScaleX, 1, dur) { EasingFunction = ease });
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(PopupScale.ScaleY, 1, dur) { EasingFunction = ease });
 
-        double startW = MediaPanel.Width;   // 200
-        double startH = MediaPanel.Height;  // 24
-
-        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-        var dur  = TimeSpan.FromMilliseconds(190);
-
-        // 最終高さは測定値で固定（Auto に戻すと画像が高さを押し広げるため）
-        PopupRoot.BeginAnimation(WidthProperty,
-            new DoubleAnimation(startW, 320, dur) { EasingFunction = ease });
-        PopupRoot.BeginAnimation(HeightProperty,
-            new DoubleAnimation(startH, targetH, dur) { EasingFunction = ease });
-
-        // 中身は少し遅れてフェードイン（拡大後に現れる感じ）
+        // 中身は拡大の後半でフェードイン
         PopupContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1,
-            TimeSpan.FromMilliseconds(150)) { BeginTime = TimeSpan.FromMilliseconds(90) });
+            TimeSpan.FromMilliseconds(170)) { BeginTime = TimeSpan.FromMilliseconds(90) });
     }
 
     /// <summary>角丸でクリップするため、サイズ確定時に丸角矩形のクリップを設定する。</summary>

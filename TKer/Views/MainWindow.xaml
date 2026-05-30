@@ -90,15 +90,12 @@
                             CornerRadius="11" Margin="0,0,12,0"
                             ClipToBounds="True" Visibility="Collapsed">
                         <DockPanel LastChildFill="True">
-                            <!-- 左端：再生中アプリのアイコン（白シルエット / 代替は白音符） -->
+                            <!-- 左端：再生中アプリのアイコン（原色そのまま / 代替は白音符） -->
                             <Grid DockPanel.Dock="Left" Width="26">
-                                <Rectangle x:Name="AppIconShape" Width="14" Height="14"
-                                           Fill="White" Visibility="Collapsed"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Rectangle.OpacityMask>
-                                        <ImageBrush x:Name="AppIconBrush"/>
-                                    </Rectangle.OpacityMask>
-                                </Rectangle>
+                                <Image x:Name="AppIconImage" Width="16" Height="16"
+                                       Stretch="Uniform" Visibility="Collapsed"
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <Path x:Name="AppIconFallback"
                                       Data="{StaticResource Bi.MusicNoteBeamed}"
                                       Fill="White" Stretch="Uniform" Width="13" Height="13"

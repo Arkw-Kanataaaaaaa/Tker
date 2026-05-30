@@ -794,14 +794,15 @@ public partial class MainWindow : Window
 
         if (src != null)
         {
-            AppIconBrush.ImageSource   = src;
-            AppIconShape.Visibility    = Visibility.Visible;
+            AppIconImage.Source        = src;
+            AppIconImage.Visibility    = Visibility.Visible;
             AppIconFallback.Visibility = Visibility.Collapsed;
         }
         else
         {
             // ③ いずれも不可：白音符アイコンにフォールバック
-            AppIconShape.Visibility    = Visibility.Collapsed;
+            AppIconImage.Source        = null;
+            AppIconImage.Visibility    = Visibility.Collapsed;
             AppIconFallback.Visibility = Visibility.Visible;
         }
     }

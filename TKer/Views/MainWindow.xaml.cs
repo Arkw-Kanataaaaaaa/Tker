@@ -941,24 +941,53 @@ public partial class MainWindow : Window
 
     // ── Now Playing ポップアップ ─────────────────────────────
 
-    /// <summary>メディアパネルのクリックでポップアップを開閉する。</summary>
+    /// <summary>メディアパネルのクリックでポップアップを開く。開いている間はパネルを隠す。</summary>
     private async void MediaPanel_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        MediaPopup.IsOpen = !MediaPopup.IsOpen;
+        if (MediaPopup.IsOpen) return;
 
-        if (MediaPopup.IsOpen)
-        {
-            // 0.5秒ごとに経過時間バーを滑らかに更新
-            _popupTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            _popupTimer.Tick -= PopupTimer_Tick;
-            _popupTimer.Tick += PopupTimer_Tick;
-            _popupTimer.Start();
-            await RefreshNowPlaying();
-        }
-        else
-        {
-            _popupTimer?.Stop();
-        }
+        // パネルがポップアップに「移動した」ように見せるため、パネルは隠す
+        // （Hidden でレイアウト幅は保持し、プロジェクト名の位置をずらさない）
+        MediaPanel.Visibility = Visibility.Hidden;
+        MediaPopup.IsOpen = true;
+        AnimatePopupOpen();
+
+        // 0.5秒ごとに経過時間バーを滑らかに更新
+        _popupTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _popupTimer.Tick -= PopupTimer_Tick;
+        _popupTimer.Tick += PopupTimer_Tick;
+        _popupTimer.Start();
+        await RefreshNowPlaying();
+    }
+
+    /// <summary>ポップアップをメディア領域から広がるようにスケールアニメーションで開く。</summary>
+    private void AnimatePopupOpen()
+    {
+        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        var dur  = TimeSpan.FromMilliseconds(180);
+
+        // 左上（メディア欄の位置）を原点に小さく→等倍へ広げる
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(0.18, 1, dur) { EasingFunction = ease });
+        PopupScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(0.18, 1, dur) { EasingFunction = ease });
+        PopupRoot.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
+    }
+
+    /// <summary>角丸でクリップするため、サイズ確定時に丸角矩形のクリップを設定する。</summary>
+    private void PopupRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        PopupRoot.Clip = new System.Windows.Media.RectangleGeometry(
+            new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 16, 16);
+    }
+
+    /// <summary>ポップアップが閉じたらタイマーを止め、メディアパネルを再表示する。</summary>
+    private void MediaPopup_Closed(object? sender, EventArgs e)
+    {
+        _popupTimer?.Stop();
+        if (MediaPanel.Visibility != Visibility.Collapsed)
+            MediaPanel.Visibility = Visibility.Visible;
     }
 
     private async void PopupTimer_Tick(object? sender, EventArgs e)

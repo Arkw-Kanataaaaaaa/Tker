@@ -129,9 +129,13 @@
                            PlacementTarget="{Binding ElementName=MediaPanel}"
                            Placement="Bottom" VerticalOffset="6" HorizontalOffset="0"
                            StaysOpen="False" AllowsTransparency="True"
-                           PopupAnimation="Fade">
-                        <Border Width="320" CornerRadius="14" ClipToBounds="True"
-                                BorderBrush="#33FFFFFF" BorderThickness="1">
+                           PopupAnimation="None" Closed="MediaPopup_Closed">
+                        <Border x:Name="PopupRoot" Width="320" CornerRadius="16"
+                                BorderBrush="#33FFFFFF" BorderThickness="1"
+                                RenderTransformOrigin="0,0" SizeChanged="PopupRoot_SizeChanged">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="PopupScale" ScaleX="1" ScaleY="1"/>
+                            </Border.RenderTransform>
                             <Border.Effect>
                                 <DropShadowEffect Color="#000000" BlurRadius="18"
                                                   ShadowDepth="3" Opacity="0.55"/>
@@ -173,7 +177,7 @@
                                 <!-- 可読性のための暗いスクリム -->
                                 <Border Background="#A8000000"/>
 
-                                <StackPanel Margin="18,16,18,16">
+                                <StackPanel Margin="18,16,18,10">
                                     <!-- タイトル行：左上にアプリアイコン -->
                                     <DockPanel>
                                         <Image x:Name="PopupAppIcon" DockPanel.Dock="Left"

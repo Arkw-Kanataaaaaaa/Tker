@@ -69,6 +69,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             {
                 _editingId          = existing.Id;
                 HeaderTitle.Text    = "ウィンドウレイアウト編集";
+                BtnSave.Content     = "保存";
                 TxtName.Text        = existing.Name;
                 TxtDescription.Text = existing.Description;
                 _minimizeOthers     = existing.MinimizeOthers;
@@ -86,6 +87,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         else
         {
             HeaderTitle.Text = "ウィンドウレイアウト追加";
+            BtnSave.Content  = "作成";
         }
 
         UpdateMinimizeToggleVisual();
@@ -324,8 +326,7 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     {
         if (string.IsNullOrWhiteSpace(TxtName.Text))
         {
-            MessageBox.Show(Window.GetWindow(this), "名前を入力してください。",
-                "入力チェック", MessageBoxButton.OK, MessageBoxImage.Information);
+            AppDialog.ShowWarning("レイアウト名を入力してください", "入力エラー", Window.GetWindow(this));
             TxtName.Focus();
             return;
         }

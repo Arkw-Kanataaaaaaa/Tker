@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace TKer.Views.Dialogs;
@@ -16,6 +17,9 @@ public partial class AppDialog : Window
                       string confirmLabel = "", bool dangerConfirm = false, string heading = "")
     {
         InitializeComponent();
+        // × ボタン・Esc キーで閉じれるよう SystemCommands.CloseWindowCommand を登録
+        CommandBindings.Add(new CommandBinding(
+            SystemCommands.CloseWindowCommand, (_, _) => Close()));
         Title = title;
         TitleBarText.Text = title;
         TitleText.Text = !string.IsNullOrEmpty(heading) ? heading : title;

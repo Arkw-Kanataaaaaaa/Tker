@@ -190,16 +190,12 @@ public static class Win32Window
         return null;
     }
 
-    // Windows 11 標準の不可視ボーダー（DPI 100% 想定のフォールバック値）
-    private const int FALLBACK_PAD_HORIZONTAL = 8;
-    private const int FALLBACK_PAD_BOTTOM     = 8;
-    private const int FALLBACK_PAD_TOP        = 0;
-
     /// <summary>
-    /// 指定ハンドルのウィンドウを位置・サイズ・表示状態を指定して配置する（Windows 11 対応版）。
-    /// 復元後に現ウィンドウから不可視ボーダー（シャドウ用余白）を実測し、
-    /// 補正済みのサイズで「1回だけ」配置することで、配置後にサイズが伸びる
-    /// ちらつきを起こさず、見える枠が指定座標ぴったりに来るようにする。
+    /// 指定ハンドルのウィンドウの「見える枠」が x/y/width/height ぴったりに来るよう配置する。
+    /// 決め打ちのボーダー値は使わず、配置 → 実際の見える枠を DWM で実測 → 目標との
+    /// ズレ分だけ外枠を補正、を最大3回繰り返して収束させる（自己補正方式）。
+    /// これにより不可視ボーダー幅・DPI・アプリごとの差に依存せず正確に配置できる。
+    /// DWM 実測が取れない環境では素の配置にフォールバックする（過補正で重ねない）。
     /// </summary>
     public static bool ApplyPlacement(IntPtr hwnd, int x, int y, int width, int height, int showState)
     {
@@ -210,64 +206,59 @@ public static class Win32Window
             return true;
         }
 
-        // 最小化・最大化状態から復元（このあと不可視ボーダーを測れる状態にする）
+        // 最小化・最大化状態から復元
         ShowWindow(hwnd, SW_RESTORE);
         System.Threading.Thread.Sleep(120);
 
-        // 復元後の現ウィンドウから不可視ボーダーを測定（失敗時は Win11 標準値）
-        MeasureInvisibleBorders(hwnd, out int leftPad, out int topPad, out int rightPad, out int bottomPad);
-
-        int finalX = x - leftPad;
-        int finalY = y - topPad;
-        int finalW = width  + leftPad + rightPad;
-        int finalH = height + topPad  + bottomPad;
-
-        // 補正済みサイズで配置
-        bool ok = SetWindowPos(hwnd, IntPtr.Zero, finalX, finalY, finalW, finalH,
+        // 1回目: 目標座標を外枠としてそのまま配置
+        bool ok = SetWindowPos(hwnd, IntPtr.Zero, x, y, width, height,
             SWP_NOZORDER | SWP_NOACTIVATE);
 
-        // Explorer / Edge など、配置後に自前の記憶サイズを非同期で復元して
-        // 下方向などに伸びるアプリ対策として、同じ座標でもう一度確定させる。
-        // 座標が同一なので行儀のよいアプリではちらつかない。
-        System.Threading.Thread.Sleep(220);
-        SetWindowPos(hwnd, IntPtr.Zero, finalX, finalY, finalW, finalH,
-            SWP_NOZORDER | SWP_NOACTIVATE);
+        // 2回目以降: 実測した見える枠と目標のズレを補正（最大3回で収束）
+        for (int i = 0; i < 3; i++)
+        {
+            System.Threading.Thread.Sleep(120);
+
+            if (!TryGetVisibleRect(hwnd, out RECT visible) || !GetWindowRect(hwnd, out RECT outer))
+                break; // DWM 実測不可 → 素の配置のまま（過補正しない）
+
+            int visW = visible.Right - visible.Left;
+            int visH = visible.Bottom - visible.Top;
+
+            int errX = x - visible.Left;
+            int errY = y - visible.Top;
+            int errW = width  - visW;
+            int errH = height - visH;
+
+            // 1px 以内に収束したら終了
+            if (System.Math.Abs(errX) <= 1 && System.Math.Abs(errY) <= 1 &&
+                System.Math.Abs(errW) <= 1 && System.Math.Abs(errH) <= 1)
+                break;
+
+            int newOuterX = outer.Left + errX;
+            int newOuterY = outer.Top  + errY;
+            int newOuterW = (outer.Right  - outer.Left) + errW;
+            int newOuterH = (outer.Bottom - outer.Top)  + errH;
+
+            SetWindowPos(hwnd, IntPtr.Zero, newOuterX, newOuterY, newOuterW, newOuterH,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        }
 
         if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);
         return ok;
     }
 
-    /// <summary>
-    /// 現ウィンドウの DWM 拡張フレーム境界と WindowRect の差から不可視ボーダー幅を測る。
-    /// 取得失敗・異常値の辺は Windows 11 標準のフォールバック値を使う。
-    /// </summary>
-    private static void MeasureInvisibleBorders(IntPtr hwnd,
-        out int leftPad, out int topPad, out int rightPad, out int bottomPad)
+    /// <summary>DWM 拡張フレーム境界（見える枠）を取得する。取得失敗・空矩形なら false。</summary>
+    private static bool TryGetVisibleRect(IntPtr hwnd, out RECT visible)
     {
-        leftPad   = FALLBACK_PAD_HORIZONTAL;
-        topPad    = FALLBACK_PAD_TOP;
-        rightPad  = FALLBACK_PAD_HORIZONTAL;
-        bottomPad = FALLBACK_PAD_BOTTOM;
-
+        visible = default;
         try
         {
             int size = Marshal.SizeOf<RECT>();
-            if (DwmGetWindowAttributeRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT visible, size) == 0
-                && GetWindowRect(hwnd, out RECT actual))
-            {
-                int lP = visible.Left  - actual.Left;
-                int tP = visible.Top   - actual.Top;
-                int rP = actual.Right  - visible.Right;
-                int bP = actual.Bottom - visible.Bottom;
-                // 左右下は Win11 では必ず数px のボーダーがあるため、3px 未満は
-                // 測定失敗（0 が返る既知の挙動）とみなしてフォールバックを維持する。
-                // 上辺は本来 0 のことが多いので 0 も妥当値として採用する。
-                if (lP >= 3 && lP <= 30) leftPad   = lP;
-                if (tP >= 0 && tP <= 30) topPad    = tP;
-                if (rP >= 3 && rP <= 30) rightPad  = rP;
-                if (bP >= 3 && bP <= 30) bottomPad = bP;
-            }
+            if (DwmGetWindowAttributeRect(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out visible, size) != 0)
+                return false;
+            return visible.Right > visible.Left && visible.Bottom > visible.Top;
         }
-        catch { /* 実測失敗時はフォールバック */ }
+        catch { return false; }
     }
 }

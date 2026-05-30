@@ -124,9 +124,120 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
         snap.Selected         += (_, _) => OnSnapSelected(snap);
         snap.PickAppRequested += (_, _) => OnPickApp(snap);
         snap.AppAssigned      += (_, _) => UpdateTestApplyEnabled();
+        snap.EdgeDrag         += OnSnapEdgeDrag;
         EditorCanvas.Children.Add(snap.Container);
         _snaps.Add(snap);
         return snap;
+    }
+
+    /// <summary>
+    /// スナップの辺がドラッグされたとき、その辺と接している隣接スナップの
+    /// 反対側の辺も同時に動かして共有境界線をリサイズする。
+    /// </summary>
+    private void OnSnapEdgeDrag(SnapRect snap, EdgeKind edge, double delta)
+    {
+        var neighbors = FindAdjacentSnaps(snap, edge);
+        ApplyEdgeResize(snap, edge, delta);
+        var opposite = OppositeEdge(edge);
+        foreach (var n in neighbors)
+            ApplyEdgeResize(n, opposite, delta);
+    }
+
+    /// <summary>指定スナップの辺に接する（垂直方向に重なる）他のスナップ一覧を返す。</summary>
+    private List<SnapRect> FindAdjacentSnaps(SnapRect snap, EdgeKind edge)
+    {
+        const double TOL = 0.5;
+        var list = new List<SnapRect>();
+        double thisEdgePos = GetEdgePos(snap, edge);
+        var (thisMin, thisMax) = GetPerpendicularRange(snap, edge);
+        var oppEdge = OppositeEdge(edge);
+
+        foreach (var other in _snaps)
+        {
+            if (ReferenceEquals(other, snap)) continue;
+            if (Math.Abs(GetEdgePos(other, oppEdge) - thisEdgePos) > TOL) continue;
+            var (oMin, oMax) = GetPerpendicularRange(other, edge);
+            // 垂直方向に重なっているか（少しでも交差していれば隣接とみなす）
+            if (oMax > thisMin && oMin < thisMax)
+                list.Add(other);
+        }
+        return list;
+    }
+
+    /// <summary>指定スナップの指定辺の座標値を返す。</summary>
+    private static double GetEdgePos(SnapRect snap, EdgeKind edge)
+    {
+        var c = snap.Container;
+        return edge switch
+        {
+            EdgeKind.Left   => Canvas.GetLeft(c),
+            EdgeKind.Right  => Canvas.GetLeft(c) + c.Width,
+            EdgeKind.Top    => Canvas.GetTop(c),
+            EdgeKind.Bottom => Canvas.GetTop(c) + c.Height,
+            _               => 0
+        };
+    }
+
+    /// <summary>辺と垂直方向（左右辺なら上下範囲、上下辺なら左右範囲）の最小・最大を返す。</summary>
+    private static (double Min, double Max) GetPerpendicularRange(SnapRect snap, EdgeKind edge)
+    {
+        var c = snap.Container;
+        bool horizontalEdge = edge == EdgeKind.Top || edge == EdgeKind.Bottom;
+        return horizontalEdge
+            ? (Canvas.GetLeft(c), Canvas.GetLeft(c) + c.Width)
+            : (Canvas.GetTop(c),  Canvas.GetTop(c)  + c.Height);
+    }
+
+    private static EdgeKind OppositeEdge(EdgeKind e) => e switch
+    {
+        EdgeKind.Left   => EdgeKind.Right,
+        EdgeKind.Right  => EdgeKind.Left,
+        EdgeKind.Top    => EdgeKind.Bottom,
+        _               => EdgeKind.Top
+    };
+
+    /// <summary>指定スナップの辺を delta だけ動かす（最小サイズ・キャンバス境界でクランプ）。</summary>
+    private void ApplyEdgeResize(SnapRect snap, EdgeKind edge, double delta)
+    {
+        var c = snap.Container;
+        double x = Canvas.GetLeft(c);
+        double y = Canvas.GetTop(c);
+        double w = c.Width;
+        double h = c.Height;
+
+        switch (edge)
+        {
+            case EdgeKind.Right:
+            {
+                double nw = Math.Max(SnapRect.MIN_SIZE, w + delta);
+                nw = Math.Min(nw, EditorCanvas.Width - x);
+                c.Width = nw;
+                break;
+            }
+            case EdgeKind.Left:
+            {
+                double nw = Math.Max(SnapRect.MIN_SIZE, w - delta);
+                double nx = Math.Max(0, x + (w - nw));
+                Canvas.SetLeft(c, nx);
+                c.Width = nw;
+                break;
+            }
+            case EdgeKind.Bottom:
+            {
+                double nh = Math.Max(SnapRect.MIN_SIZE, h + delta);
+                nh = Math.Min(nh, EditorCanvas.Height - y);
+                c.Height = nh;
+                break;
+            }
+            case EdgeKind.Top:
+            {
+                double nh = Math.Max(SnapRect.MIN_SIZE, h - delta);
+                double ny = Math.Max(0, y + (h - nh));
+                Canvas.SetTop(c, ny);
+                c.Height = nh;
+                break;
+            }
+        }
     }
 
     /// <summary>アプリ設定済みのスナップが1つでもあればテスト適用ボタンを有効化する。</summary>
@@ -397,6 +508,23 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
             ResetSnaps_Click(this, new RoutedEventArgs());
             e.Handled = true;
         }
+        else if (ctrl && !shift && e.Key == Key.A)
+        {
+            SelectAllSnaps();
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>全スナップを選択状態にし、削除ツールバーボタンを有効化する。</summary>
+    private void SelectAllSnaps()
+    {
+        _selectedList.Clear();
+        foreach (var s in _snaps)
+        {
+            s.IsSelected = true;
+            _selectedList.Add(s);
+        }
+        BtnDeleteSnap.IsEnabled = _selectedList.Count > 0;
     }
 
     // ── 起動中アプリ一覧（リアルタイム差分更新） ────────────────────
@@ -506,6 +634,9 @@ public partial class WindowLayoutEditPage : Page, IRefreshable
     }
 }
 
+/// <summary>スナップの4辺を識別する列挙体（隣接境界の同期リサイズ用）。</summary>
+internal enum EdgeKind { Left, Right, Top, Bottom }
+
 // ════════════════════════════════════════════════════
 //  仮想デスクトップ上の1つのスナップ矩形
 // ════════════════════════════════════════════════════
@@ -528,6 +659,8 @@ internal class SnapRect
     public event EventHandler? PickAppRequested;
     /// <summary>アプリが設定された（変更された）とき発火するイベント。</summary>
     public event EventHandler? AppAssigned;
+    /// <summary>辺（中央のエッジハンドル）がドラッグされたとき発火するイベント。</summary>
+    public event Action<SnapRect, EdgeKind, double>? EdgeDrag;
 
     private readonly Canvas    _parent;
     private readonly Grid      _content;
@@ -618,6 +751,12 @@ internal class SnapRect
         AddHandle(HorizontalAlignment.Right, VerticalAlignment.Top,    Cursors.SizeNESW,  1, -1);
         AddHandle(HorizontalAlignment.Left,  VerticalAlignment.Bottom, Cursors.SizeNESW, -1,  1);
         AddHandle(HorizontalAlignment.Right, VerticalAlignment.Bottom, Cursors.SizeNWSE,  1,  1);
+
+        // 4辺中央のエッジハンドル（隣接境界の同期リサイズ用）
+        AddEdgeHandle(EdgeKind.Top,    HorizontalAlignment.Center, VerticalAlignment.Top,    Cursors.SizeNS);
+        AddEdgeHandle(EdgeKind.Bottom, HorizontalAlignment.Center, VerticalAlignment.Bottom, Cursors.SizeNS);
+        AddEdgeHandle(EdgeKind.Left,   HorizontalAlignment.Left,   VerticalAlignment.Center, Cursors.SizeWE);
+        AddEdgeHandle(EdgeKind.Right,  HorizontalAlignment.Right,  VerticalAlignment.Center, Cursors.SizeWE);
 
         // 選択（トンネリング: 子要素のクリックでも発火する）
         Container.PreviewMouseLeftButtonDown += (_, _) => Selected?.Invoke(this, EventArgs.Empty);
@@ -744,7 +883,6 @@ internal class SnapRect
     private void EnsureGhost()
     {
         if (_ghost != null) return;
-        var accent = Color.FromRgb(0x9A, 0x9A, 0x9A);
 
         _ghost = new Border
         {
@@ -752,8 +890,7 @@ internal class SnapRect
                 Color.FromArgb(0x96, 0xFF, 0xFF, 0xFF),
                 Color.FromArgb(0x6E, 0xD8, 0xD8, 0xD8),
                 angle: 90),
-            BorderBrush     = new SolidColorBrush(Color.FromArgb(0xCC, accent.R, accent.G, accent.B)),
-            BorderThickness = new Thickness(4),
+            BorderThickness = new Thickness(0),
             CornerRadius    = new CornerRadius(24),
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
@@ -790,6 +927,29 @@ internal class SnapRect
             Container.Height = t.H;
         }
         HideGhost();
+    }
+
+    /// <summary>4辺中央のエッジハンドル（細い Thumb）を追加して EdgeDrag イベントを発火させる。</summary>
+    private void AddEdgeHandle(EdgeKind kind, HorizontalAlignment ha, VerticalAlignment va, Cursor cursor)
+    {
+        bool horizontal = kind == EdgeKind.Top || kind == EdgeKind.Bottom;
+        var thumb = new Thumb
+        {
+            Width  = horizontal ? 56 : 8,
+            Height = horizontal ? 8  : 56,
+            HorizontalAlignment = ha, VerticalAlignment = va,
+            Margin = horizontal ? new Thickness(0, -4, 0, -4) : new Thickness(-4, 0, -4, 0),
+            Cursor = cursor,
+            Visibility = Visibility.Collapsed,
+            Template = BuildHandleTemplate()
+        };
+        thumb.DragDelta += (_, e) =>
+        {
+            double delta = horizontal ? e.VerticalChange : e.HorizontalChange;
+            EdgeDrag?.Invoke(this, kind, delta);
+        };
+        _content.Children.Add(thumb);
+        _handles.Add(thumb);
     }
 
     // ── リサイズハンドル ─────────────────────────────

@@ -131,7 +131,6 @@
                            StaysOpen="True" AllowsTransparency="True"
                            PopupAnimation="None" Closed="MediaPopup_Closed">
                         <Border x:Name="PopupRoot" Width="320" CornerRadius="14"
-                                BorderBrush="#33FFFFFF" BorderThickness="1"
                                 SizeChanged="PopupRoot_SizeChanged">
                             <Border.Effect>
                                 <DropShadowEffect Color="#000000" BlurRadius="18"

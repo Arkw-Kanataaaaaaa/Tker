@@ -217,12 +217,20 @@ public static class Win32Window
         // 復元後の現ウィンドウから不可視ボーダーを測定（失敗時は Win11 標準値）
         MeasureInvisibleBorders(hwnd, out int leftPad, out int topPad, out int rightPad, out int bottomPad);
 
-        // 補正済みサイズで1回だけ配置
-        bool ok = SetWindowPos(hwnd, IntPtr.Zero,
-            x - leftPad,
-            y - topPad,
-            width  + leftPad + rightPad,
-            height + topPad  + bottomPad,
+        int finalX = x - leftPad;
+        int finalY = y - topPad;
+        int finalW = width  + leftPad + rightPad;
+        int finalH = height + topPad  + bottomPad;
+
+        // 補正済みサイズで配置
+        bool ok = SetWindowPos(hwnd, IntPtr.Zero, finalX, finalY, finalW, finalH,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+
+        // Explorer / Edge など、配置後に自前の記憶サイズを非同期で復元して
+        // 下方向などに伸びるアプリ対策として、同じ座標でもう一度確定させる。
+        // 座標が同一なので行儀のよいアプリではちらつかない。
+        System.Threading.Thread.Sleep(220);
+        SetWindowPos(hwnd, IntPtr.Zero, finalX, finalY, finalW, finalH,
             SWP_NOZORDER | SWP_NOACTIVATE);
 
         if (showState == SW_MAXIMIZE) ShowWindow(hwnd, SW_MAXIMIZE);

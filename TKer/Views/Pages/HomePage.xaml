@@ -6,7 +6,7 @@
   <Grid x:Name="RootHost">
 
     <!-- ══ 惑星スタイル（固定部品テンプレート、Visibility はコードで切替）══ -->
-    <Grid x:Name="PlanetView" Visibility="Collapsed" Background="Transparent" ClipToBounds="True">
+    <Grid x:Name="PlanetView" Visibility="Collapsed" ClipToBounds="True">
         <!-- 背景（深宇宙風グラデーション） -->
         <Grid.Background>
             <RadialGradientBrush GradientOrigin="0.7,0.5" Center="0.7,0.5"

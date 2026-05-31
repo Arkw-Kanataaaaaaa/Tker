@@ -1143,24 +1143,40 @@ public partial class HomePage : Page, IRefreshable
             AddCard(frontX, frontY, cardW, cardH, depth, stepX, stepY, dateOffset);
         }
 
-        // 右下の年月フォントサイズをカード領域の幅に追従させる
+        // 年月フォントサイズをカード領域の幅に追従させる
         double monthFont = Math.Clamp(w * 0.07, 36, 96);
         double yearFont  = monthFont * 0.55;
         CardMonthText.FontSize = monthFont;
         CardYearText.FontSize  = yearFont;
         CardMonthText.Margin   = new Thickness(0, -monthFont * 0.25, 0, 0);
 
+        // ── 右上オーバーレイ（ToDo/タスク/予定）の寸法をカード領域サイズに追従 ──
+        if (CardRightOverlay != null)
+        {
+            double overlayW = Math.Clamp(w * 0.34, 280, 460);
+            CardRightOverlay.Width = overlayW;
+            // 下端のカレンダーを避けるため下に余裕（h*0.30 程度）を空ける
+            CardRightOverlay.MaxHeight = Math.Max(180, h - h * 0.30 - 56);
+        }
+        if (CardScheduleCard != null)
+            CardScheduleCard.MaxHeight = Math.Clamp(h * 0.32, 180, 360);
+
         // 前面カードの選択日が変わったら、当日スケジュール・年月・ミニカレンダーを更新する
         int selectedOffset = (int)Math.Round(_cardPhase);
-        if (selectedOffset != _cardScheduleShownOffset)
+        bool sizeOnly = selectedOffset == _cardScheduleShownOffset;
+        if (!sizeOnly)
         {
             _cardScheduleShownOffset = selectedOffset;
             var selDate = DateTime.Today.AddDays(selectedOffset);
             CardYearText.Text  = selDate.ToString("yyyy");
             CardMonthText.Text = selDate.ToString("MM");
             BuildHourlySchedule(selDate);
-            BuildMiniCalendar(selDate);
         }
+
+        // ── 2か月分ミニカレンダーをカード領域の幅に合わせたスケールで再構築 ──
+        // セルサイズ・フォントが動的に変わるため、サイズだけの変更でも作り直す
+        double calScale = Math.Clamp(w / 1100.0, 0.75, 1.6);
+        BuildMiniCalendar(DateTime.Today.AddDays(selectedOffset), calScale);
     }
 
     /// <summary>1枚の日付カードを奥行き depth に応じてスケール・位置・不透明度を変えて配置する。</summary>
@@ -1669,40 +1685,49 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── 2か月分ミニカレンダー（枠なし背景なし）─────────────────
-    /// <summary>選択日の当月＋翌月のミニカレンダーをカード領域右下に表示する。</summary>
-    private void BuildMiniCalendar(DateTime date)
+    /// <summary>選択日の当月＋翌月のミニカレンダーをカード領域右下に表示する。
+    /// scale はウィンドウ幅に応じたセル/フォントの倍率（既定 1.0）。</summary>
+    private void BuildMiniCalendar(DateTime date, double scale = 1.0)
     {
         if (CardMiniCalendarHost == null) return;
         CardMiniCalendarHost.Children.Clear();
         var m1 = new DateTime(date.Year, date.Month, 1);
         var m2 = m1.AddMonths(1);
-        CardMiniCalendarHost.Children.Add(BuildOneMonth(m1, date));
-        CardMiniCalendarHost.Children.Add(BuildOneMonth(m2, date));
+        CardMiniCalendarHost.Children.Add(BuildOneMonth(m1, date, scale));
+        CardMiniCalendarHost.Children.Add(BuildOneMonth(m2, date, scale));
     }
 
-    /// <summary>指定月のミニカレンダー（タイトル＋曜日＋日付グリッド）を生成する。</summary>
-    private static FrameworkElement BuildOneMonth(DateTime month, DateTime selected)
+    /// <summary>指定月のミニカレンダー（タイトル＋曜日＋日付グリッド）を生成する。
+    /// scale でセル/フォントを倍率調整。</summary>
+    private static FrameworkElement BuildOneMonth(DateTime month, DateTime selected, double scale = 1.0)
     {
-        var root = new StackPanel { Margin = new Thickness(0, 0, 28, 0) };
+        double cellW    = 30 * scale;
+        double cellH    = 26 * scale;
+        double cellInW  = cellW * 0.86;
+        double cellInH  = cellH * 0.92;
+        double headFont = 14 * scale;
+        double dayFont  = 12 * scale;
+
+        var root = new StackPanel { Margin = new Thickness(0, 0, 28 * scale, 0) };
         root.Children.Add(new TextBlock
         {
             Text = month.ToString("yyyy / MM"), FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 14, Margin = new Thickness(0, 0, 0, 6),
+            FontWeight = FontWeights.Bold, FontSize = headFont, Margin = new Thickness(0, 0, 0, 6 * scale),
             Foreground = new SolidColorBrush(Color.FromRgb(0xCF, 0xCF, 0xCF)),
         });
 
         var grid = new Grid();
         for (int d = 0; d < 7; d++)
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(cellW) });
         for (int r = 0; r < 7; r++)
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(cellH) });
 
         string[] dow = { "日", "月", "火", "水", "木", "金", "土" };
         for (int d = 0; d < 7; d++)
         {
             var tb = new TextBlock
             {
-                Text = dow[d], FontSize = 12, TextAlignment = TextAlignment.Center,
+                Text = dow[d], FontSize = dayFont, TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Foreground = new SolidColorBrush(d == 0 ? Color.FromRgb(0xE8, 0x70, 0x70)
@@ -1728,7 +1753,8 @@ public partial class HomePage : Page, IRefreshable
 
             var cellBorder = new Border
             {
-                CornerRadius = new CornerRadius(13), Width = 26, Height = 24,
+                CornerRadius = new CornerRadius(cellInH / 2),
+                Width = cellInW, Height = cellInH,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Background = isSelected
@@ -1737,7 +1763,7 @@ public partial class HomePage : Page, IRefreshable
                                : (Brush?)null!),
                 Child = new TextBlock
                 {
-                    Text = day.ToString(), FontSize = 12, TextAlignment = TextAlignment.Center,
+                    Text = day.ToString(), FontSize = dayFont, TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = isSelected

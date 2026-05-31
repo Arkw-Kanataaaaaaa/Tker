@@ -323,9 +323,11 @@
                                    TextAlignment="Left" Margin="0,-18,0,0"/>
                     </StackPanel>
 
-                    <!-- 右上: ToDo → タスク → 予定 を縦に積んだオーバーレイ -->
-                    <ScrollViewer HorizontalAlignment="Right" VerticalAlignment="Top"
-                                  Margin="0,28,32,0" Width="360" MaxHeight="640"
+                    <!-- 右上: ToDo → タスク → 予定 を縦に積んだオーバーレイ。
+                         幅・高さはコードでウィンドウサイズに追従させる -->
+                    <ScrollViewer x:Name="CardRightOverlay"
+                                  HorizontalAlignment="Right" VerticalAlignment="Top"
+                                  Margin="0,28,32,0" Width="360"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>

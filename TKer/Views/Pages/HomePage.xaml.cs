@@ -1149,17 +1149,6 @@ public partial class HomePage : Page, IRefreshable
         CardYearText.FontSize  = yearFont;
         CardMonthText.Margin   = new Thickness(0, -monthFont * 0.25, 0, 0);
 
-        // ── 右上オーバーレイ（ToDo/タスク/予定）の寸法をカード領域サイズに追従 ──
-        if (CardRightOverlay != null)
-        {
-            double overlayW = Math.Clamp(w * 0.34, 280, 460);
-            CardRightOverlay.Width = overlayW;
-            // 下端のカレンダーを避けるため下に余裕（h*0.30 程度）を空ける
-            CardRightOverlay.MaxHeight = Math.Max(180, h - h * 0.30 - 56);
-        }
-        if (CardScheduleCard != null)
-            CardScheduleCard.MaxHeight = Math.Clamp(h * 0.32, 180, 360);
-
         // 前面カードの選択日が変わったら、当日スケジュール・年月・ミニカレンダーを更新する
         int selectedOffset = (int)Math.Round(_cardPhase);
         bool sizeOnly = selectedOffset == _cardScheduleShownOffset;
@@ -1286,16 +1275,29 @@ public partial class HomePage : Page, IRefreshable
         Grid.SetRow(dayNum, 1);
         grid.Children.Add(dayNum);
 
-        // 下段：アクセントバー
-        var bottom = new Border
+        // 下段：アクセントバー + 前面カードのサマリーバッジ
+        var bottomRow = new DockPanel();
+        var accentBar = new Border
         {
             Height = 4 * us, Width = 56 * us, CornerRadius = new CornerRadius(2),
-            HorizontalAlignment = HorizontalAlignment.Left,
+            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
             Background = new LinearGradientBrush(
                 accent, Color.FromArgb(0x33, accent.R, accent.G, accent.B), 0),
         };
-        Grid.SetRow(bottom, 2);
-        grid.Children.Add(bottom);
+        DockPanel.SetDock(accentBar, Dock.Left);
+        bottomRow.Children.Add(accentBar);
+
+        if (isFront)
+        {
+            int evCount = GetScheduleEntries(date).Count;
+            int todoCount = _vm.TodoService.GetAll().Count(t => !t.IsCompleted);
+            var badges = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            badges.Children.Add(MakeSummaryBadge("📅", evCount, us));
+            badges.Children.Add(MakeSummaryBadge("✓",  todoCount, us));
+            bottomRow.Children.Add(badges);
+        }
+        Grid.SetRow(bottomRow, 2);
+        grid.Children.Add(bottomRow);
 
         border.Child = grid;
 
@@ -1309,6 +1311,24 @@ public partial class HomePage : Page, IRefreshable
     // ── ウィジェット部品ビルダー ─────────────────────────────
     /// <summary>共通カラー: 二次テキスト。</summary>
     private static Brush CardDimBrush => new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4));
+
+    /// <summary>前面カードに置くサマリーバッジ（アイコン＋件数）を生成する。</summary>
+    private static Border MakeSummaryBadge(string icon, int count, double us)
+    {
+        return new Border
+        {
+            CornerRadius = new CornerRadius(10 * us),
+            Padding = new Thickness(8 * us, 2 * us, 8 * us, 2 * us),
+            Margin = new Thickness(6 * us, 0, 0, 0),
+            Background = new SolidColorBrush(Color.FromArgb(0x88, 0xA6, 0x6B, 0xFF)),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = $"{icon} {count}", FontSize = 11 * us, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Colors.White),
+            },
+        };
+    }
 
     /// <summary>Canvas サイズ変動時にショートカットラインを再構築する。</summary>
     private void CardShortcutCanvas_SizeChanged(object sender, SizeChangedEventArgs e)

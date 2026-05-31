@@ -102,31 +102,24 @@
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
 
-                            <!-- コレクション部品（設定で表示対象を選択可） -->
-                            <Border x:Name="CardCollectionCard" Tag="Card_Collection"
+                            <!-- アラート部品（一番上） -->
+                            <Border x:Name="CardAlertCard" Tag="Card_Alert"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
                                     <DockPanel Margin="0,0,0,10">
-                                        <TextBlock Text="コレクション" DockPanel.Dock="Left"
+                                        <TextBlock Text="アラート" DockPanel.Dock="Left"
                                                    FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
                                                    Foreground="White"/>
-                                        <Button DockPanel.Dock="Right" Content="一覧 ▶"
+                                        <Button DockPanel.Dock="Right" Content="すべて ▶"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Padding="8,3" FontSize="10" HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"
-                                                Click="CardGoToCollection_Click"/>
-                                        <Button DockPanel.Dock="Right" Content="⚙"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Padding="8,3" FontSize="10" Margin="0,0,6,0"
-                                                VerticalAlignment="Center"
-                                                ToolTip="表示するコレクションを選択"
-                                                Click="CardCollectionSettings_Click"/>
+                                                Click="CardAlerts_Click"/>
                                     </DockPanel>
-                                    <WrapPanel x:Name="CardCollectionPanel" Orientation="Horizontal"/>
-                                    <TextBlock x:Name="CardNoCollectionText"
-                                               Text="コレクションがありません"
-                                               FontSize="11" Foreground="#9AA2B4"
-                                               Visibility="Collapsed"/>
+                                    <StackPanel x:Name="CardAlertPanel"/>
+                                    <TextBlock x:Name="CardNoAlertText"
+                                               Text="アラートはありません"
+                                               FontSize="11" Foreground="#9AA2B4"/>
                                 </StackPanel>
                             </Border>
 
@@ -152,31 +145,46 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- アラート部品（期限超過・締切間近・未着手超過） -->
-                            <Border x:Name="CardAlertCard" Tag="Card_Alert"
-                                    Style="{StaticResource CardPanel}">
-                                <StackPanel>
-                                    <DockPanel Margin="0,0,0,10">
-                                        <TextBlock Text="アラート" DockPanel.Dock="Left"
+                            <!-- コレクション | メディア の横分割 -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 左: コレクション部品（編集プレビューでは＋ボタンで対象選択） -->
+                                <Border x:Name="CardCollectionCard" Grid.Column="0"
+                                        Tag="Card_Collection"
+                                        Style="{StaticResource CardPanel}" Margin="0,0,8,0">
+                                    <StackPanel>
+                                        <TextBlock Text="コレクション" Margin="0,0,0,10"
                                                    FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
                                                    Foreground="White"/>
-                                        <Button DockPanel.Dock="Right" Content="すべて ▶"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
-                                                VerticalAlignment="Center"
-                                                Click="CardAlerts_Click"/>
-                                    </DockPanel>
-                                    <StackPanel x:Name="CardAlertPanel"/>
-                                    <TextBlock x:Name="CardNoAlertText"
-                                               Text="アラートはありません"
-                                               FontSize="11" Foreground="#9AA2B4"/>
-                                </StackPanel>
-                            </Border>
+                                        <WrapPanel x:Name="CardCollectionPanel" Orientation="Horizontal"/>
+                                        <TextBlock x:Name="CardNoCollectionText"
+                                                   Text="表示するコレクションが選択されていません"
+                                                   FontSize="11" Foreground="#9AA2B4"
+                                                   Visibility="Collapsed"/>
+                                        <!-- 編集プレビューで表示される＋ボタン（コード側で Visibility 切替） -->
+                                        <Button x:Name="CardCollectionAddBtn" Visibility="Collapsed"
+                                                Margin="0,10,0,0" Cursor="Hand" Background="Transparent"
+                                                BorderThickness="2" BorderBrush="#5229C46E" Padding="8,8"
+                                                Click="CardCollectionAdd_Click">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="＋" FontSize="16" FontWeight="Bold"
+                                                           Foreground="#6ED09A" Margin="0,0,6,0"/>
+                                                <TextBlock Text="コレクションを追加" FontSize="12"
+                                                           Foreground="#6ED09A" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
 
-                            <!-- メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
-                            <Border x:Name="CardMediaRoot" CornerRadius="14" Tag="Card_Media"
-                                    Margin="0,0,0,14" ClipToBounds="True"
-                                    SizeChanged="CardMediaRoot_SizeChanged">
+                                <!-- 右: メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
+                                <Border x:Name="CardMediaRoot" Grid.Column="1"
+                                        CornerRadius="14" Tag="Card_Media"
+                                        Margin="8,0,0,14" ClipToBounds="True"
+                                        SizeChanged="CardMediaRoot_SizeChanged">
                         <Border.Effect>
                             <DropShadowEffect Color="#000000" BlurRadius="18"
                                               ShadowDepth="3" Opacity="0.55"/>
@@ -291,6 +299,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                            </Grid>
                         </StackPanel>
                     </ScrollViewer>
 

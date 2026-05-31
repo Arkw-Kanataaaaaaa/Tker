@@ -1858,16 +1858,20 @@ public partial class HomePage : Page, IRefreshable
 
     // ── コレクション部品 ─────────────────────────────────────
     /// <summary>コレクション一覧をカバー画像 or アイコンのカードで表示する。
-    /// AppSettings.CardCollectionFilter に ID が設定されていれば対象のみ表示（空なら全件）。</summary>
+    /// AppSettings.CardCollectionFilter に登録された ID のみ表示する（空＝何も表示しない）。
+    /// 編集プレビュー時はカード末尾に「＋コレクションを追加」ボタンを表示する。</summary>
     private void BuildCardCollections()
     {
         if (CardCollectionPanel == null) return;
         CardCollectionPanel.Children.Clear();
         var all    = _vm.CollectionService.Collections;
-        var filter = _vm.AppSettingsService.CardCollectionFilter;
-        var cols   = (filter == null || filter.Count == 0)
-            ? all : all.Where(c => filter.Contains(c.Id)).ToList();
-        CardNoCollectionText.Visibility = cols.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var filter = _vm.AppSettingsService.CardCollectionFilter ?? new System.Collections.Generic.List<string>();
+        var cols   = filter.Count == 0
+            ? System.Linq.Enumerable.Empty<Collection>().ToList()
+            : all.Where(c => filter.Contains(c.Id)).ToList();
+        CardNoCollectionText.Visibility = cols.Count == 0 && !IsEditPreview ? Visibility.Visible : Visibility.Collapsed;
+        CardCollectionAddBtn.Visibility = IsEditPreview ? Visibility.Visible : Visibility.Collapsed;
+
         foreach (var col in cols)
         {
             var card = new Border
@@ -1907,7 +1911,12 @@ public partial class HomePage : Page, IRefreshable
             };
             Grid.SetRow(name, 1); g.Children.Add(name);
             card.Child = g;
-            card.MouseLeftButtonUp += (_, _) => _vm.NavigateToCommand.Execute("Collection");
+            var navCol = col;
+            card.MouseLeftButtonUp += (_, _) =>
+            {
+                _vm.SelectedCollection = navCol;
+                _vm.NavigateToCommand.Execute("CollectionItems");
+            };
             CardCollectionPanel.Children.Add(card);
         }
     }
@@ -1968,53 +1977,78 @@ public partial class HomePage : Page, IRefreshable
     private void CardGoToProjects_Click(object sender, RoutedEventArgs e)
         => _vm.NavigateToCommand.Execute("ProjectList");
 
-    /// <summary>コレクション部品の「⚙」: 表示対象を選ぶチェック可能メニューを開く。</summary>
-    private void CardCollectionSettings_Click(object sender, RoutedEventArgs e)
+    /// <summary>編集プレビュー時の「＋コレクションを追加」: 表示対象のコレクションを選ぶダイアログを開く。</summary>
+    private void CardCollectionAdd_Click(object sender, RoutedEventArgs e)
     {
         var all    = _vm.CollectionService.Collections;
         var filter = _vm.AppSettingsService.CardCollectionFilter ?? new System.Collections.Generic.List<string>();
-        var selected = new System.Collections.Generic.HashSet<string>(
-            filter.Count == 0 ? all.Select(c => c.Id) : filter);
+        var selected = new System.Collections.Generic.HashSet<string>(filter);
 
-        var menu = new System.Windows.Controls.ContextMenu();
-        // 「すべて表示」項目
-        var allMi = new System.Windows.Controls.MenuItem
+        var dlg = new Window
         {
-            Header = "すべて表示", IsCheckable = true,
-            IsChecked = filter.Count == 0, StaysOpenOnClick = true,
+            Title = "表示するコレクションを選択",
+            Width = 360, Height = 460,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = Window.GetWindow(this),
+            Background = (Brush)Application.Current.Resources["BgSecondaryBrush"],
+            ResizeMode = ResizeMode.NoResize,
+            WindowStyle = WindowStyle.ToolWindow,
         };
-        allMi.Click += (_, _) =>
+        var root = new DockPanel { Margin = new Thickness(16) };
+
+        var foot = new StackPanel
         {
-            _vm.AppSettingsService.SaveCardCollectionFilter(new System.Collections.Generic.List<string>());
-            BuildCardCollections();
-            menu.IsOpen = false;
+            Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0),
         };
-        menu.Items.Add(allMi);
-        menu.Items.Add(new System.Windows.Controls.Separator());
+        var okBtn = new Button
+        {
+            Content = "OK", Padding = new Thickness(18, 6, 18, 6), Margin = new Thickness(0, 0, 8, 0),
+            Style = (Style)Application.Current.Resources["PrimaryButton"],
+        };
+        var cancelBtn = new Button
+        {
+            Content = "キャンセル", Padding = new Thickness(18, 6, 18, 6),
+            Style = (Style)Application.Current.Resources["SecondaryButton"],
+        };
+        foot.Children.Add(okBtn); foot.Children.Add(cancelBtn);
+        DockPanel.SetDock(foot, Dock.Bottom);
+        root.Children.Add(foot);
+
+        var listScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var listStack = new StackPanel();
+        var checks = new System.Collections.Generic.List<(string id, CheckBox cb)>();
         foreach (var col in all)
         {
-            var mi = new System.Windows.Controls.MenuItem
+            var cb = new CheckBox
             {
-                Header = col.Name, IsCheckable = true,
+                Content = col.Name, Margin = new Thickness(0, 4, 0, 4), FontSize = 13,
+                Foreground = (Brush)Application.Current.Resources["TextPrimaryBrush"],
                 IsChecked = selected.Contains(col.Id),
-                StaysOpenOnClick = true,
             };
-            var id = col.Id;
-            mi.Click += (_, _) =>
-            {
-                if (selected.Contains(id)) selected.Remove(id);
-                else                       selected.Add(id);
-                // 全選択状態なら空にして「全表示」モードに
-                var savedFilter = (selected.Count == all.Count)
-                    ? new System.Collections.Generic.List<string>()
-                    : selected.ToList();
-                _vm.AppSettingsService.SaveCardCollectionFilter(savedFilter);
-                BuildCardCollections();
-            };
-            menu.Items.Add(mi);
+            listStack.Children.Add(cb);
+            checks.Add((col.Id, cb));
         }
-        menu.PlacementTarget = (UIElement)sender;
-        menu.IsOpen = true;
+        if (all.Count == 0)
+            listStack.Children.Add(new TextBlock
+            {
+                Text = "登録されたコレクションがありません", FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+            });
+        listScroll.Content = listStack;
+        root.Children.Add(listScroll);
+
+        okBtn.Click += (_, _) =>
+        {
+            var ids = checks.Where(p => p.cb.IsChecked == true).Select(p => p.id).ToList();
+            _vm.AppSettingsService.SaveCardCollectionFilter(ids);
+            BuildCardCollections();
+            dlg.DialogResult = true;
+        };
+        cancelBtn.Click += (_, _) => dlg.DialogResult = false;
+
+        dlg.Content = root;
+        dlg.ShowDialog();
     }
 
     /// <summary>アクティブプロジェクトのタスク一覧部品を再構築する（未完了を優先）。</summary>

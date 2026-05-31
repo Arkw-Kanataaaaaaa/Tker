@@ -34,7 +34,6 @@ public partial class HomePage : Page, IRefreshable
             var now = DateTime.Now.ToString("HH:mm:ss");
             if (ClockText != null) ClockText.Text = now;
             if (PlanetClockText != null) PlanetClockText.Text = now;
-            if (CardClockText != null) CardClockText.Text = now;
         };
         _clockTimer.Start();
 
@@ -886,8 +885,6 @@ public partial class HomePage : Page, IRefreshable
     private void RefreshCardView()
     {
         CardProjectText.Text = _vm.IsProjectLoaded ? _vm.ProjectTitle : "TKer";
-        CardDateText.Text    = DateTime.Now.ToString("yyyy年MM月dd日 (ddd)");
-        CardClockText.Text   = DateTime.Now.ToString("HH:mm:ss");
 
         BuildCardShortcuts();
         BuildCardCollections();

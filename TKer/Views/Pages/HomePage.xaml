@@ -92,17 +92,9 @@
                           HorizontalScrollBarVisibility="Disabled" Padding="24,24,8,12">
                 <StackPanel>
                     <!-- ヘッダー -->
-                    <TextBlock x:Name="CardProjectText"
+                    <TextBlock x:Name="CardProjectText" Margin="0,0,0,16"
                                FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="26"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,4,0,16">
-                        <TextBlock x:Name="CardDateText"
-                                   FontFamily="Consolas" FontSize="13"
-                                   Foreground="{StaticResource TextSecondaryBrush}"/>
-                        <TextBlock x:Name="CardClockText" Margin="12,0,0,0"
-                                   FontFamily="Consolas" FontSize="13"
-                                   Foreground="{StaticResource TextDimBrush}"/>
-                    </StackPanel>
 
                     <!-- メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
                     <Border x:Name="CardMediaRoot" CornerRadius="14" Margin="0,0,0,14"

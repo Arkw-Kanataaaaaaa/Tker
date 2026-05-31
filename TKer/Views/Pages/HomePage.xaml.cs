@@ -36,7 +36,7 @@ public partial class HomePage : Page, IRefreshable
         };
         _clockTimer.Start();
 
-        Unloaded += (_, _) => _clockTimer.Stop();
+        Unloaded += (_, _) => { _clockTimer.Stop(); StopCardAnimation(); };
         Loaded   += (_, _) => _clockTimer.Start();
     }
 
@@ -865,6 +865,10 @@ public partial class HomePage : Page, IRefreshable
 
     /// <summary>連続スクロール位相（1.0 = カード1枚分）。値が増えるほど未来日へ進む。</summary>
     private double _cardPhase = 0.0;
+    /// <summary>アニメーションで目指すカード位相。</summary>
+    private double _cardPhaseTarget = 0.0;
+    /// <summary>カードスクロールのイージングアニメーション用タイマー。</summary>
+    private DispatcherTimer? _cardAnimTimer;
     /// <summary>カードドラッグ中フラグ。</summary>
     private bool _cardDragging = false;
     /// <summary>カードドラッグ直前のカーソル位置。</summary>
@@ -1054,16 +1058,19 @@ public partial class HomePage : Page, IRefreshable
     }
 
     // ── 入力ハンドラ（ホイール/ドラッグでカードを上下に流す）──────────
-    /// <summary>マウスホイールでカードを1枚分めくる。</summary>
+    /// <summary>マウスホイールでカードを1枚分、滑らかにめくる。</summary>
     private void CardCanvas_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
-        UpdateCardPhase(_cardPhase + (e.Delta > 0 ? 1.0 : -1.0));
+        // 連続ホイールでも積み上げて目標位相を更新し、アニメーションで追従する
+        _cardPhaseTarget += (e.Delta > 0 ? 1.0 : -1.0);
+        StartCardAnimation();
         e.Handled = true;
     }
 
     /// <summary>左ボタン押下でドラッグ開始、マウスをキャプチャしてカーソルを変更する。</summary>
     private void CardCanvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        StopCardAnimation();
         _cardDragging = true;
         _cardDragLastPos = e.GetPosition(CardCanvas);
         CardCanvas.CaptureMouse();
@@ -1080,23 +1087,47 @@ public partial class HomePage : Page, IRefreshable
         _cardDragLastPos = pos;
         // 下へドラッグ(dy>0) = カードが下へ流れる = 未来日へ進む
         if (dy != 0)
-            UpdateCardPhase(_cardPhase + dy / CARD_DRAG_PX_PER_CARD);
+        {
+            _cardPhase += dy / CARD_DRAG_PX_PER_CARD;
+            _cardPhaseTarget = _cardPhase;
+            BuildCards();
+        }
     }
 
-    /// <summary>マウスアップでドラッグ終了し、位相を最寄りのカードへスナップする。</summary>
+    /// <summary>マウスアップでドラッグ終了し、位相を最寄りのカードへ滑らかにスナップする。</summary>
     private void CardCanvas_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (!_cardDragging) return;
         _cardDragging = false;
         CardCanvas.ReleaseMouseCapture();
         CardCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
-        UpdateCardPhase(Math.Round(_cardPhase));
+        _cardPhaseTarget = Math.Round(_cardPhase);
+        StartCardAnimation();
     }
 
-    /// <summary>カード位相を更新して再描画する。</summary>
-    private void UpdateCardPhase(double newPhase)
+    /// <summary>目標位相へ向けてカードを毎フレーム滑らかに補間するアニメーションを開始する。</summary>
+    private void StartCardAnimation()
     {
-        _cardPhase = newPhase;
-        BuildCards();
+        if (_cardAnimTimer == null)
+        {
+            _cardAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+            _cardAnimTimer.Tick += (_, _) =>
+            {
+                double diff = _cardPhaseTarget - _cardPhase;
+                if (Math.Abs(diff) < 0.004)
+                {
+                    _cardPhase = _cardPhaseTarget;
+                    BuildCards();
+                    StopCardAnimation();
+                    return;
+                }
+                _cardPhase += diff * 0.22;   // イージング（指数減衰）
+                BuildCards();
+            };
+        }
+        _cardAnimTimer.Start();
     }
+
+    /// <summary>カードアニメーションを停止する。</summary>
+    private void StopCardAnimation() => _cardAnimTimer?.Stop();
 }

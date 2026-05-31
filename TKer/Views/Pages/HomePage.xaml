@@ -101,66 +101,6 @@
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
 
-                            <Border x:Name="CardTodoCard" Tag="Card_Todo"
-                                    Style="{StaticResource CardPanel}">
-                                <StackPanel>
-                                    <DockPanel Margin="0,0,0,10">
-                                        <TextBlock Text="ToDo" DockPanel.Dock="Left"
-                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
-                                                   Foreground="White"/>
-                                        <Button DockPanel.Dock="Right" Content="一覧 ▶"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
-                                                VerticalAlignment="Center"
-                                                Click="CardGoToTodo_Click"/>
-                                    </DockPanel>
-                                    <StackPanel x:Name="CardTodoPanel"/>
-                                    <TextBlock x:Name="CardNoTodoText" Text="未完了の ToDo はありません"
-                                               FontSize="11" Foreground="#9AA2B4"
-                                               Visibility="Collapsed"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border x:Name="CardTasksCard" Tag="Card_Tasks"
-                                    Style="{StaticResource CardPanel}">
-                                <StackPanel>
-                                    <DockPanel Margin="0,0,0,10">
-                                        <TextBlock Text="タスク" DockPanel.Dock="Left"
-                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
-                                                   Foreground="White"/>
-                                        <Button DockPanel.Dock="Right" Content="管理 ▶"
-                                                Style="{StaticResource SecondaryButton}"
-                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
-                                                VerticalAlignment="Center"
-                                                Click="CardGoToTaskList_Click"/>
-                                    </DockPanel>
-                                    <StackPanel x:Name="CardTaskPanel"/>
-                                    <TextBlock x:Name="CardNoTaskText" Text="プロジェクトを開くとタスクが表示されます"
-                                               FontSize="11" Foreground="#9AA2B4"
-                                               Visibility="Collapsed"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- 予定（時間単位、内部スクロール） -->
-                            <Border x:Name="CardScheduleCard" Tag="Card_Schedule"
-                                    Style="{StaticResource CardPanel}" MaxHeight="320">
-                                <DockPanel>
-                                    <TextBlock DockPanel.Dock="Top" Text="予定"
-                                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
-                                               Foreground="White" Margin="0,0,0,10"/>
-                                    <ScrollViewer x:Name="CardScheduleScroll"
-                                                  VerticalScrollBarVisibility="Auto"
-                                                  HorizontalScrollBarVisibility="Disabled">
-                                        <StackPanel x:Name="CardSchedulePanel"/>
-                                    </ScrollViewer>
-                                </DockPanel>
-                            </Border>
-
-                            <!-- 2か月分ミニカレンダー（枠なし背景なし） -->
-                            <StackPanel x:Name="CardMiniCalendarHost"
-                                        Orientation="Horizontal"
-                                        Margin="6,8,0,14"/>
-
                             <!-- コレクション部品 -->
                             <Border x:Name="CardCollectionCard" Tag="Card_Collection"
                                     Style="{StaticResource CardPanel}">
@@ -382,6 +322,74 @@
                                    Foreground="#CCFFFFFF" HorizontalAlignment="Left"
                                    TextAlignment="Left" Margin="0,-18,0,0"/>
                     </StackPanel>
+
+                    <!-- 右上: ToDo → タスク → 予定 を縦に積んだオーバーレイ -->
+                    <ScrollViewer HorizontalAlignment="Right" VerticalAlignment="Top"
+                                  Margin="0,28,32,0" Width="360" MaxHeight="640"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <Border x:Name="CardTodoCard" Tag="Card_Todo"
+                                    Style="{StaticResource CardPanel}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock Text="ToDo" DockPanel.Dock="Left"
+                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                                   Foreground="White"/>
+                                        <Button DockPanel.Dock="Right" Content="一覧 ▶"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Click="CardGoToTodo_Click"/>
+                                    </DockPanel>
+                                    <StackPanel x:Name="CardTodoPanel"/>
+                                    <TextBlock x:Name="CardNoTodoText" Text="未完了の ToDo はありません"
+                                               FontSize="11" Foreground="#9AA2B4"
+                                               Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="CardTasksCard" Tag="Card_Tasks"
+                                    Style="{StaticResource CardPanel}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock Text="タスク" DockPanel.Dock="Left"
+                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                                   Foreground="White"/>
+                                        <Button DockPanel.Dock="Right" Content="管理 ▶"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Click="CardGoToTaskList_Click"/>
+                                    </DockPanel>
+                                    <StackPanel x:Name="CardTaskPanel"/>
+                                    <TextBlock x:Name="CardNoTaskText" Text="プロジェクトを開くとタスクが表示されます"
+                                               FontSize="11" Foreground="#9AA2B4"
+                                               Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="CardScheduleCard" Tag="Card_Schedule"
+                                    Style="{StaticResource CardPanel}" MaxHeight="280">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Text="予定"
+                                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                               Foreground="White" Margin="0,0,0,10"/>
+                                    <ScrollViewer x:Name="CardScheduleScroll"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="CardSchedulePanel"/>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- 右下: 2か月分ミニカレンダー（枠なし背景なし） -->
+                    <StackPanel x:Name="CardMiniCalendarHost"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Margin="0,0,32,28"/>
                 </Grid>
             </Grid>
 

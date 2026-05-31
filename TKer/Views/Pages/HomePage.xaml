@@ -251,38 +251,71 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ── 右ペイン: カードスタック + 当日スケジュール ── -->
+            <!-- ── 右ペイン: 左=当日スケジュール / 右=カードスタック ── -->
             <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="210"/>
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="330"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- カードスタック -->
-                <Canvas x:Name="CardCanvas" Grid.Row="0" ClipToBounds="True" Background="Transparent"
-                        SizeChanged="CardCanvas_SizeChanged"
-                        MouseWheel="CardCanvas_MouseWheel"
-                        MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
-                        MouseMove="CardCanvas_MouseMove"
-                        MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
-
-                <!-- 選択日の時間単位スケジュール -->
-                <Border Grid.Row="1" Margin="12,0,24,24" CornerRadius="12"
-                        Background="#1A1F2E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                    <DockPanel Margin="14,10,14,12">
-                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-                            <Path Data="{StaticResource Bi.Calendar3}" Style="{StaticResource BiIconSm}"
-                                  Fill="{StaticResource AccentBlueBrush}" Margin="0,0,6,0"/>
+                <!-- 選択日の時間単位スケジュール（カード風外観） -->
+                <Border Grid.Column="0" Margin="20,28,8,28" CornerRadius="16"
+                        BorderThickness="2">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#F22A2A66" Offset="0"/>
+                            <GradientStop Color="#F2171740" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="#A66BFF"/>
+                    </Border.BorderBrush>
+                    <Border.Effect>
+                        <DropShadowEffect Color="#A66BFF" BlurRadius="28" ShadowDepth="0" Opacity="0.5"/>
+                    </Border.Effect>
+                    <DockPanel Margin="18,16,18,16">
+                        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
                             <TextBlock x:Name="CardScheduleTitle" Text="予定"
-                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
-                                       Foreground="{StaticResource TextPrimaryBrush}"
-                                       VerticalAlignment="Center"/>
+                                       FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="18"
+                                       Foreground="White"/>
+                            <Border Height="4" Width="56" CornerRadius="2"
+                                    HorizontalAlignment="Left" Margin="0,8,0,0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#A66BFF" Offset="0"/>
+                                        <GradientStop Color="#33A66BFF" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
                         </StackPanel>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel x:Name="CardSchedulePanel"/>
                         </ScrollViewer>
                     </DockPanel>
                 </Border>
+
+                <!-- カードスタック + 右下の年月 -->
+                <Grid Grid.Column="1">
+                    <Canvas x:Name="CardCanvas" ClipToBounds="True" Background="Transparent"
+                            SizeChanged="CardCanvas_SizeChanged"
+                            MouseWheel="CardCanvas_MouseWheel"
+                            MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
+                            MouseMove="CardCanvas_MouseMove"
+                            MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
+
+                    <!-- 選択カードの年(4桁)/月(2桁) -->
+                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Margin="0,0,32,24" IsHitTestVisible="False">
+                        <TextBlock x:Name="CardYearText" Text="----"
+                                   FontFamily="Segoe UI" FontWeight="Black" FontSize="44"
+                                   Foreground="#66E0E6F2" HorizontalAlignment="Right"
+                                   TextAlignment="Right"/>
+                        <TextBlock x:Name="CardMonthText" Text="--"
+                                   FontFamily="Segoe UI" FontWeight="Black" FontSize="72"
+                                   Foreground="#CCFFFFFF" HorizontalAlignment="Right"
+                                   TextAlignment="Right" Margin="0,-18,0,0"/>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

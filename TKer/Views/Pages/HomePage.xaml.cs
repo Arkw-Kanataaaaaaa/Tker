@@ -911,20 +911,20 @@ public partial class HomePage : Page, IRefreshable
 
         CardCanvas.Children.Clear();
 
-        // ── 配置パラメータ ─────────────────────────────
-        double cardW = Math.Min(w * 0.30, 300);
+        // ── 配置パラメータ（カード幅はウィンドウ幅に追従）──────────
+        double cardW = Math.Min(w * 0.34, 340);
         double cardH = cardW * 1.34;
-        double stepX  = cardW * 0.42;   // 1段ごとの右シフト
-        double stepY  = cardH * 0.20;   // 1段ごとの上シフト
+        double stepY = cardH * 0.20;   // 1段ごとの上シフト（縦方向は一定）
 
-        // 最奥カードの右端をウィンドウ右端近くに合わせ、スタック全体を右へ寄せる。
+        // 前面カードは左端寄り、最奥カードの右端をウィンドウ右端付近に合わせる。
+        // stepX（横シフト）をウィンドウ幅から逆算するため、スタックの傾き角度が幅に追従する。
         const double rightMargin = 28;
         double backScale = Math.Pow(CARD_DEPTH_SCALE, CARD_VISIBLE_COUNT);
-        double frontX = w - rightMargin - cardW * backScale / 2 - CARD_VISIBLE_COUNT * stepX;
-        // 前面カードが左にはみ出さないよう下限を設ける
-        double minFrontX = cardW * 0.5 + 16;
-        if (frontX < minFrontX) frontX = minFrontX;
-        double frontY = h * 0.60;
+        double frontX = cardW * 0.5 + 16;
+        double backCenterTarget = w - rightMargin - cardW * backScale / 2;
+        double stepX = (backCenterTarget - frontX) / CARD_VISIBLE_COUNT;
+        if (stepX < cardW * 0.16) stepX = cardW * 0.16;   // 最小間隔（重なりすぎ防止）
+        double frontY = h * 0.62;
 
         double frac = _cardPhase - Math.Floor(_cardPhase); // 0..1
         int    baseOffset = (int)Math.Floor(_cardPhase);
@@ -940,12 +940,15 @@ public partial class HomePage : Page, IRefreshable
             AddCard(frontX, frontY, cardW, cardH, depth, stepX, stepY, dateOffset);
         }
 
-        // 前面カードの選択日が変わったら、当日スケジュール部品を更新する
+        // 前面カードの選択日が変わったら、当日スケジュール・年月表示を更新する
         int selectedOffset = (int)Math.Round(_cardPhase);
         if (selectedOffset != _cardScheduleShownOffset)
         {
             _cardScheduleShownOffset = selectedOffset;
-            BuildCardSchedule(DateTime.Today.AddDays(selectedOffset));
+            var selDate = DateTime.Today.AddDays(selectedOffset);
+            BuildCardSchedule(selDate);
+            CardYearText.Text  = selDate.ToString("yyyy");
+            CardMonthText.Text = selDate.ToString("MM");
         }
     }
 
@@ -1006,8 +1009,9 @@ public partial class HomePage : Page, IRefreshable
                 },
         };
 
-        // 内容
-        var grid = new Grid { Margin = new Thickness(18, 16, 18, 16) };
+        // ── 内容（フォント・余白はカード幅 cardW に比例 → ウィンドウ幅で自動調整）──
+        double us = cardW / 300.0;   // 基準幅300pxに対する倍率
+        var grid = new Grid { Margin = new Thickness(18 * us, 16 * us, 18 * us, 16 * us) };
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -1018,7 +1022,7 @@ public partial class HomePage : Page, IRefreshable
         {
             Text = date.ToString("ddd"),
             FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 18,
+            FontWeight = FontWeights.Bold, FontSize = 18 * us,
             Foreground = new SolidColorBrush(
                 isFront ? Color.FromRgb(0xE6, 0xD8, 0xFF) : Color.FromRgb(0xAE, 0xC2, 0xE0)),
         });
@@ -1026,14 +1030,14 @@ public partial class HomePage : Page, IRefreshable
         {
             top.Children.Add(new Border
             {
-                Margin = new Thickness(8, 1, 0, 0),
+                Margin = new Thickness(8 * us, 1, 0, 0),
                 Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x4F)),
                 CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(6, 1, 6, 1),
+                Padding = new Thickness(6 * us, 1, 6 * us, 1),
                 VerticalAlignment = VerticalAlignment.Center,
                 Child = new TextBlock
                 {
-                    Text = "TODAY", FontSize = 10, FontWeight = FontWeights.Bold,
+                    Text = "TODAY", FontSize = 10 * us, FontWeight = FontWeights.Bold,
                     Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x28, 0x00)),
                 }
             });
@@ -1047,7 +1051,7 @@ public partial class HomePage : Page, IRefreshable
             Text = date.Day.ToString(),
             FontFamily = new FontFamily("Segoe UI"),
             FontWeight = FontWeights.Black,
-            FontSize = 72,
+            FontSize = 72 * us,
             Foreground = new SolidColorBrush(
                 isFront ? Colors.White : Color.FromRgb(0xC8, 0xD4, 0xE8)),
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -1056,23 +1060,14 @@ public partial class HomePage : Page, IRefreshable
         Grid.SetRow(dayNum, 1);
         grid.Children.Add(dayNum);
 
-        // 下段：年月 + アクセントバー
-        var bottom = new StackPanel();
-        bottom.Children.Add(new Border
+        // 下段：アクセントバーのみ（年月はカード領域右下に集約表示するため非表示）
+        var bottom = new Border
         {
-            Height = 4, Width = 56, CornerRadius = new CornerRadius(2),
+            Height = 4 * us, Width = 56 * us, CornerRadius = new CornerRadius(2),
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 0, 8),
             Background = new LinearGradientBrush(
                 accent, Color.FromArgb(0x33, accent.R, accent.G, accent.B), 0),
-        });
-        bottom.Children.Add(new TextBlock
-        {
-            Text = date.ToString("yyyy / MM"),
-            FontFamily = new FontFamily("Consolas"), FontSize = 14,
-            Foreground = new SolidColorBrush(
-                isFront ? Color.FromRgb(0xCF, 0xBF, 0xF2) : Color.FromRgb(0x90, 0xA2, 0xBE)),
-        });
+        };
         Grid.SetRow(bottom, 2);
         grid.Children.Add(bottom);
 
@@ -1291,39 +1286,44 @@ public partial class HomePage : Page, IRefreshable
 
         foreach (var (time, label, color) in rows.OrderBy(r => r.time))
         {
-            var g = new Grid { Margin = new Thickness(0, 0, 0, 5) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+            // 予定1件をミニカード（角丸チップ）として表示
+            var chip = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 8), CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(12, 9, 12, 9),
+                Background = new SolidColorBrush(Color.FromArgb(0x4D, 0x12, 0x18, 0x28)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, color.R, color.G, color.B)),
+                BorderThickness = new Thickness(1),
+            };
+            var g = new Grid();
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var timeTb = new TextBlock
-            {
-                Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 12,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xBE, 0xC8, 0xDC)),
-            };
-            Grid.SetColumn(timeTb, 0);
-            g.Children.Add(timeTb);
-
             var bar = new Border
             {
-                Width = 4, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 0, 1),
+                Width = 4, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 10, 1),
                 Background = new SolidColorBrush(color),
             };
-            Grid.SetColumn(bar, 1);
+            Grid.SetColumn(bar, 0);
             g.Children.Add(bar);
 
-            var labelTb = new TextBlock
+            var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock
             {
-                Text = label, FontSize = 12, Margin = new Thickness(8, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
+                Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 11, FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromArgb(0xFF, color.R, color.G, color.B)),
+            });
+            sp.Children.Add(new TextBlock
+            {
+                Text = label, FontSize = 13, Margin = new Thickness(0, 2, 0, 0),
+                TextWrapping = TextWrapping.Wrap,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
-            };
-            Grid.SetColumn(labelTb, 2);
-            g.Children.Add(labelTb);
+            });
+            Grid.SetColumn(sp, 1);
+            g.Children.Add(sp);
 
-            CardSchedulePanel.Children.Add(g);
+            chip.Child = g;
+            CardSchedulePanel.Children.Add(chip);
         }
     }
 

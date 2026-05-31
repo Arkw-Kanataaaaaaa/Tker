@@ -224,6 +224,33 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>カードテンプレート右列のスロット配置（順序＋幅モード）。空ならデフォルトを生成して返す。</summary>
+    public List<CardRightSlot> CardRightSlots
+    {
+        get
+        {
+            if (_settings.CardRightSlots == null || _settings.CardRightSlots.Count == 0)
+            {
+                return new List<CardRightSlot>
+                {
+                    new() { Key = "Card_Alert",      Mode = "Full" },
+                    new() { Key = "Card_TodoTasks",  Mode = "Full" },
+                    new() { Key = "Card_Schedule",   Mode = "Full" },
+                    new() { Key = "Card_Projects",   Mode = "Full" },
+                    new() { Key = "Card_Collection", Mode = "HalfLeft" },
+                    new() { Key = "Card_Media",      Mode = "HalfRight" },
+                };
+            }
+            return _settings.CardRightSlots;
+        }
+    }
+    /// <summary>右列スロット配置を保存する。</summary>
+    public void SaveCardRightSlots(List<CardRightSlot> slots)
+    {
+        _settings.CardRightSlots = slots ?? new List<CardRightSlot>();
+        Save();
+    }
+
     /// <summary>ウィンドウ背景モード ("Wallpaper" | "Color")。</summary>
     public string WindowBackgroundMode
         => string.IsNullOrEmpty(_settings.WindowBackgroundMode) ? "Wallpaper" : _settings.WindowBackgroundMode;

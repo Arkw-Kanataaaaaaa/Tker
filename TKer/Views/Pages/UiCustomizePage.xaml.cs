@@ -369,9 +369,18 @@ public partial class UiCustomizePage : Page, IRefreshable
         }
     }
 
-    /// <summary>ライブプレビュー上のクリックで、Tag を持つ部品を選択してスタイル編集パネルを開く。</summary>
+    /// <summary>ライブプレビュー上のクリックで、Tag を持つ部品を選択してスタイル編集パネルを開く。
+    /// ただしクリック対象がボタンの場合はボタン自身の Click を優先させる。</summary>
     private void LivePreview_Click(object sender, MouseButtonEventArgs e)
     {
+        // クリック対象の祖先に Button があれば素通し（＋ボタン等の動作を妨げない）
+        var n = e.OriginalSource as DependencyObject;
+        while (n != null)
+        {
+            if (n is System.Windows.Controls.Primitives.ButtonBase) return;
+            n = VisualTreeHelper.GetParent(n);
+        }
+
         var node = e.OriginalSource as DependencyObject;
         while (node != null)
         {

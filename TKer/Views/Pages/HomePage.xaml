@@ -100,7 +100,7 @@
                 <ScrollViewer Grid.Row="0" Margin="16,28,8,4"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
+                    <StackPanel x:Name="CardRightStack">
 
                             <!-- アラート部品（一番上） -->
                             <Border x:Name="CardAlertCard" Tag="Card_Alert"
@@ -196,17 +196,9 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- コレクション | メディア の横分割 -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 左: コレクション部品（編集プレビューでは＋ボタンで対象選択） -->
-                                <Border x:Name="CardCollectionCard" Grid.Column="0"
-                                        Tag="Card_Collection"
-                                        Style="{StaticResource CardPanel}" Margin="0,0,8,0">
+                            <!-- コレクション部品（編集プレビューでは＋ボタンで対象選択） -->
+                            <Border x:Name="CardCollectionCard" Tag="Card_Collection"
+                                    Style="{StaticResource CardPanel}">
                                     <StackPanel>
                                         <TextBlock Text="コレクション" Margin="0,0,0,10"
                                                    FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
@@ -231,11 +223,11 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- 右: メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
-                                <Border x:Name="CardMediaRoot" Grid.Column="1"
-                                        CornerRadius="14" Tag="Card_Media"
-                                        Margin="8,0,0,14" ClipToBounds="True"
-                                        SizeChanged="CardMediaRoot_SizeChanged">
+                            <!-- メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
+                            <Border x:Name="CardMediaRoot"
+                                    CornerRadius="14" Tag="Card_Media"
+                                    Margin="0,0,0,14" ClipToBounds="True"
+                                    SizeChanged="CardMediaRoot_SizeChanged">
                         <Border.Effect>
                             <DropShadowEffect Color="#000000" BlurRadius="18"
                                               ShadowDepth="3" Opacity="0.55"/>
@@ -350,7 +342,6 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                            </Grid>
                         </StackPanel>
                     </ScrollViewer>
 

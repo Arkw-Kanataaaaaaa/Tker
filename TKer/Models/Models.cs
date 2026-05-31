@@ -40,6 +40,8 @@ public class AppSettings
     public List<string> CardLeftParts { get; set; } = new();
     /// <summary>カードテンプレートのコレクション部品に表示するコレクション ID 一覧（空なら全件表示）。</summary>
     public List<string> CardCollectionFilter { get; set; } = new();
+    /// <summary>カードテンプレートの右列スロット配置（順序と半幅モード）。</summary>
+    public List<CardRightSlot> CardRightSlots { get; set; } = new();
     /// <summary>ホーム画面のレイアウトスロット定義。</summary>
     public Dictionary<string, HomeLayoutSlot> HomeLayout { get; set; } = new();
     /// <summary>ホーム画面の列幅。要素の意味: &gt;0=px, 0=Auto, &lt;0=Star（-1なら1*, -2なら2*）</summary>
@@ -152,6 +154,15 @@ public class BookmarkWidgetSettings
     public double TabTop    { get; set; } = double.NaN;
     /// <summary>ウィジェットを表示するかどうか。</summary>
     public bool   IsVisible { get; set; } = true;
+}
+
+/// <summary>カードテンプレート右列の 1 スロット定義（部品キーと幅モード）。</summary>
+public class CardRightSlot
+{
+    /// <summary>部品キー (Card_Alert / Card_TodoTasks / Card_Schedule / Card_Projects / Card_Collection / Card_Media)。</summary>
+    public string Key { get; set; } = "";
+    /// <summary>幅モード ("Full" | "HalfLeft" | "HalfRight")。HalfLeft の直後の HalfRight と 1 行にペア化される。</summary>
+    public string Mode { get; set; } = "Full";
 }
 
 // ══════════════════════════════════════════════

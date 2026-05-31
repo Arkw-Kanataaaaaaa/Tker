@@ -904,6 +904,7 @@ public partial class HomePage : Page, IRefreshable
         BuildCardCollections();
         BuildCardProjects();
         BuildCardAlerts();
+        ApplyCardRightLayout();
         _cardScheduleShownOffset = int.MinValue;   // 強制再構築
         BuildCards();
         StartCardMedia();
@@ -1306,6 +1307,216 @@ public partial class HomePage : Page, IRefreshable
         Canvas.SetLeft(border, cx - sw / 2);
         Canvas.SetTop(border,  cy - sh / 2);
         CardCanvas.Children.Add(border);
+    }
+
+    // ── 右列の動的レイアウト（順序・半幅ペア）─────────────────
+    /// <summary>右列の部品キー → 実 Border のマップ。</summary>
+    private System.Collections.Generic.Dictionary<string, Border> CardRightWidgetMap()
+        => new()
+        {
+            ["Card_Alert"]      = CardAlertCard,
+            ["Card_TodoTasks"]  = CardTodoTasksCard,
+            ["Card_Schedule"]   = CardScheduleCard,
+            ["Card_Projects"]   = CardProjectsCard,
+            ["Card_Collection"] = CardCollectionCard,
+            ["Card_Media"]      = CardMediaRoot,
+        };
+
+    /// <summary>保存済みスロット配置に従って右列の部品を並べ替え・半幅ペア化する。
+    /// 編集プレビュー時にはドラッグ並べ替えのハンドラも仕掛ける。</summary>
+    private void ApplyCardRightLayout()
+    {
+        if (CardRightStack == null) return;
+        var map   = CardRightWidgetMap();
+        var slots = _vm.AppSettingsService.CardRightSlots
+            .Where(s => map.ContainsKey(s.Key))
+            .ToList();
+
+        // いったん全部品を親から切り離し
+        foreach (var w in map.Values)
+            (w.Parent as Panel)?.Children.Remove(w);
+        CardRightStack.Children.Clear();
+
+        int i = 0;
+        while (i < slots.Count)
+        {
+            var cur = slots[i];
+            bool pair = cur.Mode == "HalfLeft"
+                        && i + 1 < slots.Count
+                        && slots[i + 1].Mode == "HalfRight";
+            if (pair)
+            {
+                var g = new Grid { Margin = new Thickness(0, 0, 0, 14), Tag = "CardRightPair" };
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var l = map[cur.Key];
+                var r = map[slots[i + 1].Key];
+                l.Margin = new Thickness(0, 0, 8, 0);
+                r.Margin = new Thickness(8, 0, 0, 0);
+                Grid.SetColumn(l, 0); Grid.SetColumn(r, 1);
+                g.Children.Add(l); g.Children.Add(r);
+                CardRightStack.Children.Add(g);
+                i += 2;
+            }
+            else
+            {
+                var w = map[cur.Key];
+                w.Margin = new Thickness(0, 0, 0, 14);
+                CardRightStack.Children.Add(w);
+                i++;
+            }
+        }
+        // 編集プレビュー時はドラッグハンドラを仕掛ける
+        if (IsEditPreview)
+            HookCardRightDrag();
+    }
+
+    /// <summary>右列のドラッグ並べ替え/半幅スナップを有効化する。</summary>
+    private void HookCardRightDrag()
+    {
+        CardRightStack.PreviewMouseLeftButtonDown -= CardRight_Down;
+        CardRightStack.PreviewMouseMove           -= CardRight_Move;
+        CardRightStack.PreviewMouseLeftButtonUp   -= CardRight_Up;
+        CardRightStack.PreviewMouseLeftButtonDown += CardRight_Down;
+        CardRightStack.PreviewMouseMove           += CardRight_Move;
+        CardRightStack.PreviewMouseLeftButtonUp   += CardRight_Up;
+    }
+
+    private Border? _crDrag;
+    private Point  _crStart;
+    private bool   _crActive;
+    private TranslateTransform? _crTf;
+
+    private Border? FindCardRightWidget(object? src)
+    {
+        var keys = CardRightWidgetMap();
+        var n = src as DependencyObject;
+        while (n != null)
+        {
+            if (n is Border b && b.Tag is string t && keys.ContainsKey(t)) return b;
+            n = System.Windows.Media.VisualTreeHelper.GetParent(n);
+        }
+        return null;
+    }
+
+    private void CardRight_Down(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!IsEditPreview) return;
+        // ボタンクリックは素通し
+        var n = e.OriginalSource as DependencyObject;
+        while (n != null)
+        {
+            if (n is System.Windows.Controls.Primitives.ButtonBase) return;
+            n = System.Windows.Media.VisualTreeHelper.GetParent(n);
+        }
+        var part = FindCardRightWidget(e.OriginalSource);
+        if (part == null) return;
+        _crDrag = part;
+        _crStart = e.GetPosition(CardRightStack);
+        _crActive = false;
+        CardRightStack.CaptureMouse();
+    }
+
+    private void CardRight_Move(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_crDrag == null || e.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
+        var pos = e.GetPosition(CardRightStack);
+        double dy = pos.Y - _crStart.Y;
+        if (!_crActive)
+        {
+            if (Math.Abs(dy) < 6) return;
+            _crActive = true;
+            _crTf = new TranslateTransform();
+            _crDrag.RenderTransform = _crTf;
+            _crDrag.Opacity = 0.8;
+            Panel.SetZIndex(_crDrag, 10);
+        }
+        _crTf!.Y = dy;
+        e.Handled = true;
+    }
+
+    private void CardRight_Up(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_crDrag == null) return;
+        if (!_crActive)
+        {
+            _crDrag = null;
+            CardRightStack.ReleaseMouseCapture();
+            return;
+        }
+
+        var drag = _crDrag;
+        var pos  = e.GetPosition(CardRightStack);
+        // 視覚効果を戻す
+        drag.RenderTransform = null;
+        drag.Opacity = 1.0;
+        Panel.SetZIndex(drag, 0);
+
+        var slots = _vm.AppSettingsService.CardRightSlots
+            .Where(s => CardRightWidgetMap().ContainsKey(s.Key)).ToList();
+        string dragKey = (string)drag.Tag;
+        int dragIdx = slots.FindIndex(s => s.Key == dragKey);
+        if (dragIdx < 0) { _crDrag = null; CardRightStack.ReleaseMouseCapture(); return; }
+        slots.RemoveAt(dragIdx);
+
+        // ドロップ先 Y 位置から挿入インデックスを決定
+        int targetIdx = slots.Count;
+        double y = 0;
+        for (int s = 0; s < slots.Count; s++)
+        {
+            // スロットを描画したときの位置を概算する
+            double h = EstimateSlotHeight(slots[s]);
+            if (pos.Y < y + h / 2) { targetIdx = s; break; }
+            y += h;
+        }
+
+        // 横位置から幅モード判定
+        double stackW = CardRightStack.ActualWidth;
+        string newMode = "Full";
+        if (stackW > 0)
+        {
+            double frac = pos.X / stackW;
+            if (frac < 0.30)      newMode = "HalfLeft";
+            else if (frac > 0.70) newMode = "HalfRight";
+        }
+
+        var newSlot = new CardRightSlot { Key = dragKey, Mode = newMode };
+        slots.Insert(targetIdx, newSlot);
+
+        // 半幅整合: HalfLeft の直後に HalfLeft や Full が来たら HalfRight に補正
+        NormalizeRightSlots(slots);
+
+        _vm.AppSettingsService.SaveCardRightSlots(slots);
+        _crDrag = null; _crActive = false;
+        CardRightStack.ReleaseMouseCapture();
+        ApplyCardRightLayout();
+    }
+
+    /// <summary>スロットの推定行高さ（並べ替え位置判定用）。</summary>
+    private double EstimateSlotHeight(CardRightSlot s) => s.Mode switch
+    {
+        "HalfLeft"  => CardRightStack.ActualWidth > 0 ? 240 : 240,
+        "HalfRight" => 0,   // 直前 HalfLeft と同行
+        _           => 180,
+    };
+
+    /// <summary>HalfLeft/HalfRight の組合せを整える: 孤立した Half を Full に変換、または相方を補う。</summary>
+    private static void NormalizeRightSlots(List<CardRightSlot> slots)
+    {
+        // 孤立 HalfRight を Full に
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slots[i].Mode == "HalfRight"
+                && (i == 0 || slots[i - 1].Mode != "HalfLeft"))
+                slots[i].Mode = "Full";
+        }
+        // 孤立 HalfLeft（次が HalfRight でない）を Full に
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slots[i].Mode == "HalfLeft"
+                && (i + 1 >= slots.Count || slots[i + 1].Mode != "HalfRight"))
+                slots[i].Mode = "Full";
+        }
     }
 
     // ── ウィジェット部品ビルダー ─────────────────────────────

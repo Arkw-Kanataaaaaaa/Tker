@@ -47,7 +47,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         ["Card_Schedule"]   = "予定",
         ["Card_Collection"] = "コレクション",
         ["Card_Projects"]   = "プロジェクト",
-        ["Card_Notify"]     = "システム通知",
+        ["Card_Alert"]      = "アラート",
         ["Card_Media"]      = "メディア",
         ["Card_Tools"]      = "ショートカット",
     };

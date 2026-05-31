@@ -34,6 +34,8 @@ public class AppSettings
     public string HomeTemplate { get; set; } = "Grid";
     /// <summary>カードテンプレートの左列に表示する部品キーの順序（空ならデフォルト順）。</summary>
     public List<string> CardLeftParts { get; set; } = new();
+    /// <summary>カードテンプレートのコレクション部品に表示するコレクション ID 一覧（空なら全件表示）。</summary>
+    public List<string> CardCollectionFilter { get; set; } = new();
     /// <summary>ホーム画面のレイアウトスロット定義。</summary>
     public Dictionary<string, HomeLayoutSlot> HomeLayout { get; set; } = new();
     /// <summary>ホーム画面の列幅。要素の意味: &gt;0=px, 0=Auto, &lt;0=Star（-1なら1*, -2なら2*）</summary>

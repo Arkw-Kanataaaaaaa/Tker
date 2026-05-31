@@ -95,13 +95,14 @@
                 </Grid.RowDefinitions>
 
                 <!-- Row 0: 左半=予定 / 右半=ToDo→タスク→通知→メディア -->
-                <!-- Row 0: 単一スクロール列 ToDo → タスク → 予定 → カレンダー → コレクション → プロジェクト → 通知 → メディア -->
-                <ScrollViewer Grid.Row="0" Margin="16,20,8,4"
+                <!-- Row 0: 単一スクロール列 コレクション → プロジェクト → アラート → メディア
+                     左の右上オーバーレイ上端(28)と揃える -->
+                <ScrollViewer Grid.Row="0" Margin="16,28,8,4"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
 
-                            <!-- コレクション部品 -->
+                            <!-- コレクション部品（設定で表示対象を選択可） -->
                             <Border x:Name="CardCollectionCard" Tag="Card_Collection"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
@@ -114,6 +115,12 @@
                                                 Padding="8,3" FontSize="10" HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"
                                                 Click="CardGoToCollection_Click"/>
+                                        <Button DockPanel.Dock="Right" Content="⚙"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,3" FontSize="10" Margin="0,0,6,0"
+                                                VerticalAlignment="Center"
+                                                ToolTip="表示するコレクションを選択"
+                                                Click="CardCollectionSettings_Click"/>
                                     </DockPanel>
                                     <WrapPanel x:Name="CardCollectionPanel" Orientation="Horizontal"/>
                                     <TextBlock x:Name="CardNoCollectionText"
@@ -145,15 +152,23 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border x:Name="CardNotifyCard" Tag="Card_Notify"
+                            <!-- アラート部品（期限超過・締切間近・未着手超過） -->
+                            <Border x:Name="CardAlertCard" Tag="Card_Alert"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
-                                    <TextBlock Text="システム通知"
-                                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
-                                               Foreground="White" Margin="0,0,0,10"/>
-                                    <StackPanel x:Name="CardNotifyPanel"/>
-                                    <TextBlock x:Name="CardNoNotifyText"
-                                               Text="新しい通知はありません"
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock Text="アラート" DockPanel.Dock="Left"
+                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                                   Foreground="White"/>
+                                        <Button DockPanel.Dock="Right" Content="すべて ▶"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Click="CardAlerts_Click"/>
+                                    </DockPanel>
+                                    <StackPanel x:Name="CardAlertPanel"/>
+                                    <TextBlock x:Name="CardNoAlertText"
+                                               Text="アラートはありません"
                                                FontSize="11" Foreground="#9AA2B4"/>
                                 </StackPanel>
                             </Border>

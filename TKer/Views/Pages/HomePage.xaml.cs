@@ -903,7 +903,7 @@ public partial class HomePage : Page, IRefreshable
         BuildCardTasks();
         BuildCardCollections();
         BuildCardProjects();
-        BuildCardNotifications();
+        BuildCardAlerts();
         _cardScheduleShownOffset = int.MinValue;   // 強制再構築
         BuildCards();
         StartCardMedia();
@@ -1086,7 +1086,7 @@ public partial class HomePage : Page, IRefreshable
         UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
         UiThemeHelper.ApplySectionTheme(CardCollectionCard, svc.GetSectionTheme("Card_Collection"));
         UiThemeHelper.ApplySectionTheme(CardProjectsCard,   svc.GetSectionTheme("Card_Projects"));
-        UiThemeHelper.ApplySectionTheme(CardNotifyCard,     svc.GetSectionTheme("Card_Notify"));
+        UiThemeHelper.ApplySectionTheme(CardAlertCard,      svc.GetSectionTheme("Card_Alert"));
         UiThemeHelper.ApplySectionTheme(CardMediaRoot,      svc.GetSectionTheme("Card_Media"));
         UiThemeHelper.ApplySectionTheme(CardToolsCard,      svc.GetSectionTheme("Card_Tools"));
     }
@@ -1779,23 +1779,94 @@ public partial class HomePage : Page, IRefreshable
         return root;
     }
 
-    // ── システム通知（簡易プレースホルダー）─────────────────
-    /// <summary>システム通知の内容を表示する（現状は固定文言の簡易表示）。</summary>
-    private void BuildCardNotifications()
+    // ── アラート部品 ─────────────────────────────────────
+    /// <summary>全プロジェクトのアラート（期限超過・締切間近・未着手超過）を一覧表示する。</summary>
+    private void BuildCardAlerts()
     {
-        if (CardNotifyPanel == null) return;
-        CardNotifyPanel.Children.Clear();
-        // 実装メモ: Windows.UI.Notifications.Management.UserNotificationListener で実装予定
-        CardNoNotifyText.Visibility = Visibility.Visible;
+        if (CardAlertPanel == null) return;
+        CardAlertPanel.Children.Clear();
+        var alerts = _vm.AppSettingsService.CollectAlerts();
+        CardNoAlertText.Visibility = alerts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var a in alerts.Take(6))
+        {
+            var row = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 5), CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6, 10, 6),
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x2A, 0x30, 0x40)),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            g.Children.Add(new TextBlock
+            {
+                Text = a.LevelIcon, FontSize = 14, VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock
+            {
+                Text = a.TaskName, FontSize = 12, FontWeight = FontWeights.Bold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            });
+            sp.Children.Add(new TextBlock
+            {
+                Text = $"{a.ProjectName} · {a.LevelLabel}", FontSize = 10,
+                Margin = new Thickness(0, 2, 0, 0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+            Grid.SetColumn(sp, 1);
+            g.Children.Add(sp);
+
+            var lvlColor = a.Level switch
+            {
+                AlertLevel.Overdue    => Color.FromRgb(0xEF, 0x53, 0x50),
+                AlertLevel.DueSoon    => Color.FromRgb(0xFF, 0xC2, 0x55),
+                AlertLevel.NotStarted => Color.FromRgb(0xFF, 0xA8, 0x3D),
+                _                     => Color.FromRgb(0x88, 0x92, 0xA6),
+            };
+            var remain = new TextBlock
+            {
+                Text = a.RemainingLabel, FontFamily = new FontFamily("Consolas"),
+                FontSize = 11, FontWeight = FontWeights.Bold,
+                Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(lvlColor),
+            };
+            Grid.SetColumn(remain, 2);
+            g.Children.Add(remain);
+
+            row.Child = g;
+            var path = a.DataFilePath;
+            row.MouseLeftButtonUp += (_, _) =>
+            {
+                _vm.SwitchProjectCommand.Execute(path);
+                _vm.NavigateToCommand.Execute("TaskList");
+            };
+            CardAlertPanel.Children.Add(row);
+        }
     }
 
+    /// <summary>「すべて ▶」: アラート一覧ダイアログを開く。</summary>
+    private void CardAlerts_Click(object sender, RoutedEventArgs e)
+        => _vm.ShowAlertsCommand.Execute(null);
+
     // ── コレクション部品 ─────────────────────────────────────
-    /// <summary>コレクション一覧をカバー画像 or アイコンのカードで表示する。</summary>
+    /// <summary>コレクション一覧をカバー画像 or アイコンのカードで表示する。
+    /// AppSettings.CardCollectionFilter に ID が設定されていれば対象のみ表示（空なら全件）。</summary>
     private void BuildCardCollections()
     {
         if (CardCollectionPanel == null) return;
         CardCollectionPanel.Children.Clear();
-        var cols = _vm.CollectionService.Collections;
+        var all    = _vm.CollectionService.Collections;
+        var filter = _vm.AppSettingsService.CardCollectionFilter;
+        var cols   = (filter == null || filter.Count == 0)
+            ? all : all.Where(c => filter.Contains(c.Id)).ToList();
         CardNoCollectionText.Visibility = cols.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var col in cols)
         {
@@ -1896,6 +1967,55 @@ public partial class HomePage : Page, IRefreshable
         => _vm.NavigateToCommand.Execute("Collection");
     private void CardGoToProjects_Click(object sender, RoutedEventArgs e)
         => _vm.NavigateToCommand.Execute("ProjectList");
+
+    /// <summary>コレクション部品の「⚙」: 表示対象を選ぶチェック可能メニューを開く。</summary>
+    private void CardCollectionSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var all    = _vm.CollectionService.Collections;
+        var filter = _vm.AppSettingsService.CardCollectionFilter ?? new System.Collections.Generic.List<string>();
+        var selected = new System.Collections.Generic.HashSet<string>(
+            filter.Count == 0 ? all.Select(c => c.Id) : filter);
+
+        var menu = new System.Windows.Controls.ContextMenu();
+        // 「すべて表示」項目
+        var allMi = new System.Windows.Controls.MenuItem
+        {
+            Header = "すべて表示", IsCheckable = true,
+            IsChecked = filter.Count == 0, StaysOpenOnClick = true,
+        };
+        allMi.Click += (_, _) =>
+        {
+            _vm.AppSettingsService.SaveCardCollectionFilter(new System.Collections.Generic.List<string>());
+            BuildCardCollections();
+            menu.IsOpen = false;
+        };
+        menu.Items.Add(allMi);
+        menu.Items.Add(new System.Windows.Controls.Separator());
+        foreach (var col in all)
+        {
+            var mi = new System.Windows.Controls.MenuItem
+            {
+                Header = col.Name, IsCheckable = true,
+                IsChecked = selected.Contains(col.Id),
+                StaysOpenOnClick = true,
+            };
+            var id = col.Id;
+            mi.Click += (_, _) =>
+            {
+                if (selected.Contains(id)) selected.Remove(id);
+                else                       selected.Add(id);
+                // 全選択状態なら空にして「全表示」モードに
+                var savedFilter = (selected.Count == all.Count)
+                    ? new System.Collections.Generic.List<string>()
+                    : selected.ToList();
+                _vm.AppSettingsService.SaveCardCollectionFilter(savedFilter);
+                BuildCardCollections();
+            };
+            menu.Items.Add(mi);
+        }
+        menu.PlacementTarget = (UIElement)sender;
+        menu.IsOpen = true;
+    }
 
     /// <summary>アクティブプロジェクトのタスク一覧部品を再構築する（未完了を優先）。</summary>
     private void BuildCardTasks()

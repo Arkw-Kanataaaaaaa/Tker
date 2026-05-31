@@ -215,6 +215,15 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>カードテンプレートのコレクション部品で表示するコレクション ID 一覧（空なら全件）。</summary>
+    public List<string> CardCollectionFilter => _settings.CardCollectionFilter;
+    /// <summary>表示対象コレクション ID 一覧を保存する。</summary>
+    public void SaveCardCollectionFilter(List<string> ids)
+    {
+        _settings.CardCollectionFilter = ids ?? new List<string>();
+        Save();
+    }
+
     public ThemeColors Theme => _settings.Theme;
     /// <summary>テーマカラーを保存する。</summary>
     public void SaveTheme(ThemeColors theme)

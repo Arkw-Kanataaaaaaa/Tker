@@ -43,6 +43,11 @@ public partial class HomePage : Page, IRefreshable
 
         Unloaded += (_, _) => { _clockTimer.Stop(); StopCardAnimation(); StopCardMedia(); };
         Loaded   += (_, _) => _clockTimer.Start();
+
+        // 左列の部品ドラッグ並べ替え（編集プレビュー時のみ動作）
+        CardLeftStack.PreviewMouseLeftButtonDown += LeftStack_Down;
+        CardLeftStack.PreviewMouseMove          += LeftStack_Move;
+        CardLeftStack.PreviewMouseLeftButtonUp  += LeftStack_Up;
     }
 
     /// <summary>ホーム画面の全コンポーネントを最新データで更新する。</summary>
@@ -898,6 +903,179 @@ public partial class HomePage : Page, IRefreshable
         BuildCards();
         StartCardMedia();
         ApplyCardSectionThemes();
+        ApplyCardLeftOrder();
+    }
+
+    // ── 左列の部品 順序・表示／追加・ドラッグ並べ替え ────────────────
+    /// <summary>左列の候補部品（キー・要素・表示名）。</summary>
+    private (string key, FrameworkElement el, string label)[] CardLeftParts() => new[]
+    {
+        ("Card_Media",      (FrameworkElement)CardMediaRoot,      "メディア"),
+        ("Card_Collection", CardCollectionCard,                   "コレクション"),
+        ("Card_Schedule",   CardScheduleCard,                     "予定"),
+        ("Card_Tasks",      CardTasksCard,                        "タスク一覧"),
+    };
+
+    /// <summary>設定の順序に従って左列の部品を並べ替え・表示／非表示する。</summary>
+    private void ApplyCardLeftOrder()
+    {
+        var parts = CardLeftParts();
+        var saved = _vm.AppSettingsService.CardLeftParts;
+        var order = (saved != null && saved.Count > 0)
+            ? saved.Where(k => parts.Any(p => p.key == k)).ToList()
+            : parts.Select(p => p.key).ToList();   // 既定は全部品を定義順で表示
+
+        // いったん全部品を取り外し、順序どおりに再挿入（順序にないものは非表示）
+        foreach (var p in parts) CardLeftStack.Children.Remove(p.el);
+        int idx = 0;
+        foreach (var key in order)
+        {
+            var p = parts.First(x => x.key == key);
+            p.el.Visibility = Visibility.Visible;
+            CardLeftStack.Children.Insert(idx++, p.el);
+        }
+
+        // 追加ボタンを末尾へ（編集プレビュー時のみ表示）
+        CardLeftStack.Children.Remove(CardAddPartButton);
+        CardLeftStack.Children.Add(CardAddPartButton);
+        CardAddPartButton.Visibility = IsEditPreview ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>現在の左列の並びを設定へ保存する。</summary>
+    private void SaveCardLeftOrder()
+    {
+        var parts = CardLeftParts();
+        var list = new System.Collections.Generic.List<string>();
+        foreach (var child in CardLeftStack.Children)
+        {
+            var p = parts.FirstOrDefault(x => ReferenceEquals(x.el, child));
+            if (p.key != null) list.Add(p.key);
+        }
+        _vm.AppSettingsService.SaveCardLeftParts(list);
+    }
+
+    /// <summary>「部品を追加」ボタン: 非表示の部品をメニューから追加する。</summary>
+    private void CardAddPart_Click(object sender, RoutedEventArgs e)
+    {
+        var parts = CardLeftParts();
+        var visible = CardLeftStack.Children.OfType<FrameworkElement>().ToList();
+        var menu = new System.Windows.Controls.ContextMenu();
+        foreach (var p in parts)
+        {
+            bool shown = visible.Any(v => ReferenceEquals(v, p.el));
+            var mi = new System.Windows.Controls.MenuItem { Header = p.label, IsCheckable = true, IsChecked = shown };
+            var key = p.key;
+            mi.Click += (_, _) => ToggleCardLeftPart(key);
+            menu.Items.Add(mi);
+        }
+        menu.PlacementTarget = (UIElement)sender;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>指定部品の表示/非表示を切り替えて保存・再構築する。</summary>
+    private void ToggleCardLeftPart(string key)
+    {
+        var current = _vm.AppSettingsService.CardLeftParts;
+        var parts = CardLeftParts();
+        var list = (current != null && current.Count > 0)
+            ? current.Where(k => parts.Any(p => p.key == k)).ToList()
+            : parts.Select(p => p.key).ToList();
+        if (list.Contains(key)) list.Remove(key);
+        else                    list.Add(key);
+        _vm.AppSettingsService.SaveCardLeftParts(list);
+        ApplyCardLeftOrder();
+    }
+
+    // ── ドラッグ並べ替え ──
+    private FrameworkElement? _dragPart;
+    private Point _dragStart;
+    private bool _dragActive;
+    private TranslateTransform? _dragTf;
+
+    /// <summary>クリック位置の祖先から左列部品要素を探す。</summary>
+    private FrameworkElement? FindLeftPart(object? src)
+    {
+        var parts = CardLeftParts();
+        var node = src as DependencyObject;
+        while (node != null)
+        {
+            if (node is FrameworkElement fe && parts.Any(p => ReferenceEquals(p.el, fe)))
+                return fe;
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        }
+        return null;
+    }
+
+    private void LeftStack_Down(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!IsEditPreview) return;
+        var part = FindLeftPart(e.OriginalSource);
+        if (part == null) return;
+        _dragPart   = part;
+        _dragStart  = e.GetPosition(CardLeftStack);
+        _dragActive = false;
+        CardLeftStack.CaptureMouse();
+    }
+
+    private void LeftStack_Move(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_dragPart == null || e.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
+        var pos = e.GetPosition(CardLeftStack);
+        double dy = pos.Y - _dragStart.Y;
+
+        if (!_dragActive)
+        {
+            if (Math.Abs(dy) < 6) return;
+            _dragActive = true;
+            _dragTf = new TranslateTransform();
+            _dragPart.RenderTransform = _dragTf;
+            _dragPart.Opacity = 0.85;
+            Panel.SetZIndex(_dragPart, 10);
+        }
+        _dragTf!.Y = dy;
+
+        // ドラッグ中の中心位置に応じて挿入位置を入れ替える（実際に動いて見える）
+        var items = CardLeftStack.Children.OfType<FrameworkElement>()
+            .Where(c => !ReferenceEquals(c, CardAddPartButton)).ToList();
+        int curIdx = items.IndexOf(_dragPart);
+        double dragCenter = pos.Y;
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (ReferenceEquals(items[i], _dragPart)) continue;
+            var el = items[i];
+            var top = el.TranslatePoint(new Point(0, 0), CardLeftStack).Y;
+            double center = top + el.ActualHeight / 2;
+            if ((i < curIdx && dragCenter < center) || (i > curIdx && dragCenter > center))
+            {
+                // i の位置へ移動
+                CardLeftStack.Children.Remove(_dragPart);
+                int insertAt = CardLeftStack.Children.IndexOf(el);
+                if (i > curIdx) insertAt++;   // 後方へ動かす場合は対象の後ろへ
+                if (insertAt < 0) insertAt = 0;
+                CardLeftStack.Children.Insert(Math.Min(insertAt, CardLeftStack.Children.Count), _dragPart);
+                _dragStart = pos;     // 再配置後は基準をリセット
+                _dragTf!.Y = 0;
+                break;
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void LeftStack_Up(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_dragPart != null)
+        {
+            if (_dragActive)
+            {
+                _dragPart.RenderTransform = null;
+                _dragPart.Opacity = 1.0;
+                Panel.SetZIndex(_dragPart, 0);
+                SaveCardLeftOrder();
+            }
+            _dragPart = null;
+            _dragActive = false;
+            CardLeftStack.ReleaseMouseCapture();
+        }
     }
 
     /// <summary>カード各部品にユーザー設定のセクションテーマ（背景/文字/枠/不透明度）を適用する。</summary>
@@ -1105,25 +1283,24 @@ public partial class HomePage : Page, IRefreshable
             };
             foreach (var (time, label, color) in events.Take(4))
             {
-                var item = new StackPanel { Margin = new Thickness(0, 0, 0, 6 * us) };
-                var head = new StackPanel { Orientation = Orientation.Horizontal };
-                head.Children.Add(new Border
+                // 1行に「バー＋時刻＋イベント名」を横並び表示
+                var item = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6 * us) };
+                item.Children.Add(new Border
                 {
                     Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 7 * us, 1),
                     Background = new SolidColorBrush(color),
                 });
-                head.Children.Add(new TextBlock
+                item.Children.Add(new TextBlock
                 {
                     Text = time, FontFamily = new FontFamily("Consolas"),
                     FontSize = 11 * us, FontWeight = FontWeights.Bold,
-                    VerticalAlignment = VerticalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8 * us, 0),
                     Foreground = new SolidColorBrush(Color.FromArgb(0xFF, color.R, color.G, color.B)),
                 });
-                item.Children.Add(head);
                 item.Children.Add(new TextBlock
                 {
-                    Text = label, FontSize = 12 * us, Margin = new Thickness(10 * us, 1, 0, 0),
-                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Text = label, FontSize = 12 * us, VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = cardW * 0.42,
                     Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
                 });
                 evStack.Children.Add(item);

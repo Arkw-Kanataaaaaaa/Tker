@@ -206,6 +206,15 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>カードテンプレート左列の部品順序（部品キーのリスト）。</summary>
+    public List<string> CardLeftParts => _settings.CardLeftParts;
+    /// <summary>カードテンプレート左列の部品順序を保存する。</summary>
+    public void SaveCardLeftParts(List<string> parts)
+    {
+        _settings.CardLeftParts = parts ?? new List<string>();
+        Save();
+    }
+
     public ThemeColors Theme => _settings.Theme;
     /// <summary>テーマカラーを保存する。</summary>
     public void SaveTheme(ThemeColors theme)

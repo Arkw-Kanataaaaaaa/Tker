@@ -1327,7 +1327,9 @@ public partial class HomePage : Page, IRefreshable
         };
 
     /// <summary>保存済みスロット配置に従って右列の部品を並べ替え・半幅ペア化する。
-    /// 編集プレビュー時にはドラッグ並べ替えのハンドラも仕掛ける。</summary>
+    /// 編集プレビュー時にはドラッグ並べ替えのハンドラも仕掛ける。
+    /// HalfLeft の直後に HalfRight があれば 1 行ペアとして 2 列 Grid に統合。
+    /// 単独 HalfLeft / HalfRight はそれぞれ左半分・右半分のみ占有する Grid で表示する。</summary>
     private void ApplyCardRightLayout()
     {
         if (CardRightStack == null) return;
@@ -1350,9 +1352,7 @@ public partial class HomePage : Page, IRefreshable
                         && slots[i + 1].Mode == "HalfRight";
             if (pair)
             {
-                var g = new Grid { Margin = new Thickness(0, 0, 0, 14), Tag = "CardRightPair" };
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var g = MakeHalfGrid();
                 var l = map[cur.Key];
                 var r = map[slots[i + 1].Key];
                 l.Margin = new Thickness(0, 0, 8, 0);
@@ -1362,6 +1362,28 @@ public partial class HomePage : Page, IRefreshable
                 CardRightStack.Children.Add(g);
                 i += 2;
             }
+            else if (cur.Mode == "HalfLeft")
+            {
+                // 単独 HalfLeft：左半分だけ占有（右半分は空 → ドロップ受け皿）
+                var g = MakeHalfGrid();
+                var w = map[cur.Key];
+                w.Margin = new Thickness(0, 0, 8, 0);
+                Grid.SetColumn(w, 0);
+                g.Children.Add(w);
+                CardRightStack.Children.Add(g);
+                i++;
+            }
+            else if (cur.Mode == "HalfRight")
+            {
+                // 単独 HalfRight：右半分だけ占有
+                var g = MakeHalfGrid();
+                var w = map[cur.Key];
+                w.Margin = new Thickness(8, 0, 0, 0);
+                Grid.SetColumn(w, 1);
+                g.Children.Add(w);
+                CardRightStack.Children.Add(g);
+                i++;
+            }
             else
             {
                 var w = map[cur.Key];
@@ -1370,9 +1392,17 @@ public partial class HomePage : Page, IRefreshable
                 i++;
             }
         }
-        // 編集プレビュー時はドラッグハンドラを仕掛ける
         if (IsEditPreview)
             HookCardRightDrag();
+    }
+
+    /// <summary>半幅行用の 2 列 Grid を生成する。</summary>
+    private static Grid MakeHalfGrid()
+    {
+        var g = new Grid { Margin = new Thickness(0, 0, 0, 14), Tag = "CardRightHalfRow" };
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        return g;
     }
 
     /// <summary>右列のドラッグ並べ替え/半幅スナップを有効化する。</summary>
@@ -1467,64 +1497,67 @@ public partial class HomePage : Page, IRefreshable
         if (dragIdx < 0) { _crDrag = null; CardRightStack.ReleaseMouseCapture(); return; }
         slots.RemoveAt(dragIdx);
 
-        // ドロップ先 Y 位置から挿入インデックスを決定
-        int targetIdx = slots.Count;
-        double y = 0;
-        for (int s = 0; s < slots.Count; s++)
+        // 行ごとの占有範囲 (slotIdx, slotCount, topY, height) を算出
+        // HalfLeft + HalfRight のペアは 1 行で 2 スロット消費
+        var rows = new System.Collections.Generic.List<(int slotIdx, int slotCount, double topY, double height)>();
+        int si = 0;
+        double cy = 0;
+        while (si < slots.Count)
         {
-            // スロットを描画したときの位置を概算する
-            double h = EstimateSlotHeight(slots[s]);
-            if (pos.Y < y + h / 2) { targetIdx = s; break; }
-            y += h;
+            bool pair = slots[si].Mode == "HalfLeft"
+                        && si + 1 < slots.Count
+                        && slots[si + 1].Mode == "HalfRight";
+            int cnt = pair ? 2 : 1;
+            double h = slots[si].Mode == "Full" ? 180 : 240;
+            rows.Add((si, cnt, cy, h));
+            cy += h;
+            si += cnt;
         }
 
-        // 横位置から幅モード判定
         double stackW = CardRightStack.ActualWidth;
-        string newMode = "Full";
-        if (stackW > 0)
+        double frac   = stackW > 0 ? pos.X / stackW : 0.5;
+
+        int    targetIdx = slots.Count;
+        string newMode   = "Full";
+        if      (frac < 0.30) newMode = "HalfLeft";
+        else if (frac > 0.70) newMode = "HalfRight";
+
+        int? hoverRow = null;
+        for (int r = 0; r < rows.Count; r++)
+            if (pos.Y >= rows[r].topY && pos.Y < rows[r].topY + rows[r].height) { hoverRow = r; break; }
+
+        if (hoverRow.HasValue)
         {
-            double frac = pos.X / stackW;
-            if (frac < 0.30)      newMode = "HalfLeft";
-            else if (frac > 0.70) newMode = "HalfRight";
+            var row     = rows[hoverRow.Value];
+            var rowSlot = slots[row.slotIdx];
+
+            if (row.slotCount == 1 && rowSlot.Mode == "HalfLeft" && frac > 0.5)
+            {
+                // 単独 HalfLeft の右半分にドロップ → HalfRight として直後に挿入してペア化
+                targetIdx = row.slotIdx + 1;
+                newMode   = "HalfRight";
+            }
+            else if (row.slotCount == 1 && rowSlot.Mode == "HalfRight" && frac < 0.5)
+            {
+                // 単独 HalfRight の左半分にドロップ → HalfLeft として直前に挿入してペア化
+                targetIdx = row.slotIdx;
+                newMode   = "HalfLeft";
+            }
+            else
+            {
+                bool insertBefore = pos.Y < row.topY + row.height / 2;
+                targetIdx = insertBefore ? row.slotIdx : row.slotIdx + row.slotCount;
+            }
         }
 
         var newSlot = new CardRightSlot { Key = dragKey, Mode = newMode };
+        targetIdx = Math.Clamp(targetIdx, 0, slots.Count);
         slots.Insert(targetIdx, newSlot);
-
-        // 半幅整合: HalfLeft の直後に HalfLeft や Full が来たら HalfRight に補正
-        NormalizeRightSlots(slots);
 
         _vm.AppSettingsService.SaveCardRightSlots(slots);
         _crDrag = null; _crActive = false;
         CardRightStack.ReleaseMouseCapture();
         ApplyCardRightLayout();
-    }
-
-    /// <summary>スロットの推定行高さ（並べ替え位置判定用）。</summary>
-    private double EstimateSlotHeight(CardRightSlot s) => s.Mode switch
-    {
-        "HalfLeft"  => CardRightStack.ActualWidth > 0 ? 240 : 240,
-        "HalfRight" => 0,   // 直前 HalfLeft と同行
-        _           => 180,
-    };
-
-    /// <summary>HalfLeft/HalfRight の組合せを整える: 孤立した Half を Full に変換、または相方を補う。</summary>
-    private static void NormalizeRightSlots(List<CardRightSlot> slots)
-    {
-        // 孤立 HalfRight を Full に
-        for (int i = 0; i < slots.Count; i++)
-        {
-            if (slots[i].Mode == "HalfRight"
-                && (i == 0 || slots[i - 1].Mode != "HalfLeft"))
-                slots[i].Mode = "Full";
-        }
-        // 孤立 HalfLeft（次が HalfRight でない）を Full に
-        for (int i = 0; i < slots.Count; i++)
-        {
-            if (slots[i].Mode == "HalfLeft"
-                && (i + 1 >= slots.Count || slots[i + 1].Mode != "HalfRight"))
-                slots[i].Mode = "Full";
-        }
     }
 
     // ── ウィジェット部品ビルダー ─────────────────────────────

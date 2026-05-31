@@ -48,8 +48,8 @@ public partial class UiCustomizePage : Page, IRefreshable
         ["Card_Schedule"]     = "予定",
         ["Card_Todo"]         = "ToDo",
         ["Card_Tasks"]        = "タスク一覧",
-        ["Card_Tools"]        = "ショートカット/ツール",
-        ["Card_MiniSchedule"] = "当日予定",
+        ["Card_Tools"]        = "ショートカット",
+        ["Card_MiniSchedule"] = "ToDo",
     };
 
     private static readonly string[] FIXED_HOME_COMPONENTS = { };

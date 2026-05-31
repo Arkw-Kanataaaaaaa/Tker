@@ -907,7 +907,6 @@ public partial class HomePage : Page, IRefreshable
         UiThemeHelper.ApplySectionTheme(CardMediaRoot,      svc.GetSectionTheme("Card_Media"));
         UiThemeHelper.ApplySectionTheme(CardCollectionCard, svc.GetSectionTheme("Card_Collection"));
         UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
-        UiThemeHelper.ApplySectionTheme(CardTodoCard,       svc.GetSectionTheme("Card_Todo"));
         UiThemeHelper.ApplySectionTheme(CardTasksCard,      svc.GetSectionTheme("Card_Tasks"));
         UiThemeHelper.ApplySectionTheme(CardToolsCard,      svc.GetSectionTheme("Card_Tools"));
         UiThemeHelper.ApplySectionTheme(CardMiniSchedule,   svc.GetSectionTheme("Card_MiniSchedule"));
@@ -978,7 +977,6 @@ public partial class HomePage : Page, IRefreshable
             _cardScheduleShownOffset = selectedOffset;
             var selDate = DateTime.Today.AddDays(selectedOffset);
             BuildCardSchedule(selDate);
-            BuildCardMiniSchedule(selDate);
             CardYearText.Text  = selDate.ToString("yyyy");
             CardMonthText.Text = selDate.ToString("MM");
         }
@@ -1092,14 +1090,49 @@ public partial class HomePage : Page, IRefreshable
         Grid.SetRow(dayNum, 1);
         grid.Children.Add(dayNum);
 
-        // 下段：アクセントバーのみ（年月はカード領域右下に集約表示するため非表示）
-        var bottom = new Border
+        // 下段：アクセントバー ＋ その日のイベント（日時・イベント名）
+        var bottom = new StackPanel();
+        bottom.Children.Add(new Border
         {
             Height = 4 * us, Width = 56 * us, CornerRadius = new CornerRadius(2),
-            HorizontalAlignment = HorizontalAlignment.Left,
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 8 * us),
             Background = new LinearGradientBrush(
                 accent, Color.FromArgb(0x33, accent.R, accent.G, accent.B), 0),
-        };
+        });
+
+        // 前面カードのみ、その日のイベントを最大3件表示（時刻＋イベント名）
+        if (isFront)
+        {
+            var events = GetScheduleEntries(date);
+            foreach (var (time, label, color) in events.Take(3))
+            {
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3 * us) };
+                row.Children.Add(new Border
+                {
+                    Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 8 * us, 1),
+                    Background = new SolidColorBrush(color),
+                });
+                row.Children.Add(new TextBlock
+                {
+                    Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 11 * us, FontWeight = FontWeights.Bold,
+                    VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6 * us, 0),
+                    Foreground = new SolidColorBrush(Color.FromArgb(0xFF, color.R, color.G, color.B)),
+                });
+                row.Children.Add(new TextBlock
+                {
+                    Text = label, FontSize = 12 * us, VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = cardW * 0.62,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+                });
+                bottom.Children.Add(row);
+            }
+            if (events.Count > 3)
+                bottom.Children.Add(new TextBlock
+                {
+                    Text = $"ほか {events.Count - 3} 件", FontSize = 10.5 * us,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+                });
+        }
         Grid.SetRow(bottom, 2);
         grid.Children.Add(bottom);
 
@@ -1401,12 +1434,20 @@ public partial class HomePage : Page, IRefreshable
         catch { return null; }
     }
 
-    /// <summary>ToDo 部品を再構築する（未完了を優先表示）。</summary>
+    /// <summary>ToDo 部品（カード領域右下）を再構築する（未完了を優先表示）。</summary>
     private void BuildCardTodo()
     {
-        CardTodoPanel.Children.Clear();
+        CardMiniSchedulePanel.Children.Clear();
         var todos = _vm.TodoService.GetAll().Where(t => !t.IsCompleted).Take(6).ToList();
-        CardNoTodoText.Visibility = todos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (todos.Count == 0)
+        {
+            CardMiniSchedulePanel.Children.Add(new TextBlock
+            {
+                Text = "未完了の ToDo はありません", FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+            });
+            return;
+        }
         foreach (var todo in todos)
         {
             var row = new Border
@@ -1454,7 +1495,7 @@ public partial class HomePage : Page, IRefreshable
             row.Child = g;
             var id = todo.Id;
             row.MouseLeftButtonUp += (_, _) => { _vm.TodoService.Toggle(id); BuildCardTodo(); };
-            CardTodoPanel.Children.Add(row);
+            CardMiniSchedulePanel.Children.Add(row);
         }
     }
 
@@ -1530,62 +1571,6 @@ public partial class HomePage : Page, IRefreshable
             row.Child = g;
             row.MouseLeftButtonUp += (_, _) => _vm.NavigateToCommand.Execute("TaskList");
             CardTaskPanel.Children.Add(row);
-        }
-    }
-
-    /// <summary>カード領域右下の簡易予定カードを再構築する（最大3件＋件数）。</summary>
-    private void BuildCardMiniSchedule(DateTime date)
-    {
-        if (CardMiniSchedulePanel == null) return;
-        CardMiniSchedulePanel.Children.Clear();
-        CardMiniScheduleTitle.Text = $"{date:M/d (ddd)} の予定";
-
-        var entries = GetScheduleEntries(date);
-        if (entries.Count == 0)
-        {
-            CardMiniSchedulePanel.Children.Add(new TextBlock
-            {
-                Text = "予定なし", FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
-            });
-            return;
-        }
-
-        foreach (var (time, label, color) in entries.Take(3))
-        {
-            var g = new Grid { Margin = new Thickness(0, 0, 0, 4) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            var t = new TextBlock
-            {
-                Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 11, FontWeight = FontWeights.Bold,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = new SolidColorBrush(color),
-            };
-            Grid.SetColumn(t, 0);
-            g.Children.Add(t);
-
-            var l = new TextBlock
-            {
-                Text = label, FontSize = 12, Margin = new Thickness(6, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
-            };
-            Grid.SetColumn(l, 1);
-            g.Children.Add(l);
-
-            CardMiniSchedulePanel.Children.Add(g);
-        }
-
-        if (entries.Count > 3)
-        {
-            CardMiniSchedulePanel.Children.Add(new TextBlock
-            {
-                Text = $"ほか {entries.Count - 3} 件", FontSize = 11, Margin = new Thickness(0, 2, 0, 0),
-                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
-            });
         }
     }
 

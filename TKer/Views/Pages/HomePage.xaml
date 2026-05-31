@@ -262,26 +262,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- ToDo リスト部品 -->
-                    <Border x:Name="CardTodoCard" Tag="Card_Todo" Style="{StaticResource CardPanel}">
-                        <StackPanel>
-                            <DockPanel Margin="0,0,0,12">
-                                <TextBlock Text="ToDo" DockPanel.Dock="Left"
-                                           FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="18"
-                                           Foreground="White"/>
-                                <Button DockPanel.Dock="Right" Content="一覧 ▶"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Padding="8,3" FontSize="10" HorizontalAlignment="Right"
-                                        VerticalAlignment="Center"
-                                        Click="CardGoToTodo_Click"/>
-                            </DockPanel>
-                            <StackPanel x:Name="CardTodoPanel"/>
-                            <TextBlock x:Name="CardNoTodoText" Text="未完了の ToDo はありません"
-                                       FontSize="11" Foreground="#9AA2B4"
-                                       Visibility="Collapsed"/>
-                        </StackPanel>
-                    </Border>
-
                     <!-- アクティブプロジェクトのタスク一覧部品 -->
                     <Border x:Name="CardTasksCard" Tag="Card_Tasks" Style="{StaticResource CardPanel}">
                         <StackPanel>
@@ -328,7 +308,7 @@
                                    TextAlignment="Left" Margin="0,-18,0,0"/>
                     </StackPanel>
 
-                    <!-- 右下: その日の予定の簡易表示カード。表示専用 -->
+                    <!-- 右下: ToDo リスト -->
                     <Border x:Name="CardMiniSchedule" Width="320" Tag="Card_MiniSchedule"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom"
                             Margin="0,0,32,24"
@@ -346,7 +326,7 @@
                             <DropShadowEffect Color="#A66BFF" BlurRadius="22" ShadowDepth="0" Opacity="0.45"/>
                         </Border.Effect>
                         <StackPanel>
-                            <TextBlock x:Name="CardMiniScheduleTitle" Text="予定"
+                            <TextBlock x:Name="CardMiniScheduleTitle" Text="ToDo"
                                        FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
                                        Foreground="White" Margin="0,0,0,8"/>
                             <StackPanel x:Name="CardMiniSchedulePanel"/>

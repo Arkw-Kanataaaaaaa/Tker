@@ -950,8 +950,8 @@ public partial class HomePage : Page, IRefreshable
         }
 
         // 右下の年月フォントサイズをカード領域の幅に追従させる
-        double monthFont = Math.Clamp(w * 0.085, 40, 120);
-        double yearFont  = monthFont * 0.6;
+        double monthFont = Math.Clamp(w * 0.07, 36, 96);
+        double yearFont  = monthFont * 0.55;
         CardMonthText.FontSize = monthFont;
         CardYearText.FontSize  = yearFont;
         CardMonthText.Margin   = new Thickness(0, -monthFont * 0.25, 0, 0);
@@ -1713,6 +1713,13 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>HEX文字列を SolidColorBrush に変換する。失敗時は fallback 色で返す。</summary>
     private static Brush ParseBrushSafe(string hex, Color fallback)
         => new SolidColorBrush(ParseColorSafe(hex, fallback));
+
+    /// <summary>ツールボタンの Tag が示すビューへ遷移する。</summary>
+    private void CardTool_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && b.Tag is string view && !string.IsNullOrEmpty(view))
+            _vm.NavigateToCommand.Execute(view);
+    }
 
     private void CardGoToTodo_Click(object sender, RoutedEventArgs e)
         => _vm.NavigateToCommand.Execute("Todo");

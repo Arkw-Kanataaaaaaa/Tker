@@ -83,7 +83,7 @@
                         <ColumnDefinition Width="300"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- 左: ビジュアルプレビュー -->
+                    <!-- 左: 仮想ウィンドウのホーム画面プレビュー -->
                     <Grid Grid.Column="0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -92,31 +92,6 @@
 
                         <!-- ヒントバー＋レーン操作ツールバー -->
                         <StackPanel Grid.Row="0">
-                            <!-- テンプレート選択 -->
-                            <Border Background="{StaticResource BgSecondaryBrush}"
-                                    Padding="14,8"
-                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="テンプレート" FontSize="12" FontWeight="Bold"
-                                               Foreground="{StaticResource TextPrimaryBrush}"
-                                               VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                    <RadioButton x:Name="RbTplGrid" Content="グリッド" GroupName="HomeTpl"
-                                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,14,0"
-                                                 Checked="HomeTemplate_Changed"/>
-                                    <RadioButton x:Name="RbTplPlanet" Content="🪐 惑星（テスト）" GroupName="HomeTpl"
-                                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,14,0"
-                                                 Checked="HomeTemplate_Changed"/>
-                                    <RadioButton x:Name="RbTplCard" Content="🗂 カード（テスト）" GroupName="HomeTpl"
-                                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                                 VerticalAlignment="Center"
-                                                 Checked="HomeTemplate_Changed"/>
-                                    <TextBlock x:Name="TplHint" Margin="16,0,0,0" FontSize="11"
-                                               Foreground="{StaticResource TextDimBrush}"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
                             <Border Background="{StaticResource BgSecondaryBrush}"
                                     Padding="14,7"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
@@ -151,19 +126,65 @@
                             </Border>
                         </StackPanel>
 
-                        <!-- プレビュー -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                            <Grid x:Name="HomePreviewGrid" Margin="14,14,14,24" MinHeight="400"/>
-                        </ScrollViewer>
+                        <!-- 仮想ウィンドウ枠（ホーム画面プレビュー） -->
+                        <Border Grid.Row="1" Margin="20,18,20,22" CornerRadius="10"
+                                Background="#161616"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                ClipToBounds="True">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="4" Opacity="0.55"/>
+                            </Border.Effect>
+                            <DockPanel>
+                                <!-- 疑似タイトルバー -->
+                                <Border DockPanel.Dock="Top" Height="34"
+                                        Background="{StaticResource BgSecondaryBrush}"
+                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                                    Margin="12,0,0,0">
+                                            <Ellipse Width="11" Height="11" Margin="0,0,7,0" Fill="#FF5F57"/>
+                                            <Ellipse Width="11" Height="11" Margin="0,0,7,0" Fill="#FEBC2E"/>
+                                            <Ellipse Width="11" Height="11" Fill="#28C840"/>
+                                        </StackPanel>
+                                        <TextBlock Text="TKer — ホーム" FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <!-- 配置領域 -->
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                    <Grid x:Name="HomePreviewGrid" Margin="14" MinHeight="380"/>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
                     </Grid>
 
-                    <!-- 右: 選択コンポーネントのスタイル -->
+                    <!-- 右: テンプレート選択 + 選択コンポーネントのスタイル -->
                     <Border Grid.Column="1"
                             Background="{StaticResource BgSecondaryBrush}"
                             BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1,0,0,0">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="HomeStylePanel" Margin="16,20,16,20"/>
+                            <StackPanel Margin="16,20,16,20">
+                                <!-- テンプレート（スタイル）選択 -->
+                                <TextBlock Text="スタイル" Style="{StaticResource SectionHeading}"/>
+                                <RadioButton x:Name="RbTplGrid" Content="グリッド" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplPlanet" Content="🪐 惑星（テスト）" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplCard" Content="🗂 カード（テスト）" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <TextBlock x:Name="TplHint" Margin="0,6,0,0" FontSize="11"
+                                           Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap"/>
+
+                                <Separator Margin="0,16,0,16" Background="{StaticResource BorderBrush}"/>
+
+                                <!-- 選択コンポーネントのスタイル -->
+                                <StackPanel x:Name="HomeStylePanel"/>
+                            </StackPanel>
                         </ScrollViewer>
                     </Border>
                 </Grid>

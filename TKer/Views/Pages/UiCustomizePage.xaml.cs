@@ -184,6 +184,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         _selectedHomeId = null;
         ApplyTemplateRadios();
         BuildHomePreview();
+        UpdateHomePreviewMode();
         ShowHomeStylePlaceholder();
         BuildContent();
 
@@ -264,6 +265,40 @@ public partial class UiCustomizePage : Page, IRefreshable
         if (newTpl == _svc.HomeTemplate) return;
         _svc.SaveHomeTemplate(newTpl);
         UpdateTemplateHint(newTpl);
+        UpdateHomePreviewMode();
+    }
+
+    /// <summary>仮想ウィンドウ内のホームプレビューを保存中のプレビュー HomePage インスタンス。</summary>
+    private HomePage? _previewHome;
+
+    /// <summary>
+    /// 選択テンプレートに応じてプレビュー表示を切り替える。
+    /// グリッド: 部品配置エディタ / 惑星・カード: 実際の HomePage を縮小ライブ表示。
+    /// </summary>
+    private void UpdateHomePreviewMode()
+    {
+        if (HomeEditorScroll == null || HomeLivePreviewBox == null) return;
+        var tpl = _svc.HomeTemplate;
+        bool isGrid = tpl != "Planet" && tpl != "Card";
+
+        HomeEditorScroll.Visibility  = isGrid ? Visibility.Visible : Visibility.Collapsed;
+        HomeLivePreviewBox.Visibility = isGrid ? Visibility.Collapsed : Visibility.Visible;
+
+        if (isGrid) return;
+
+        // 実際の適用イメージ：HomePage を生成（再利用）して最新状態を描画
+        if (_previewHome == null)
+        {
+            _previewHome = new HomePage(_vm);
+            HomePreviewFrame.Navigate(_previewHome);
+            // レイアウト確定後に描画（Frame の Navigate は非同期反映のため）
+            Dispatcher.BeginInvoke(new Action(() => _previewHome?.Refresh()),
+                System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+        else
+        {
+            _previewHome.Refresh();
+        }
     }
 
     /// <summary>テンプレートに応じた補助テキストを表示する。</summary>

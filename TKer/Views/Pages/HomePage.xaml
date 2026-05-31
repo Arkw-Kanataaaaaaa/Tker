@@ -351,71 +351,11 @@
             <!-- ══ 下段: ショートカット/ツール 帯（画面右端まで全幅）══ -->
             <Grid Grid.Row="1">
 
-                <!-- ショートカット＆ツール セクション（ウィンドウ左端〜右端） -->
-                <Border x:Name="CardToolsCard" Tag="Card_Tools" Margin="24,0,24,24" CornerRadius="16"
-                        BorderThickness="2" Padding="18,14,18,14" VerticalAlignment="Stretch">
-                    <Border.BorderBrush>
-                        <SolidColorBrush Color="#A66BFF"/>
-                    </Border.BorderBrush>
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#F22A2A66" Offset="0"/>
-                            <GradientStop Color="#F2171740" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <Border.Effect>
-                        <DropShadowEffect Color="#A66BFF" BlurRadius="24" ShadowDepth="0" Opacity="0.45"/>
-                    </Border.Effect>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- ショートカット -->
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <Path Data="{StaticResource Bi.LightningFill}" Style="{StaticResource BiIconSm}"
-                                      Fill="{StaticResource AccentYellowBrush}" Margin="0,0,6,0"/>
-                                <TextBlock Text="ショートカット"
-                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
-                                           Foreground="White" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <WrapPanel x:Name="CardShortcutPanel" Orientation="Horizontal"/>
-                            <TextBlock x:Name="CardNoShortcutText"
-                                       Text="ツール → ショートカット管理 から登録できます"
-                                       FontSize="11" Foreground="#9AA2B4"
-                                       Visibility="Collapsed"/>
-                        </StackPanel>
-
-                        <!-- ツール（主要画面へのクイックナビ） -->
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0,0,0">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <Path Data="{StaticResource Bi.Compass}" Style="{StaticResource BiIconSm}"
-                                      Fill="{StaticResource AccentCyanBrush}" Margin="0,0,6,0"/>
-                                <TextBlock Text="ツール"
-                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
-                                           Foreground="White" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <WrapPanel Orientation="Horizontal">
-                                <Button Content="ダッシュボード" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" FontSize="11" Margin="0,0,6,6"
-                                        Click="CardTool_Click" Tag="Dashboard"/>
-                                <Button Content="タスク管理" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" FontSize="11" Margin="0,0,6,6"
-                                        Click="CardTool_Click" Tag="TaskList"/>
-                                <Button Content="カレンダー" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" FontSize="11" Margin="0,0,6,6"
-                                        Click="CardTool_Click" Tag="Calendar"/>
-                                <Button Content="プロジェクト" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" FontSize="11" Margin="0,0,6,6"
-                                        Click="CardTool_Click" Tag="ProjectList"/>
-                                <Button Content="アプリ設定" Style="{StaticResource SecondaryButton}"
-                                        Padding="10,5" FontSize="11" Margin="0,0,0,6"
-                                        Click="CardTool_Click" Tag="AppSettings"/>
-                            </WrapPanel>
-                        </StackPanel>
-                    </Grid>
+                <!-- ショートカット ライン（画面左端〜右端／円形ノードにアプリアイコン＋名前）-->
+                <Border x:Name="CardToolsCard" Tag="Card_Tools" Margin="0,0,0,0"
+                        VerticalAlignment="Stretch" Background="Transparent">
+                    <Canvas x:Name="CardShortcutCanvas" Height="104" Background="Transparent"
+                            SizeChanged="CardShortcutCanvas_SizeChanged"/>
                 </Border>
             </Grid>
         </Grid>

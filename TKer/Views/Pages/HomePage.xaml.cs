@@ -1112,35 +1112,154 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>共通カラー: 二次テキスト。</summary>
     private static Brush CardDimBrush => new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4));
 
-    /// <summary>ショートカット部品を再構築する。</summary>
+    /// <summary>Canvas サイズ変動時にショートカットラインを再構築する。</summary>
+    private void CardShortcutCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        => BuildCardShortcuts();
+
+    /// <summary>
+    /// ショートカットを「全幅の横ライン上に並ぶ円形ノード」として描画する。
+    /// 各ノードに実アプリアイコンとアプリ名を表示し、クリックで起動する。
+    /// </summary>
     private void BuildCardShortcuts()
     {
-        CardShortcutPanel.Children.Clear();
-        var shortcuts = _vm.AppSettingsService.Shortcuts;
-        CardNoShortcutText.Visibility = shortcuts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        foreach (var sc in shortcuts)
+        if (CardShortcutCanvas == null) return;
+        CardShortcutCanvas.Children.Clear();
+
+        double w = CardShortcutCanvas.ActualWidth;
+        double h = CardShortcutCanvas.ActualHeight;
+        if (w < 40 || h < 20) return;
+
+        double cy = h * 0.40;   // ライン縦位置（下側に名前スペースを残す）
+
+        // ── 横ライン（画面左端〜右端）──
+        var line = new System.Windows.Shapes.Line
         {
-            var path = sc.Path;
-            var btn = new Button
+            X1 = 0, Y1 = cy, X2 = w, Y2 = cy,
+            StrokeThickness = 2,
+            Stroke = new LinearGradientBrush(
+                Color.FromArgb(0x33, 0xA6, 0x6B, 0xFF),
+                Color.FromArgb(0xCC, 0xA6, 0x6B, 0xFF), 0)
             {
-                Margin = new Thickness(0, 0, 6, 6),
-                Padding = new Thickness(9, 5, 9, 5),
-                Cursor  = System.Windows.Input.Cursors.Hand,
-                Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x30, 0x40)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0x44, 0x5A)),
-                BorderThickness = new Thickness(1),
-                ToolTip = path,
+                StartPoint = new Point(0, 0), EndPoint = new Point(1, 0),
+                GradientStops =
+                {
+                    new GradientStop(Color.FromArgb(0x22, 0xA6, 0x6B, 0xFF), 0.0),
+                    new GradientStop(Color.FromArgb(0xCC, 0xA6, 0x6B, 0xFF), 0.5),
+                    new GradientStop(Color.FromArgb(0x22, 0xA6, 0x6B, 0xFF), 1.0),
+                }
+            },
+        };
+        CardShortcutCanvas.Children.Add(line);
+
+        var shortcuts = _vm.AppSettingsService.Shortcuts;
+        if (shortcuts.Count == 0) return;
+
+        const double diameter = 48;
+        double left  = 60;
+        double right = w - 60;
+        if (right < left) { left = 30; right = w - 30; }
+        int n = shortcuts.Count;
+
+        for (int i = 0; i < n; i++)
+        {
+            var sc = shortcuts[i];
+            double x = n == 1 ? (left + right) / 2 : left + (right - left) * i / (n - 1);
+
+            // 円形ノード
+            var circle = new Border
+            {
+                Width = diameter, Height = diameter,
+                CornerRadius = new CornerRadius(diameter / 2),
+                Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x1F, 0x2E)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xA6, 0x6B, 0xFF)),
+                BorderThickness = new Thickness(2),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = sc.Path,
+                ClipToBounds = true,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Color.FromRgb(0xA6, 0x6B, 0xFF), BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6
+                },
             };
-            var sp = new StackPanel { Orientation = Orientation.Horizontal };
-            sp.Children.Add(new TextBlock { Text = sc.Icon, FontSize = 16,
-                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 5, 0) });
-            sp.Children.Add(new TextBlock { Text = sc.Name, FontSize = 12,
+            // 実アプリアイコン（取得できなければ絵文字アイコンにフォールバック）
+            var iconSrc = GetShellIcon(sc.Path);
+            if (iconSrc != null)
+            {
+                var iconImg = new Image
+                {
+                    Source = iconSrc, Width = 28, Height = 28, Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                };
+                RenderOptions.SetBitmapScalingMode(iconImg, BitmapScalingMode.HighQuality);
+                circle.Child = iconImg;
+            }
+            else
+            {
+                circle.Child = new TextBlock
+                {
+                    Text = string.IsNullOrEmpty(sc.Icon) ? "🔗" : sc.Icon, FontSize = 20,
+                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                };
+            }
+            var path = sc.Path;
+            circle.MouseLeftButtonUp += (_, _) => OpenShortcut(path);
+            Canvas.SetLeft(circle, x - diameter / 2);
+            Canvas.SetTop(circle,  cy - diameter / 2);
+            CardShortcutCanvas.Children.Add(circle);
+
+            // アプリ名（円の下に中央寄せ）
+            var name = new TextBlock
+            {
+                Text = sc.Name, FontSize = 11, TextAlignment = TextAlignment.Center,
+                Width = 96, TextTrimming = TextTrimming.CharacterEllipsis,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xCF, 0xCF, 0xCF)),
-                VerticalAlignment = VerticalAlignment.Center });
-            btn.Content = sp;
-            btn.Click += (_, _) => OpenShortcut(path);
-            CardShortcutPanel.Children.Add(btn);
+            };
+            Canvas.SetLeft(name, x - 48);
+            Canvas.SetTop(name,  cy + diameter / 2 + 5);
+            CardShortcutCanvas.Children.Add(name);
         }
+    }
+
+    // ── シェルアイコン取得（SHGetFileInfo）─────────────────────────
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private struct SHFILEINFO
+    {
+        public IntPtr hIcon;
+        public int iIcon;
+        public uint dwAttributes;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szDisplayName;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 80)]
+        public string szTypeName;
+    }
+
+    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes,
+        ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
+
+    /// <summary>指定パスのファイル/アプリに関連付けられたシェルアイコンを取得する（失敗時 null）。</summary>
+    private static System.Windows.Media.Imaging.BitmapSource? GetShellIcon(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        const uint SHGFI_ICON = 0x000000100, SHGFI_LARGEICON = 0x000000000;
+        var info = new SHFILEINFO();
+        try
+        {
+            var res = SHGetFileInfo(path, 0, ref info,
+                (uint)System.Runtime.InteropServices.Marshal.SizeOf<SHFILEINFO>(),
+                SHGFI_ICON | SHGFI_LARGEICON);
+            if (res == IntPtr.Zero || info.hIcon == IntPtr.Zero) return null;
+            try
+            {
+                var src = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                    info.hIcon, System.Windows.Int32Rect.Empty,
+                    System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                src.Freeze();
+                return src;
+            }
+            finally { DestroyIcon(info.hIcon); }
+        }
+        catch { return null; }
     }
 
     /// <summary>コレクションをグリッド（カバー画像 or アイコン）で表示する部品を再構築する。</summary>

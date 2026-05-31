@@ -300,24 +300,61 @@
                 </StackPanel>
             </ScrollViewer>
 
-                <!-- カードスタック -->
-                <Canvas x:Name="CardCanvas" Grid.Column="1" ClipToBounds="True" Background="Transparent"
-                        SizeChanged="CardCanvas_SizeChanged"
-                        MouseWheel="CardCanvas_MouseWheel"
-                        MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
-                        MouseMove="CardCanvas_MouseMove"
-                        MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
+                <!-- カードスタック + 左上=年月 / 右下=簡易予定 オーバーレイ -->
+                <Grid Grid.Column="1">
+                    <Canvas x:Name="CardCanvas" ClipToBounds="True" Background="Transparent"
+                            SizeChanged="CardCanvas_SizeChanged"
+                            MouseWheel="CardCanvas_MouseWheel"
+                            MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
+                            MouseMove="CardCanvas_MouseMove"
+                            MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
+
+                    <!-- 左上: 選択カードの年(4桁)/月(2桁)。フォントサイズはコードで幅に追従。表示専用 -->
+                    <StackPanel x:Name="CardYearMonthPanel"
+                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Margin="32,24,0,0" IsHitTestVisible="False">
+                        <TextBlock x:Name="CardYearText" Text="----"
+                                   FontFamily="Segoe UI" FontWeight="Black" FontSize="44"
+                                   Foreground="#66E0E6F2" HorizontalAlignment="Left"
+                                   TextAlignment="Left"/>
+                        <TextBlock x:Name="CardMonthText" Text="--"
+                                   FontFamily="Segoe UI" FontWeight="Black" FontSize="72"
+                                   Foreground="#CCFFFFFF" HorizontalAlignment="Left"
+                                   TextAlignment="Left" Margin="0,-18,0,0"/>
+                    </StackPanel>
+
+                    <!-- 右下: その日の予定の簡易表示カード。表示専用 -->
+                    <Border x:Name="CardMiniSchedule" Width="320"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,32,24" IsHitTestVisible="False"
+                            CornerRadius="14" BorderThickness="2" Padding="16,12,16,12">
+                        <Border.BorderBrush>
+                            <SolidColorBrush Color="#A66BFF"/>
+                        </Border.BorderBrush>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#E62A2A66" Offset="0"/>
+                                <GradientStop Color="#E6171740" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Effect>
+                            <DropShadowEffect Color="#A66BFF" BlurRadius="22" ShadowDepth="0" Opacity="0.45"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <TextBlock x:Name="CardMiniScheduleTitle" Text="予定"
+                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                       Foreground="White" Margin="0,0,0,8"/>
+                            <StackPanel x:Name="CardMiniSchedulePanel"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Grid>
 
-            <!-- ══ 下段: 左=ショートカット/ツール 帯 / 右=年月表示（同じ高さ）══ -->
+            <!-- ══ 下段: ショートカット/ツール 帯（画面右端まで全幅）══ -->
             <Grid Grid.Row="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
 
-                <!-- ショートカット＆ツール セクション（ウィンドウ左端〜月表示の左隣） -->
-                <Border Grid.Column="0" Margin="24,0,12,24" CornerRadius="16"
+                <!-- ショートカット＆ツール セクション（ウィンドウ左端〜右端） -->
+                <Border Margin="24,0,24,24" CornerRadius="16"
                         BorderThickness="2" Padding="18,14,18,14" VerticalAlignment="Stretch">
                     <Border.BorderBrush>
                         <SolidColorBrush Color="#A66BFF"/>
@@ -382,20 +419,6 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-
-                <!-- 選択カードの年(4桁)/月(2桁)。フォントサイズはコードで幅に追従 -->
-                <StackPanel x:Name="CardYearMonthPanel" Grid.Column="1"
-                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                            Margin="0,0,32,16" IsHitTestVisible="False">
-                    <TextBlock x:Name="CardYearText" Text="----"
-                               FontFamily="Segoe UI" FontWeight="Black" FontSize="44"
-                               Foreground="#66E0E6F2" HorizontalAlignment="Right"
-                               TextAlignment="Right"/>
-                    <TextBlock x:Name="CardMonthText" Text="--"
-                               FontFamily="Segoe UI" FontWeight="Black" FontSize="72"
-                               Foreground="#CCFFFFFF" HorizontalAlignment="Right"
-                               TextAlignment="Right" Margin="0,-18,0,0"/>
-                </StackPanel>
             </Grid>
         </Grid>
     </Grid>

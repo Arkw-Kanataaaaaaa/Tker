@@ -963,6 +963,7 @@ public partial class HomePage : Page, IRefreshable
             _cardScheduleShownOffset = selectedOffset;
             var selDate = DateTime.Today.AddDays(selectedOffset);
             BuildCardSchedule(selDate);
+            BuildCardMiniSchedule(selDate);
             CardYearText.Text  = selDate.ToString("yyyy");
             CardMonthText.Text = selDate.ToString("MM");
         }
@@ -1341,6 +1342,84 @@ public partial class HomePage : Page, IRefreshable
             row.MouseLeftButtonUp += (_, _) => _vm.NavigateToCommand.Execute("TaskList");
             CardTaskPanel.Children.Add(row);
         }
+    }
+
+    /// <summary>カード領域右下の簡易予定カードを再構築する（最大3件＋件数）。</summary>
+    private void BuildCardMiniSchedule(DateTime date)
+    {
+        if (CardMiniSchedulePanel == null) return;
+        CardMiniSchedulePanel.Children.Clear();
+        CardMiniScheduleTitle.Text = $"{date:M/d (ddd)} の予定";
+
+        var entries = GetScheduleEntries(date);
+        if (entries.Count == 0)
+        {
+            CardMiniSchedulePanel.Children.Add(new TextBlock
+            {
+                Text = "予定なし", FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+            });
+            return;
+        }
+
+        foreach (var (time, label, color) in entries.Take(3))
+        {
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var t = new TextBlock
+            {
+                Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 11, FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(color),
+            };
+            Grid.SetColumn(t, 0);
+            g.Children.Add(t);
+
+            var l = new TextBlock
+            {
+                Text = label, FontSize = 12, Margin = new Thickness(6, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            };
+            Grid.SetColumn(l, 1);
+            g.Children.Add(l);
+
+            CardMiniSchedulePanel.Children.Add(g);
+        }
+
+        if (entries.Count > 3)
+        {
+            CardMiniSchedulePanel.Children.Add(new TextBlock
+            {
+                Text = $"ほか {entries.Count - 3} 件", FontSize = 11, Margin = new Thickness(0, 2, 0, 0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+            });
+        }
+    }
+
+    /// <summary>指定日の予定（イベント＋該当タスク）を時刻順の (時刻, ラベル, 色) で返す。</summary>
+    private List<(string time, string label, Color color)> GetScheduleEntries(DateTime date)
+    {
+        var rows = new List<(string time, string label, Color color)>();
+        foreach (var ev in _vm.ScheduleService.GetByDate(date))
+        {
+            string time = ev.IsAllDay ? "終日" : ev.StartTime.ToString("HH:mm");
+            rows.Add((time, ev.Title, ParseColorSafe(ev.Color, Color.FromRgb(0x3D, 0x7E, 0xFF))));
+        }
+        var project = _vm.ProjectService.CurrentProject;
+        if (project != null)
+        {
+            foreach (var tsk in project.Tasks.Where(tt =>
+                tt.PlannedStartDate.HasValue && tt.PlannedEndDate.HasValue &&
+                tt.PlannedStartDate.Value.Date <= date.Date && tt.PlannedEndDate.Value.Date >= date.Date))
+            {
+                rows.Add(("予定", tsk.Name, Color.FromRgb(0x52, 0x9E, 0x72)));
+            }
+        }
+        return rows.OrderBy(r => r.time).ToList();
     }
 
     /// <summary>選択日の時間単位スケジュール部品を再構築する。</summary>

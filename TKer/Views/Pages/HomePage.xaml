@@ -138,17 +138,22 @@
                         </Border.Resources>
 
                         <Grid>
-                            <!-- 背景：サムネイルをぼかしたもの -->
+                            <!-- 背景：サムネイルをぼかしたもの。
+                                 高さをコンテンツに束縛し、画像の自然サイズでパネルが膨らまないようにする -->
                             <Image x:Name="CardMediaBgImage" Stretch="UniformToFill"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Top"
+                                   Height="{Binding ActualHeight, ElementName=CardMediaContent}"
                                    RenderOptions.BitmapScalingMode="HighQuality">
                                 <Image.Effect>
                                     <BlurEffect Radius="45" KernelType="Gaussian"/>
                                 </Image.Effect>
                             </Image>
-                            <!-- 可読性のための暗いスクリム -->
-                            <Border Background="#A8000000"/>
+                            <!-- 可読性のための暗いスクリム（同じく高さをコンテンツに束縛）-->
+                            <Border Background="#A8000000"
+                                    Height="{Binding ActualHeight, ElementName=CardMediaContent}"
+                                    VerticalAlignment="Top"/>
 
-                            <StackPanel Margin="18,14,18,14">
+                            <StackPanel x:Name="CardMediaContent" Margin="18,14,18,14">
                                 <!-- タイトル行：左上にアプリアイコン -->
                                 <DockPanel>
                                     <Image x:Name="CardMediaAppIcon" DockPanel.Dock="Left"

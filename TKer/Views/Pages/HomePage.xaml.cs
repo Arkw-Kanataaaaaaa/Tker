@@ -890,6 +890,7 @@ public partial class HomePage : Page, IRefreshable
         CardClockText.Text   = DateTime.Now.ToString("HH:mm:ss");
 
         BuildCardShortcuts();
+        BuildCardCollections();
         BuildCardTodo();
         BuildCardTasks();
         _cardScheduleShownOffset = int.MinValue;   // 強制再構築
@@ -900,6 +901,14 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>Canvas サイズ変動時にカードを再構築する。</summary>
     private void CardCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
         => BuildCards();
+
+    /// <summary>メディア部品のサイズ変動時に角丸クリップを設定する。</summary>
+    private void CardMediaRoot_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is not Border b || b.ActualWidth < 1 || b.ActualHeight < 1) return;
+        b.Clip = new System.Windows.Media.RectangleGeometry(
+            new Rect(0, 0, b.ActualWidth, b.ActualHeight), 14, 14);
+    }
 
     /// <summary>日付カードを奥行きパースのスタックとして Canvas に配置する。</summary>
     private void BuildCards()
@@ -939,6 +948,13 @@ public partial class HomePage : Page, IRefreshable
             int dateOffset = baseOffset + k;
             AddCard(frontX, frontY, cardW, cardH, depth, stepX, stepY, dateOffset);
         }
+
+        // 右下の年月フォントサイズをカード領域の幅に追従させる
+        double monthFont = Math.Clamp(w * 0.085, 40, 120);
+        double yearFont  = monthFont * 0.6;
+        CardMonthText.FontSize = monthFont;
+        CardYearText.FontSize  = yearFont;
+        CardMonthText.Margin   = new Thickness(0, -monthFont * 0.25, 0, 0);
 
         // 前面カードの選択日が変わったら、当日スケジュール・年月表示を更新する
         int selectedOffset = (int)Math.Round(_cardPhase);
@@ -1113,6 +1129,86 @@ public partial class HomePage : Page, IRefreshable
             btn.Click += (_, _) => OpenShortcut(path);
             CardShortcutPanel.Children.Add(btn);
         }
+    }
+
+    /// <summary>コレクションをグリッド（カバー画像 or アイコン）で表示する部品を再構築する。</summary>
+    private void BuildCardCollections()
+    {
+        CardCollectionPanel.Children.Clear();
+        var collections = _vm.CollectionService.Collections;
+        CardNoCollectionText.Visibility = collections.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var col in collections)
+        {
+            var card = new Border
+            {
+                Width = 100, Height = 116, Margin = new Thickness(0, 0, 10, 10),
+                CornerRadius = new CornerRadius(10),
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x12, 0x18, 0x28)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0xA6, 0x6B, 0xFF)),
+                BorderThickness = new Thickness(1),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ClipToBounds = true,
+                ToolTip = col.Name,
+            };
+            var g = new Grid();
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // 表紙：Base64 画像があれば画像、なければアイコン絵文字
+            var cover = new Border
+            {
+                CornerRadius = new CornerRadius(8), Margin = new Thickness(6, 6, 6, 2),
+                Background = new SolidColorBrush(Color.FromArgb(0x55, 0x2A, 0x2A, 0x66)),
+            };
+            var img = DecodeBase64Image(col.CoverImageData);
+            if (img != null)
+            {
+                cover.Background = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
+            }
+            else
+            {
+                cover.Child = new TextBlock
+                {
+                    Text = string.IsNullOrEmpty(col.Icon) ? "📁" : col.Icon,
+                    FontSize = 30, HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+            }
+            Grid.SetRow(cover, 0);
+            g.Children.Add(cover);
+
+            var nameTb = new TextBlock
+            {
+                Text = col.Name, FontSize = 11, FontWeight = FontWeights.Bold,
+                Margin = new Thickness(7, 0, 7, 6), TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            };
+            Grid.SetRow(nameTb, 1);
+            g.Children.Add(nameTb);
+
+            card.Child = g;
+            card.MouseLeftButtonUp += (_, _) => _vm.NavigateToCommand.Execute("Collection");
+            CardCollectionPanel.Children.Add(card);
+        }
+    }
+
+    /// <summary>Base64 文字列を BitmapImage に変換する。空・失敗時は null。</summary>
+    private static System.Windows.Media.Imaging.BitmapImage? DecodeBase64Image(string? data)
+    {
+        if (string.IsNullOrWhiteSpace(data)) return null;
+        try
+        {
+            var bytes = Convert.FromBase64String(data);
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.StreamSource = new System.IO.MemoryStream(bytes);
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        }
+        catch { return null; }
     }
 
     /// <summary>ToDo 部品を再構築する（未完了を優先表示）。</summary>

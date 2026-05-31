@@ -26,6 +26,10 @@ public partial class HomePage : Page, IRefreshable
     /// true のときショートカットラインに「＋（追加）」ノードを表示する。</summary>
     public bool IsEditPreview { get; set; } = false;
 
+    /// <summary>右列の部品が「クリック」されたとき（ドラッグでなかった場合）に通知するコールバック。
+    /// カスタマイズ画面がスタイル編集対象として選択するのに使う。</summary>
+    public Action<string>? RightWidgetClicked { get; set; }
+
     /// <summary>ホームページを初期化し、時計タイマーを起動する。</summary>
     public HomePage(MainViewModel vm)
     {
@@ -1440,8 +1444,12 @@ public partial class HomePage : Page, IRefreshable
         if (_crDrag == null) return;
         if (!_crActive)
         {
+            // ドラッグ閾値に達しなかった → クリックとして部品選択を通知
+            var clickedKey = _crDrag.Tag as string;
             _crDrag = null;
             CardRightStack.ReleaseMouseCapture();
+            if (!string.IsNullOrEmpty(clickedKey))
+                RightWidgetClicked?.Invoke(clickedKey);
             return;
         }
 

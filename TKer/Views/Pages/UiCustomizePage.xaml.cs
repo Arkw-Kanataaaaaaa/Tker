@@ -296,16 +296,9 @@ public partial class UiCustomizePage : Page, IRefreshable
     /// <summary>テンプレート ID とラジオの対応（表示順）。</summary>
     private (string Key, RadioButton? Rb)[] TemplateRadios() => new (string, RadioButton?)[]
     {
-        ("Grid",         RbTplGrid),
-        ("Planet",       RbTplPlanet),
-        ("Card",         RbTplCard),
-        ("Magazine",     RbTplMagazine),
-        ("Dock",         RbTplDock),
-        ("Tri",          RbTplTri),
-        ("Timeline",     RbTplTimeline),
-        ("CalendarFull", RbTplCalendar),
-        ("Journal",      RbTplJournal),
-        ("Glass",        RbTplGlass),
+        ("Grid",   RbTplGrid),
+        ("Planet", RbTplPlanet),
+        ("Card",   RbTplCard),
     };
 
     /// <summary>保存済みテンプレート設定に合わせてラジオボタンの選択状態を反映する。</summary>
@@ -357,7 +350,15 @@ public partial class UiCustomizePage : Page, IRefreshable
         // 実際の適用イメージ：HomePage を生成（再利用）して最新状態を描画
         if (_previewHome == null)
         {
-            _previewHome = new HomePage(_vm) { IsEditPreview = true };
+            _previewHome = new HomePage(_vm)
+            {
+                IsEditPreview = true,
+                RightWidgetClicked = key =>
+                {
+                    _selectedHomeId = key;
+                    UpdateHomeStylePanel();
+                },
+            };
             HomePreviewFrame.Navigate(_previewHome);
             // レイアウト確定後に描画（Frame の Navigate は非同期反映のため）
             Dispatcher.BeginInvoke(new Action(() => _previewHome?.Refresh()),
@@ -370,25 +371,36 @@ public partial class UiCustomizePage : Page, IRefreshable
     }
 
     /// <summary>ライブプレビュー上のクリックで、Tag を持つ部品を選択してスタイル編集パネルを開く。
-    /// ただしクリック対象がボタンの場合はボタン自身の Click を優先させる。</summary>
+    /// ボタン上のクリック・右列ドラッグエリアは素通しして内側ハンドラに任せる。</summary>
     private void LivePreview_Click(object sender, MouseButtonEventArgs e)
     {
-        // クリック対象の祖先に Button があれば素通し（＋ボタン等の動作を妨げない）
-        var n = e.OriginalSource as DependencyObject;
+        var src = e.OriginalSource as DependencyObject;
+
+        // 祖先に ButtonBase があれば素通し（＋ボタン等の Click を発火させる）
+        var n = src;
         while (n != null)
         {
             if (n is System.Windows.Controls.Primitives.ButtonBase) return;
             n = VisualTreeHelper.GetParent(n);
         }
 
-        var node = e.OriginalSource as DependencyObject;
+        // 右列のドラッグエリア（x:Name="CardRightStack"）上のクリックは素通し
+        // → HomePage 側のドラッグハンドラ(CardRight_Down)に到達させる
+        n = src;
+        while (n != null)
+        {
+            if (n is FrameworkElement el && el.Name == "CardRightStack") return;
+            n = VisualTreeHelper.GetParent(n);
+        }
+
+        var node = src;
         while (node != null)
         {
             if (node is FrameworkElement fe && fe.Tag is string tag && tag.StartsWith("Card_"))
             {
                 _selectedHomeId = tag;
                 UpdateHomeStylePanel();
-                e.Handled = true;   // カードのドラッグ等を抑止
+                e.Handled = true;
                 return;
             }
             node = VisualTreeHelper.GetParent(node);
@@ -401,16 +413,9 @@ public partial class UiCustomizePage : Page, IRefreshable
         if (TplHint == null) return;
         TplHint.Text = template switch
         {
-            "Planet"       => "惑星スタイル: プレビューの部品をクリックでスタイル編集できます",
-            "Card"         => "カードスタイル: プレビューの部品をクリックでスタイル編集できます",
-            "Magazine"     => "（未実装）マガジン: 中央カード＋年月の透かし＋下部ウィジェット帯",
-            "Dock"         => "（未実装）ドック: フル幅カード＋右の縦アイコンドック",
-            "Tri"          => "（未実装）3分割: ヘッダー / カード中央 / 下ショートカット",
-            "Timeline"     => "（未実装）タイムライン: 縦時間軸＋イベント帯",
-            "CalendarFull" => "（未実装）カレンダー全面: 月カレンダーが背景・選択日が拡大",
-            "Journal"      => "（未実装）手帳: 見開き2ページで予定と ToDo",
-            "Glass"        => "（未実装）グラス: ぼかし背景＋浮遊するガラスパネル",
-            _              => "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます",
+            "Planet" => "惑星スタイル: プレビューの部品をクリックでスタイル編集できます",
+            "Card"   => "カードスタイル: プレビューの部品をクリックでスタイル編集できます",
+            _        => "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます",
         };
     }
 

@@ -1420,6 +1420,9 @@ public partial class HomePage : Page, IRefreshable
     private Point  _crStart;
     private bool   _crActive;
     private TranslateTransform? _crTf;
+    private Border? _crGhost;
+    private int    _crDropChildIdx;
+    private string _crDropMode = "Full";
 
     private Border? FindCardRightWidget(object? src)
     {
@@ -1455,18 +1458,104 @@ public partial class HomePage : Page, IRefreshable
     {
         if (_crDrag == null || e.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
         var pos = e.GetPosition(CardRightStack);
+        double dx = pos.X - _crStart.X;
         double dy = pos.Y - _crStart.Y;
         if (!_crActive)
         {
-            if (Math.Abs(dy) < 6) return;
+            if (Math.Abs(dx) < 6 && Math.Abs(dy) < 6) return;
             _crActive = true;
             _crTf = new TranslateTransform();
             _crDrag.RenderTransform = _crTf;
-            _crDrag.Opacity = 0.8;
-            Panel.SetZIndex(_crDrag, 10);
+            _crDrag.Opacity = 0.55;
+            Panel.SetZIndex(_crDrag, 100);
         }
+        // マウスに追従（X+Y 両軸）
+        _crTf!.X = dx;
         _crTf!.Y = dy;
+        // ゴースト位置を更新
+        UpdateGhost(pos);
         e.Handled = true;
+    }
+
+    /// <summary>ゴースト要素を初期化（未生成なら生成）。</summary>
+    private void EnsureGhost()
+    {
+        if (_crGhost != null) return;
+        _crGhost = new Border
+        {
+            Height = 64,
+            Margin = new Thickness(0, 0, 0, 14),
+            CornerRadius = new CornerRadius(10),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(0xA6, 0x6B, 0xFF)),
+            BorderThickness = new Thickness(2),
+            Background = new SolidColorBrush(Color.FromArgb(0x33, 0xA6, 0x6B, 0xFF)),
+            IsHitTestVisible = false,
+        };
+    }
+
+    /// <summary>ゴーストを親から取り外す。</summary>
+    private void RemoveGhost()
+    {
+        if (_crGhost != null && _crGhost.Parent is Panel p)
+            p.Children.Remove(_crGhost);
+    }
+
+    /// <summary>ドラッグ位置から挿入先とモードを計算し、ゴーストを移動する。</summary>
+    private void UpdateGhost(Point pos)
+    {
+        if (CardRightStack == null) return;
+        EnsureGhost();
+        RemoveGhost();
+
+        // ドラッグ中部品は除外して挿入先を探す
+        var others = CardRightStack.Children.OfType<UIElement>()
+            .Where(c => !ReferenceEquals(c, _crDrag) && !ReferenceEquals(c, _crGhost))
+            .ToList();
+
+        double stackW = CardRightStack.ActualWidth;
+        double frac   = stackW > 0 ? pos.X / stackW : 0.5;
+        string mode = "Full";
+        if      (frac < 0.30) mode = "HalfLeft";
+        else if (frac > 0.70) mode = "HalfRight";
+
+        // 子要素の Y 範囲から挿入位置を決定
+        int insertAtOthers = others.Count;
+        for (int i = 0; i < others.Count; i++)
+        {
+            if (others[i] is not FrameworkElement ch) continue;
+            double top;
+            try { top = ch.TranslatePoint(new Point(0, 0), CardRightStack).Y; }
+            catch { top = 0; }
+            double h = ch.ActualHeight;
+            if (pos.Y < top + h / 2) { insertAtOthers = i; break; }
+        }
+
+        // ゴーストの幅・配置を設定
+        if (mode == "HalfLeft")
+        {
+            _crGhost!.HorizontalAlignment = HorizontalAlignment.Left;
+            _crGhost.Width = Math.Max(40, stackW / 2 - 8);
+        }
+        else if (mode == "HalfRight")
+        {
+            _crGhost!.HorizontalAlignment = HorizontalAlignment.Right;
+            _crGhost.Width = Math.Max(40, stackW / 2 - 8);
+        }
+        else
+        {
+            _crGhost!.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _crGhost.Width = double.NaN;
+        }
+
+        // others ベースの挿入位置を CardRightStack.Children ベースに戻す
+        int realIdx = insertAtOthers < others.Count
+            ? CardRightStack.Children.IndexOf(others[insertAtOthers])
+            : CardRightStack.Children.Count;
+        realIdx = Math.Clamp(realIdx, 0, CardRightStack.Children.Count);
+        CardRightStack.Children.Insert(realIdx, _crGhost);
+
+        _crDropChildIdx = realIdx;
+        _crDropMode     = mode;
     }
 
     private void CardRight_Up(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -1484,7 +1573,6 @@ public partial class HomePage : Page, IRefreshable
         }
 
         var drag = _crDrag;
-        var pos  = e.GetPosition(CardRightStack);
         // 視覚効果を戻す
         drag.RenderTransform = null;
         drag.Opacity = 1.0;
@@ -1494,70 +1582,62 @@ public partial class HomePage : Page, IRefreshable
             .Where(s => CardRightWidgetMap().ContainsKey(s.Key)).ToList();
         string dragKey = (string)drag.Tag;
         int dragIdx = slots.FindIndex(s => s.Key == dragKey);
-        if (dragIdx < 0) { _crDrag = null; CardRightStack.ReleaseMouseCapture(); return; }
-        slots.RemoveAt(dragIdx);
+        if (dragIdx < 0) { ClearDragState(); return; }
 
-        // 行ごとの占有範囲 (slotIdx, slotCount, topY, height) を算出
-        // HalfLeft + HalfRight のペアは 1 行で 2 スロット消費
-        var rows = new System.Collections.Generic.List<(int slotIdx, int slotCount, double topY, double height)>();
+        // ゴースト位置（CardRightStack 子要素 index）をスロット index へ変換
+        // ※ ゴースト自身と被ドラッグ要素を除外して数える
+        int ghostChildIdx = _crDropChildIdx;
+        var allChildren = CardRightStack.Children.OfType<UIElement>().ToList();
+        // 「ゴーストの直前にある実 child の数」を数える
+        int childCountBeforeGhost = 0;
+        for (int i = 0; i < ghostChildIdx && i < allChildren.Count; i++)
+        {
+            var ch = allChildren[i];
+            if (ReferenceEquals(ch, _crGhost) || ReferenceEquals(ch, drag)) continue;
+            childCountBeforeGhost++;
+        }
+
+        // 元のスロット配列で、被ドラッグスロットを除いた状態における
+        // 子 index (childCountBeforeGhost) に対応するスロット index を求める
+        var without = new System.Collections.Generic.List<CardRightSlot>(slots);
+        without.RemoveAt(dragIdx);
+        int targetSlotIdx = ChildIdxToSlotIdx(childCountBeforeGhost, without);
+
+        // スロット配列を更新
+        slots.RemoveAt(dragIdx);
+        var newSlot = new CardRightSlot { Key = dragKey, Mode = _crDropMode };
+        targetSlotIdx = Math.Clamp(targetSlotIdx, 0, slots.Count);
+        slots.Insert(targetSlotIdx, newSlot);
+
+        _vm.AppSettingsService.SaveCardRightSlots(slots);
+        ClearDragState();
+        ApplyCardRightLayout();
+    }
+
+    /// <summary>ドラッグ状態のクリーンアップ。</summary>
+    private void ClearDragState()
+    {
+        RemoveGhost();
+        _crDrag = null;
+        _crActive = false;
+        if (CardRightStack.IsMouseCaptured) CardRightStack.ReleaseMouseCapture();
+    }
+
+    /// <summary>スロット列のうち何個目のスロット位置が、表示上の子要素 index に対応するかを返す。
+    /// HalfLeft+HalfRight ペアは 1 子要素で 2 スロット消費する。</summary>
+    private static int ChildIdxToSlotIdx(int childIdx, System.Collections.Generic.List<CardRightSlot> slots)
+    {
+        int curChild = 0;
         int si = 0;
-        double cy = 0;
-        while (si < slots.Count)
+        while (si < slots.Count && curChild < childIdx)
         {
             bool pair = slots[si].Mode == "HalfLeft"
                         && si + 1 < slots.Count
                         && slots[si + 1].Mode == "HalfRight";
-            int cnt = pair ? 2 : 1;
-            double h = slots[si].Mode == "Full" ? 180 : 240;
-            rows.Add((si, cnt, cy, h));
-            cy += h;
-            si += cnt;
+            si += pair ? 2 : 1;
+            curChild++;
         }
-
-        double stackW = CardRightStack.ActualWidth;
-        double frac   = stackW > 0 ? pos.X / stackW : 0.5;
-
-        int    targetIdx = slots.Count;
-        string newMode   = "Full";
-        if      (frac < 0.30) newMode = "HalfLeft";
-        else if (frac > 0.70) newMode = "HalfRight";
-
-        int? hoverRow = null;
-        for (int r = 0; r < rows.Count; r++)
-            if (pos.Y >= rows[r].topY && pos.Y < rows[r].topY + rows[r].height) { hoverRow = r; break; }
-
-        if (hoverRow.HasValue)
-        {
-            var row     = rows[hoverRow.Value];
-            var rowSlot = slots[row.slotIdx];
-
-            if (row.slotCount == 1 && rowSlot.Mode == "HalfLeft" && frac > 0.5)
-            {
-                // 単独 HalfLeft の右半分にドロップ → HalfRight として直後に挿入してペア化
-                targetIdx = row.slotIdx + 1;
-                newMode   = "HalfRight";
-            }
-            else if (row.slotCount == 1 && rowSlot.Mode == "HalfRight" && frac < 0.5)
-            {
-                // 単独 HalfRight の左半分にドロップ → HalfLeft として直前に挿入してペア化
-                targetIdx = row.slotIdx;
-                newMode   = "HalfLeft";
-            }
-            else
-            {
-                bool insertBefore = pos.Y < row.topY + row.height / 2;
-                targetIdx = insertBefore ? row.slotIdx : row.slotIdx + row.slotCount;
-            }
-        }
-
-        var newSlot = new CardRightSlot { Key = dragKey, Mode = newMode };
-        targetIdx = Math.Clamp(targetIdx, 0, slots.Count);
-        slots.Insert(targetIdx, newSlot);
-
-        _vm.AppSettingsService.SaveCardRightSlots(slots);
-        _crDrag = null; _crActive = false;
-        CardRightStack.ReleaseMouseCapture();
-        ApplyCardRightLayout();
+        return si;
     }
 
     // ── ウィジェット部品ビルダー ─────────────────────────────
@@ -1809,7 +1889,8 @@ public partial class HomePage : Page, IRefreshable
     private void BuildCardTodo()
     {
         CardTodoPanel.Children.Clear();
-        var todos = _vm.TodoService.GetAll().Where(t => !t.IsCompleted).Take(6).ToList();
+        // 全件を表示する。3 行超過分は内部 ScrollViewer でスクロール。
+        var todos = _vm.TodoService.GetAll().Where(t => !t.IsCompleted).ToList();
         CardNoTodoText.Visibility = todos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         foreach (var todo in todos)
         {
@@ -2060,7 +2141,8 @@ public partial class HomePage : Page, IRefreshable
         var alerts = _vm.AppSettingsService.CollectAlerts();
         CardNoAlertText.Visibility = alerts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        foreach (var a in alerts.Take(6))
+        // 全件を表示。3 行超過分は内部 ScrollViewer でスクロール。
+        foreach (var a in alerts)
         {
             var row = new Border
             {
@@ -2201,7 +2283,8 @@ public partial class HomePage : Page, IRefreshable
         CardProjectsPanel.Children.Clear();
         var summaries = _vm.AppSettingsService.CollectSummaries();
         CardNoProjectsText.Visibility = summaries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        foreach (var s in summaries.Take(5))
+        // 全件を表示。3 行超過分は内部 ScrollViewer でスクロール。
+        foreach (var s in summaries)
         {
             var row = new Border
             {
@@ -2334,12 +2417,12 @@ public partial class HomePage : Page, IRefreshable
             return;
         }
         CardNoTaskText.Visibility = Visibility.Collapsed;
+        // 全件を表示。3 行超過分は内部 ScrollViewer でスクロール。
         var tasks = project.Tasks
             .Where(t => t.Status != "完了")
             .OrderByDescending(t => t.UpdatedAt)
-            .Take(6)
             .ToList();
-        if (tasks.Count == 0) tasks = project.Tasks.OrderByDescending(t => t.UpdatedAt).Take(6).ToList();
+        if (tasks.Count == 0) tasks = project.Tasks.OrderByDescending(t => t.UpdatedAt).ToList();
 
         foreach (var task in tasks)
         {

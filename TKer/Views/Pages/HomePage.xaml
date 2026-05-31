@@ -102,7 +102,7 @@
                               HorizontalScrollBarVisibility="Disabled">
                     <StackPanel x:Name="CardRightStack">
 
-                            <!-- アラート部品（一番上） -->
+                            <!-- アラート部品（一番上、3行までスクロール） -->
                             <Border x:Name="CardAlertCard" Tag="Card_Alert"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
@@ -116,14 +116,18 @@
                                                 VerticalAlignment="Center"
                                                 Click="CardAlerts_Click"/>
                                     </DockPanel>
-                                    <StackPanel x:Name="CardAlertPanel"/>
+                                    <ScrollViewer MaxHeight="170"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="CardAlertPanel"/>
+                                    </ScrollViewer>
                                     <TextBlock x:Name="CardNoAlertText"
                                                Text="アラートはありません"
                                                FontSize="11" Foreground="#9AA2B4"/>
                                 </StackPanel>
                             </Border>
 
-                            <!-- ToDo / タスク 部品（1カードに統合） -->
+                            <!-- ToDo / タスク 部品（1カードに統合、各3行までスクロール） -->
                             <Border x:Name="CardTodoTasksCard" Tag="Card_TodoTasks"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
@@ -137,7 +141,11 @@
                                                 VerticalAlignment="Center"
                                                 Click="CardGoToTodo_Click"/>
                                     </DockPanel>
-                                    <StackPanel x:Name="CardTodoPanel"/>
+                                    <ScrollViewer MaxHeight="140"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="CardTodoPanel"/>
+                                    </ScrollViewer>
                                     <TextBlock x:Name="CardNoTodoText" Text="未完了の ToDo はありません"
                                                FontSize="11" Foreground="#9AA2B4"
                                                Visibility="Collapsed"/>
@@ -152,7 +160,11 @@
                                                 VerticalAlignment="Center"
                                                 Click="CardGoToTaskList_Click"/>
                                     </DockPanel>
-                                    <StackPanel x:Name="CardTaskPanel"/>
+                                    <ScrollViewer MaxHeight="160"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="CardTaskPanel"/>
+                                    </ScrollViewer>
                                     <TextBlock x:Name="CardNoTaskText" Text="プロジェクトを開くとタスクが表示されます"
                                                FontSize="11" Foreground="#9AA2B4"
                                                Visibility="Collapsed"/>
@@ -174,7 +186,7 @@
                                 </DockPanel>
                             </Border>
 
-                            <!-- プロジェクト部品 -->
+                            <!-- プロジェクト部品（3行までスクロール） -->
                             <Border x:Name="CardProjectsCard" Tag="Card_Projects"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
@@ -188,7 +200,11 @@
                                                 VerticalAlignment="Center"
                                                 Click="CardGoToProjects_Click"/>
                                     </DockPanel>
-                                    <StackPanel x:Name="CardProjectsPanel"/>
+                                    <ScrollViewer MaxHeight="170"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="CardProjectsPanel"/>
+                                    </ScrollViewer>
                                     <TextBlock x:Name="CardNoProjectsText"
                                                Text="登録されたプロジェクトがありません"
                                                FontSize="11" Foreground="#9AA2B4"

@@ -97,7 +97,7 @@
                                Foreground="{StaticResource TextPrimaryBrush}"/>
 
                     <!-- メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
-                    <Border x:Name="CardMediaRoot" CornerRadius="14" Margin="0,0,0,14"
+                    <Border x:Name="CardMediaRoot" CornerRadius="14" Margin="0,0,0,14" Tag="Card_Media"
                             ClipToBounds="True" SizeChanged="CardMediaRoot_SizeChanged">
                         <Border.Effect>
                             <DropShadowEffect Color="#000000" BlurRadius="18"
@@ -215,7 +215,7 @@
                     </Border>
 
                     <!-- コレクション グリッド表示部品 -->
-                    <Border Style="{StaticResource CardPanel}">
+                    <Border x:Name="CardCollectionCard" Tag="Card_Collection" Style="{StaticResource CardPanel}">
                         <StackPanel>
                             <TextBlock Text="コレクション"
                                        FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="18"
@@ -238,7 +238,7 @@
                     </Border>
 
                     <!-- 選択日の時間単位スケジュール -->
-                    <Border Style="{StaticResource CardPanel}">
+                    <Border x:Name="CardScheduleCard" Tag="Card_Schedule" Style="{StaticResource CardPanel}">
                         <StackPanel>
                             <TextBlock x:Name="CardScheduleTitle" Text="予定"
                                        FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="18"
@@ -257,7 +257,7 @@
                     </Border>
 
                     <!-- ToDo リスト部品 -->
-                    <Border Style="{StaticResource CardPanel}">
+                    <Border x:Name="CardTodoCard" Tag="Card_Todo" Style="{StaticResource CardPanel}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,12">
                                 <TextBlock Text="ToDo" DockPanel.Dock="Left"
@@ -277,7 +277,7 @@
                     </Border>
 
                     <!-- アクティブプロジェクトのタスク一覧部品 -->
-                    <Border Style="{StaticResource CardPanel}">
+                    <Border x:Name="CardTasksCard" Tag="Card_Tasks" Style="{StaticResource CardPanel}">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,12">
                                 <TextBlock Text="タスク一覧" DockPanel.Dock="Left"
@@ -322,9 +322,9 @@
                     </StackPanel>
 
                     <!-- 右下: その日の予定の簡易表示カード。表示専用 -->
-                    <Border x:Name="CardMiniSchedule" Width="320"
+                    <Border x:Name="CardMiniSchedule" Width="320" Tag="Card_MiniSchedule"
                             HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                            Margin="0,0,32,24" IsHitTestVisible="False"
+                            Margin="0,0,32,24"
                             CornerRadius="14" BorderThickness="2" Padding="16,12,16,12">
                         <Border.BorderBrush>
                             <SolidColorBrush Color="#A66BFF"/>
@@ -352,7 +352,7 @@
             <Grid Grid.Row="1">
 
                 <!-- ショートカット＆ツール セクション（ウィンドウ左端〜右端） -->
-                <Border Margin="24,0,24,24" CornerRadius="16"
+                <Border x:Name="CardToolsCard" Tag="Card_Tools" Margin="24,0,24,24" CornerRadius="16"
                         BorderThickness="2" Padding="18,14,18,14" VerticalAlignment="Stretch">
                     <Border.BorderBrush>
                         <SolidColorBrush Color="#A66BFF"/>

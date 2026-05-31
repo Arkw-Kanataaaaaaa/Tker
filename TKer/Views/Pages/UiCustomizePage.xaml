@@ -159,11 +159,13 @@
                                         <Grid x:Name="HomePreviewGrid" Margin="14" MinHeight="380"/>
                                     </ScrollViewer>
 
-                                    <!-- 惑星/カードテンプレート: 実際の適用イメージを縮小表示 -->
+                                    <!-- 惑星/カードテンプレート: 実際の適用イメージを縮小表示。
+                                         クリックで部品を選択してスタイル編集できる -->
                                     <Viewbox x:Name="HomeLivePreviewBox" Stretch="Uniform"
                                              Visibility="Collapsed" Margin="6">
-                                        <Border Width="1600" Height="900" IsHitTestVisible="False">
-                                            <Frame x:Name="HomePreviewFrame" NavigationUIVisibility="Hidden"/>
+                                        <Border Width="1600" Height="900">
+                                            <Frame x:Name="HomePreviewFrame" NavigationUIVisibility="Hidden"
+                                                   PreviewMouseLeftButtonDown="LivePreview_Click"/>
                                         </Border>
                                     </Viewbox>
                                 </Grid>

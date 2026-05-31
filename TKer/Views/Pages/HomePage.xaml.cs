@@ -893,6 +893,20 @@ public partial class HomePage : Page, IRefreshable
         _cardScheduleShownOffset = int.MinValue;   // 強制再構築
         BuildCards();
         StartCardMedia();
+        ApplyCardSectionThemes();
+    }
+
+    /// <summary>カード各部品にユーザー設定のセクションテーマ（背景/文字/枠/不透明度）を適用する。</summary>
+    private void ApplyCardSectionThemes()
+    {
+        var svc = _vm.AppSettingsService;
+        UiThemeHelper.ApplySectionTheme(CardMediaRoot,      svc.GetSectionTheme("Card_Media"));
+        UiThemeHelper.ApplySectionTheme(CardCollectionCard, svc.GetSectionTheme("Card_Collection"));
+        UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
+        UiThemeHelper.ApplySectionTheme(CardTodoCard,       svc.GetSectionTheme("Card_Todo"));
+        UiThemeHelper.ApplySectionTheme(CardTasksCard,      svc.GetSectionTheme("Card_Tasks"));
+        UiThemeHelper.ApplySectionTheme(CardToolsCard,      svc.GetSectionTheme("Card_Tools"));
+        UiThemeHelper.ApplySectionTheme(CardMiniSchedule,   svc.GetSectionTheme("Card_MiniSchedule"));
     }
 
     /// <summary>Canvas サイズ変動時にカードを再構築する。</summary>

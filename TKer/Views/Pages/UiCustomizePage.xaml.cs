@@ -42,6 +42,14 @@ public partial class UiCustomizePage : Page, IRefreshable
         ["Version"]    = "バージョン情報",
         ["Header"]     = "ヘッダーバー",
         ["Alert"]      = "アラートセクション",
+        // カードテンプレートの部品
+        ["Card_Media"]        = "メディア",
+        ["Card_Collection"]   = "コレクション",
+        ["Card_Schedule"]     = "予定",
+        ["Card_Todo"]         = "ToDo",
+        ["Card_Tasks"]        = "タスク一覧",
+        ["Card_Tools"]        = "ショートカット/ツール",
+        ["Card_MiniSchedule"] = "当日予定",
     };
 
     private static readonly string[] FIXED_HOME_COMPONENTS = { };
@@ -301,14 +309,31 @@ public partial class UiCustomizePage : Page, IRefreshable
         }
     }
 
+    /// <summary>ライブプレビュー上のクリックで、Tag を持つ部品を選択してスタイル編集パネルを開く。</summary>
+    private void LivePreview_Click(object sender, MouseButtonEventArgs e)
+    {
+        var node = e.OriginalSource as DependencyObject;
+        while (node != null)
+        {
+            if (node is FrameworkElement fe && fe.Tag is string tag && tag.StartsWith("Card_"))
+            {
+                _selectedHomeId = tag;
+                UpdateHomeStylePanel();
+                e.Handled = true;   // カードのドラッグ等を抑止
+                return;
+            }
+            node = VisualTreeHelper.GetParent(node);
+        }
+    }
+
     /// <summary>テンプレートに応じた補助テキストを表示する。</summary>
     private void UpdateTemplateHint(string template)
     {
         if (TplHint == null) return;
         TplHint.Text = template switch
         {
-            "Planet" => "惑星スタイルは固定レイアウトのため、レーン編集は無効になります",
-            "Card"   => "カードスタイルは固定レイアウトのため、レーン編集は無効になります",
+            "Planet" => "惑星スタイルは固定レイアウトです。プレビューの部品をクリックでスタイル編集できます",
+            "Card"   => "カードスタイルは固定レイアウトです。プレビューの部品をクリックでスタイル編集できます",
             _        => "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます",
         };
     }
@@ -997,6 +1022,7 @@ public partial class UiCustomizePage : Page, IRefreshable
                 Opacity     = opSlider.Value / 100.0
             });
             BuildHomePreview();
+            _previewHome?.Refresh();   // ライブプレビューにも即反映
         };
         HomeStylePanel.Children.Add(applyBtn);
 
@@ -1013,6 +1039,7 @@ public partial class UiCustomizePage : Page, IRefreshable
             _svc.UpdateSectionTheme(capturedId, new SectionTheme());
             UpdateHomeStylePanel();
             BuildHomePreview();
+            _previewHome?.Refresh();   // ライブプレビューにも即反映
         };
         HomeStylePanel.Children.Add(resetBtn);
     }

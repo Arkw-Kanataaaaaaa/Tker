@@ -483,6 +483,21 @@ public partial class HomePage : Page, IRefreshable
     private const double PLANET_RING_TILT_DEG = 12.0;
     /// <summary>リングに配置する衛星の数（=日数）。</summary>
     private const int PLANET_SAT_COUNT = 7;
+    /// <summary>リング線の太さ（手前半周）。</summary>
+    private const double PLANET_RING_STROKE_FRONT = 6.5;
+    /// <summary>リング線の太さ（奥半周）。</summary>
+    private const double PLANET_RING_STROKE_BACK = 4.0;
+    /// <summary>ドラッグで1日進むのに必要な横移動量(px)。</summary>
+    private const double PLANET_DRAG_PX_PER_DAY = 50.0;
+
+    /// <summary>前面に表示する日付の today からのオフセット（0=今日）。</summary>
+    private int _planetDayOffset = 0;
+    /// <summary>ドラッグ中フラグ。</summary>
+    private bool _planetDragging = false;
+    /// <summary>ドラッグ直前のカーソル位置。</summary>
+    private Point _planetDragLastPos;
+    /// <summary>ドラッグ中の横移動累積量（px）。</summary>
+    private double _planetDragAccumX = 0;
 
     /// <summary>惑星ビューのテキスト情報を更新し、Canvas を再描画する。</summary>
     private void RefreshPlanetView()
@@ -519,23 +534,23 @@ public partial class HomePage : Page, IRefreshable
 
         // ── 衛星座標と深度（z）を先に計算 ──────────────
         // φ=0 を「手前下部」とし、cos(φ) が +1 で最前、-1 で最奥。
-        var sats = new System.Collections.Generic.List<(double x, double y, double depth, int dayOffset)>();
+        // i=0 を前面位置に固定し、表示する日付は (_planetDayOffset + i) で算出する。
+        var sats = new System.Collections.Generic.List<(double x, double y, double depth, int dateOffset, bool isFront)>();
         for (int i = 0; i < PLANET_SAT_COUNT; i++)
         {
             double phi = i * 2 * Math.PI / PLANET_SAT_COUNT;
             double lx = ringRx * Math.Sin(phi);
             double ly = ringRy * Math.Cos(phi);
-            // リング全体を tilt 回転（時計回り = 画面下向きY軸では正のsin）
             double rx = lx * cosT - ly * sinT;
             double ry = lx * sinT + ly * cosT;
-            sats.Add((cx + rx, cy + ry, Math.Cos(phi), i));
+            sats.Add((cx + rx, cy + ry, Math.Cos(phi), _planetDayOffset + i, i == 0));
         }
 
         // ── 1. 後方の衛星（depth<0）を惑星より先に描画 ───
         foreach (var s in sats.Where(s => s.depth < 0).OrderBy(s => s.depth))
-            AddSatellite(s.x, s.y, s.depth, s.dayOffset);
+            AddSatellite(s.x, s.y, s.depth, s.dateOffset, s.isFront);
 
-        // ── 2. リング後ろ半分を破線で（任意演出）─────
+        // ── 2. リング後ろ半分 ─────────────────────────
         AddRing(cx, cy, ringRx, ringRy, PLANET_RING_TILT_DEG, behindPlanet: true);
 
         // ── 3. 惑星本体 ─────────────────────────────────
@@ -546,7 +561,7 @@ public partial class HomePage : Page, IRefreshable
 
         // ── 5. 前方衛星（depth>=0）─────────────────────
         foreach (var s in sats.Where(s => s.depth >= 0).OrderBy(s => s.depth))
-            AddSatellite(s.x, s.y, s.depth, s.dayOffset);
+            AddSatellite(s.x, s.y, s.depth, s.dateOffset, s.isFront);
     }
 
     /// <summary>地球風グラデーションの円を惑星として配置する。</summary>
@@ -610,7 +625,7 @@ public partial class HomePage : Page, IRefreshable
                 Color.FromArgb(behindPlanet ? (byte)0x55 : (byte)0xCC, 0xCB, 0xB0, 0x82),
                 Color.FromArgb(behindPlanet ? (byte)0x33 : (byte)0xAA, 0x88, 0x76, 0x55),
                 0),
-            StrokeThickness = behindPlanet ? 1.4 : 2.2,
+            StrokeThickness = behindPlanet ? PLANET_RING_STROKE_BACK : PLANET_RING_STROKE_FRONT,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap   = PenLineCap.Round,
             Opacity = behindPlanet ? 0.6 : 1.0,
@@ -618,23 +633,27 @@ public partial class HomePage : Page, IRefreshable
         PlanetCanvas.Children.Add(ring);
     }
 
-    /// <summary>衛星（1つの日付）を Canvas に配置する。dayOffset=0 が今日。</summary>
-    private void AddSatellite(double x, double y, double depth, int dayOffset)
+    /// <summary>
+    /// 衛星（1つの日付）を Canvas に配置する。
+    /// isFront=true の前面衛星は黄金グラデで強調、それ以外は銀色。
+    /// dateOffset==0 の場合は「今日」を表すマーキングを行う。
+    /// </summary>
+    private void AddSatellite(double x, double y, double depth, int dateOffset, bool isFront)
     {
         // 深度（-1〜+1）→ 0〜1
         double t = (depth + 1) / 2.0;
-        bool isToday = dayOffset == 0;
+        bool isActualToday = (dateOffset == 0);
 
-        double size   = isToday ? 56 : 22 + 14 * t;       // 直径
-        double opacity = isToday ? 1.0 : 0.45 + 0.55 * t;
+        double size    = isFront ? 56 : 22 + 14 * t;
+        double opacity = isFront ? 1.0 : 0.45 + 0.55 * t;
 
-        var date = DateTime.Today.AddDays(dayOffset);
+        var date = DateTime.Today.AddDays(dateOffset);
 
         // 衛星本体
         var orb = new System.Windows.Shapes.Ellipse
         {
             Width = size, Height = size,
-            Fill = isToday
+            Fill = isFront
                 ? new RadialGradientBrush
                 {
                     GradientOrigin = new Point(0.35, 0.35),
@@ -655,8 +674,13 @@ public partial class HomePage : Page, IRefreshable
                         new GradientStop(Color.FromRgb(0x40, 0x46, 0x55), 1.0),
                     }
                 },
+            // 「今日」が前面以外にある場合のみシアンの細枠で識別
+            Stroke = (!isFront && isActualToday)
+                ? new SolidColorBrush(Color.FromRgb(0x3D, 0x9B, 0xFF))
+                : null,
+            StrokeThickness = (!isFront && isActualToday) ? 2.0 : 0,
             Opacity = opacity,
-            Effect = isToday
+            Effect = isFront
                 ? (System.Windows.Media.Effects.Effect)new System.Windows.Media.Effects.DropShadowEffect
                 {
                     Color = Color.FromRgb(0xFF, 0xC2, 0x55),
@@ -669,32 +693,90 @@ public partial class HomePage : Page, IRefreshable
         PlanetCanvas.Children.Add(orb);
 
         // ラベル（日付）
-        string label = isToday
-            ? $"今日\n{date:M/d (ddd)}"
-            : $"{date:M/d}\n({date:ddd})";
+        string label;
+        if (isFront)
+            label = isActualToday
+                ? $"今日\n{date:M/d (ddd)}"
+                : $"{date:M/d (ddd)}";
+        else
+            label = isActualToday
+                ? $"★今日\n{date:M/d}"
+                : $"{date:M/d}\n({date:ddd})";
 
         var tb = new TextBlock
         {
             Text = label,
             TextAlignment = TextAlignment.Center,
             FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = isToday ? FontWeights.Black : FontWeights.SemiBold,
-            FontSize   = isToday ? 13 : 10.5,
-            Foreground = isToday
+            FontWeight = isFront ? FontWeights.Black : FontWeights.SemiBold,
+            FontSize   = isFront ? 13 : 10.5,
+            Foreground = isFront
                 ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF1, 0xC4))
-                : new SolidColorBrush(Color.FromArgb(
-                    (byte)(0xFF * opacity), 0xE6, 0xEA, 0xF2)),
+                : (isActualToday
+                    ? new SolidColorBrush(Color.FromRgb(0xBE, 0xDF, 0xFF))
+                    : new SolidColorBrush(Color.FromArgb(
+                        (byte)(0xFF * opacity), 0xE6, 0xEA, 0xF2))),
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
                 Color = Colors.Black, BlurRadius = 6, ShadowDepth = 0, Opacity = 0.9
             }
         };
-        // 中央寄せのため Measure
         tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double tw = tb.DesiredSize.Width;
-        double th = tb.DesiredSize.Height;
         Canvas.SetLeft(tb, x - tw / 2);
         Canvas.SetTop(tb,  y + size / 2 + 4);
         PlanetCanvas.Children.Add(tb);
+    }
+
+    // ── 入力ハンドラ（ホイール/ドラッグで日付スクロール）───────────────
+    /// <summary>マウスホイールで前面の日付を 1 日ずつ進める/戻す。</summary>
+    private void PlanetCanvas_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        _planetDayOffset += e.Delta > 0 ? 1 : -1;
+        BuildPlanet();
+        e.Handled = true;
+    }
+
+    /// <summary>左ボタン押下でドラッグ開始、マウスをキャプチャしてカーソルを変更する。</summary>
+    private void PlanetCanvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _planetDragging = true;
+        _planetDragLastPos = e.GetPosition(PlanetCanvas);
+        _planetDragAccumX = 0;
+        PlanetCanvas.CaptureMouse();
+        PlanetCanvas.Cursor = System.Windows.Input.Cursors.SizeWE;
+        e.Handled = true;
+    }
+
+    /// <summary>横方向の累積移動量が閾値を越えるごとに 1 日進める。</summary>
+    private void PlanetCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_planetDragging) return;
+        var pos = e.GetPosition(PlanetCanvas);
+        _planetDragAccumX += pos.X - _planetDragLastPos.X;
+        _planetDragLastPos = pos;
+        while (Math.Abs(_planetDragAccumX) >= PLANET_DRAG_PX_PER_DAY)
+        {
+            if (_planetDragAccumX > 0)
+            {
+                _planetDayOffset += 1;
+                _planetDragAccumX -= PLANET_DRAG_PX_PER_DAY;
+            }
+            else
+            {
+                _planetDayOffset -= 1;
+                _planetDragAccumX += PLANET_DRAG_PX_PER_DAY;
+            }
+            BuildPlanet();
+        }
+    }
+
+    /// <summary>マウスアップでドラッグ終了、キャプチャを解放する。</summary>
+    private void PlanetCanvas_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_planetDragging) return;
+        _planetDragging = false;
+        PlanetCanvas.ReleaseMouseCapture();
+        PlanetCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
     }
 }

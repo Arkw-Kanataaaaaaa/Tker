@@ -30,8 +30,12 @@
         </StackPanel>
 
         <!-- 惑星 + リング + 衛星 -->
-        <Canvas x:Name="PlanetCanvas" ClipToBounds="False"
-                SizeChanged="PlanetCanvas_SizeChanged"/>
+        <Canvas x:Name="PlanetCanvas" ClipToBounds="False" Background="Transparent"
+                SizeChanged="PlanetCanvas_SizeChanged"
+                MouseWheel="PlanetCanvas_MouseWheel"
+                MouseLeftButtonDown="PlanetCanvas_MouseLeftButtonDown"
+                MouseMove="PlanetCanvas_MouseMove"
+                MouseLeftButtonUp="PlanetCanvas_MouseLeftButtonUp"/>
     </Grid>
 
     <!-- ══ グリッドスタイル（既存）══ -->

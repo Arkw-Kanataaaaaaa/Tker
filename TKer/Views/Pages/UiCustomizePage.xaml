@@ -92,6 +92,27 @@
 
                         <!-- ヒントバー＋レーン操作ツールバー -->
                         <StackPanel Grid.Row="0">
+                            <!-- テンプレート選択 -->
+                            <Border Background="{StaticResource BgSecondaryBrush}"
+                                    Padding="14,8"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="テンプレート" FontSize="12" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <RadioButton x:Name="RbTplGrid" Content="グリッド" GroupName="HomeTpl"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,14,0"
+                                                 Checked="HomeTemplate_Changed"/>
+                                    <RadioButton x:Name="RbTplPlanet" Content="🪐 惑星（テスト）" GroupName="HomeTpl"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                                 VerticalAlignment="Center"
+                                                 Checked="HomeTemplate_Changed"/>
+                                    <TextBlock x:Name="TplHint" Margin="16,0,0,0" FontSize="11"
+                                               Foreground="{StaticResource TextDimBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
                             <Border Background="{StaticResource BgSecondaryBrush}"
                                     Padding="14,7"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">

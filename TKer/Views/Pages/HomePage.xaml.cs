@@ -29,8 +29,9 @@ public partial class HomePage : Page, IRefreshable
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _clockTimer.Tick += (_, _) =>
         {
-            if (ClockText != null)
-                ClockText.Text = DateTime.Now.ToString("HH:mm:ss");
+            var now = DateTime.Now.ToString("HH:mm:ss");
+            if (ClockText != null) ClockText.Text = now;
+            if (PlanetClockText != null) PlanetClockText.Text = now;
         };
         _clockTimer.Start();
 
@@ -41,6 +42,17 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>ホーム画面の全コンポーネントを最新データで更新する。</summary>
     public void Refresh()
     {
+        // ── テンプレート分岐：Planet スタイルなら専用ビューを表示して終了 ──
+        if (_vm.AppSettingsService.HomeTemplate == "Planet")
+        {
+            HomeScroll.Visibility = Visibility.Collapsed;
+            PlanetView.Visibility = Visibility.Visible;
+            RefreshPlanetView();
+            return;
+        }
+        HomeScroll.Visibility = Visibility.Visible;
+        PlanetView.Visibility = Visibility.Collapsed;
+
         // ── プロジェクト名・日時 ──────────────────────────────
         ProjectTitleText.Text = _vm.IsProjectLoaded
             ? _vm.ProjectTitle
@@ -461,5 +473,228 @@ public partial class HomePage : Page, IRefreshable
     {
         var dlg = new ChangelogDialog { Owner = Window.GetWindow(this) };
         dlg.ShowDialog();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  惑星スタイルテンプレート
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>惑星リングの傾き角度（度・時計回り）。右下に若干傾く。</summary>
+    private const double PLANET_RING_TILT_DEG = 12.0;
+    /// <summary>リングに配置する衛星の数（=日数）。</summary>
+    private const int PLANET_SAT_COUNT = 7;
+
+    /// <summary>惑星ビューのテキスト情報を更新し、Canvas を再描画する。</summary>
+    private void RefreshPlanetView()
+    {
+        PlanetProjectText.Text = _vm.IsProjectLoaded ? _vm.ProjectTitle : "TKer";
+        PlanetDateText.Text    = DateTime.Now.ToString("yyyy年MM月dd日 (ddd)");
+        PlanetClockText.Text   = DateTime.Now.ToString("HH:mm:ss");
+        BuildPlanet();
+    }
+
+    /// <summary>Canvas サイズ変動時に惑星を再構築する。</summary>
+    private void PlanetCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        => BuildPlanet();
+
+    /// <summary>惑星・リング・衛星を Canvas 上にレイアウトする。</summary>
+    private void BuildPlanet()
+    {
+        if (PlanetCanvas == null) return;
+        double w = PlanetCanvas.ActualWidth;
+        double h = PlanetCanvas.ActualHeight;
+        if (w < 50 || h < 50) return;
+
+        PlanetCanvas.Children.Clear();
+
+        // ── 配置パラメータ ─────────────────────────────
+        double planetR = Math.Min(w, h) * 0.28;
+        double cx = w * 0.68;
+        double cy = h * 0.52;
+        double ringRx = planetR * 1.85;
+        double ringRy = planetR * 0.48;
+        double tilt  = PLANET_RING_TILT_DEG * Math.PI / 180.0;
+        double cosT  = Math.Cos(tilt);
+        double sinT  = Math.Sin(tilt);
+
+        // ── 衛星座標と深度（z）を先に計算 ──────────────
+        // φ=0 を「手前下部」とし、cos(φ) が +1 で最前、-1 で最奥。
+        var sats = new System.Collections.Generic.List<(double x, double y, double depth, int dayOffset)>();
+        for (int i = 0; i < PLANET_SAT_COUNT; i++)
+        {
+            double phi = i * 2 * Math.PI / PLANET_SAT_COUNT;
+            double lx = ringRx * Math.Sin(phi);
+            double ly = ringRy * Math.Cos(phi);
+            // リング全体を tilt 回転（時計回り = 画面下向きY軸では正のsin）
+            double rx = lx * cosT - ly * sinT;
+            double ry = lx * sinT + ly * cosT;
+            sats.Add((cx + rx, cy + ry, Math.Cos(phi), i));
+        }
+
+        // ── 1. 後方の衛星（depth<0）を惑星より先に描画 ───
+        foreach (var s in sats.Where(s => s.depth < 0).OrderBy(s => s.depth))
+            AddSatellite(s.x, s.y, s.depth, s.dayOffset);
+
+        // ── 2. リング後ろ半分を破線で（任意演出）─────
+        AddRing(cx, cy, ringRx, ringRy, PLANET_RING_TILT_DEG, behindPlanet: true);
+
+        // ── 3. 惑星本体 ─────────────────────────────────
+        AddPlanet(cx, cy, planetR);
+
+        // ── 4. リング前半分 ────────────────────────────
+        AddRing(cx, cy, ringRx, ringRy, PLANET_RING_TILT_DEG, behindPlanet: false);
+
+        // ── 5. 前方衛星（depth>=0）─────────────────────
+        foreach (var s in sats.Where(s => s.depth >= 0).OrderBy(s => s.depth))
+            AddSatellite(s.x, s.y, s.depth, s.dayOffset);
+    }
+
+    /// <summary>地球風グラデーションの円を惑星として配置する。</summary>
+    private void AddPlanet(double cx, double cy, double r)
+    {
+        var planet = new System.Windows.Shapes.Ellipse
+        {
+            Width = r * 2, Height = r * 2,
+            Fill = new RadialGradientBrush
+            {
+                GradientOrigin = new Point(0.35, 0.35),
+                Center         = new Point(0.5, 0.5),
+                RadiusX = 0.7, RadiusY = 0.7,
+                GradientStops =
+                {
+                    new GradientStop(Color.FromRgb(0x6B, 0xC7, 0xFF), 0.0),
+                    new GradientStop(Color.FromRgb(0x2E, 0x7A, 0xD6), 0.45),
+                    new GradientStop(Color.FromRgb(0x0E, 0x2E, 0x6A), 0.95),
+                    new GradientStop(Color.FromRgb(0x05, 0x14, 0x32), 1.0),
+                }
+            },
+            Stroke = new SolidColorBrush(Color.FromArgb(0x88, 0x6B, 0xC7, 0xFF)),
+            StrokeThickness = 0.8,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = Color.FromRgb(0x3D, 0x9B, 0xFF),
+                BlurRadius = 38, ShadowDepth = 0, Opacity = 0.55
+            }
+        };
+        Canvas.SetLeft(planet, cx - r);
+        Canvas.SetTop(planet,  cy - r);
+        PlanetCanvas.Children.Add(planet);
+    }
+
+    /// <summary>傾いた楕円リングを Polyline で描画する。behindPlanet=true なら奥側半周のみ。</summary>
+    private void AddRing(double cx, double cy, double rx, double ry, double tiltDeg, bool behindPlanet)
+    {
+        const int segs = 64;
+        var pts = new System.Windows.Media.PointCollection();
+        double tilt = tiltDeg * Math.PI / 180.0;
+        double cosT = Math.Cos(tilt), sinT = Math.Sin(tilt);
+
+        // 手前半周: φ ∈ [-π/2, π/2] (cos(φ) >= 0)
+        // 奥半周  : φ ∈ [ π/2, 3π/2] (cos(φ) <  0)
+        double phiStart = behindPlanet ?  Math.PI / 2 : -Math.PI / 2;
+        double phiEnd   = behindPlanet ? 3 * Math.PI / 2 :  Math.PI / 2;
+
+        for (int i = 0; i <= segs; i++)
+        {
+            double phi = phiStart + (phiEnd - phiStart) * i / segs;
+            double lx = rx * Math.Sin(phi);
+            double ly = ry * Math.Cos(phi);
+            pts.Add(new Point(cx + lx * cosT - ly * sinT, cy + lx * sinT + ly * cosT));
+        }
+        if (pts.Count < 2) return;
+
+        var ring = new System.Windows.Shapes.Polyline
+        {
+            Points = pts,
+            Stroke = new LinearGradientBrush(
+                Color.FromArgb(behindPlanet ? (byte)0x55 : (byte)0xCC, 0xCB, 0xB0, 0x82),
+                Color.FromArgb(behindPlanet ? (byte)0x33 : (byte)0xAA, 0x88, 0x76, 0x55),
+                0),
+            StrokeThickness = behindPlanet ? 1.4 : 2.2,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap   = PenLineCap.Round,
+            Opacity = behindPlanet ? 0.6 : 1.0,
+        };
+        PlanetCanvas.Children.Add(ring);
+    }
+
+    /// <summary>衛星（1つの日付）を Canvas に配置する。dayOffset=0 が今日。</summary>
+    private void AddSatellite(double x, double y, double depth, int dayOffset)
+    {
+        // 深度（-1〜+1）→ 0〜1
+        double t = (depth + 1) / 2.0;
+        bool isToday = dayOffset == 0;
+
+        double size   = isToday ? 56 : 22 + 14 * t;       // 直径
+        double opacity = isToday ? 1.0 : 0.45 + 0.55 * t;
+
+        var date = DateTime.Today.AddDays(dayOffset);
+
+        // 衛星本体
+        var orb = new System.Windows.Shapes.Ellipse
+        {
+            Width = size, Height = size,
+            Fill = isToday
+                ? new RadialGradientBrush
+                {
+                    GradientOrigin = new Point(0.35, 0.35),
+                    GradientStops =
+                    {
+                        new GradientStop(Color.FromRgb(0xFF, 0xE6, 0xA8), 0.0),
+                        new GradientStop(Color.FromRgb(0xFF, 0xA8, 0x3D), 0.55),
+                        new GradientStop(Color.FromRgb(0x7A, 0x3C, 0x00), 1.0),
+                    }
+                }
+                : (Brush)new RadialGradientBrush
+                {
+                    GradientOrigin = new Point(0.35, 0.35),
+                    GradientStops =
+                    {
+                        new GradientStop(Color.FromRgb(0xE0, 0xE6, 0xF2), 0.0),
+                        new GradientStop(Color.FromRgb(0x9A, 0xA2, 0xB4), 0.7),
+                        new GradientStop(Color.FromRgb(0x40, 0x46, 0x55), 1.0),
+                    }
+                },
+            Opacity = opacity,
+            Effect = isToday
+                ? (System.Windows.Media.Effects.Effect)new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Color.FromRgb(0xFF, 0xC2, 0x55),
+                    BlurRadius = 28, ShadowDepth = 0, Opacity = 0.9
+                }
+                : null,
+        };
+        Canvas.SetLeft(orb, x - size / 2);
+        Canvas.SetTop(orb,  y - size / 2);
+        PlanetCanvas.Children.Add(orb);
+
+        // ラベル（日付）
+        string label = isToday
+            ? $"今日\n{date:M/d (ddd)}"
+            : $"{date:M/d}\n({date:ddd})";
+
+        var tb = new TextBlock
+        {
+            Text = label,
+            TextAlignment = TextAlignment.Center,
+            FontFamily = new FontFamily("Yu Gothic UI"),
+            FontWeight = isToday ? FontWeights.Black : FontWeights.SemiBold,
+            FontSize   = isToday ? 13 : 10.5,
+            Foreground = isToday
+                ? new SolidColorBrush(Color.FromRgb(0xFF, 0xF1, 0xC4))
+                : new SolidColorBrush(Color.FromArgb(
+                    (byte)(0xFF * opacity), 0xE6, 0xEA, 0xF2)),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = Colors.Black, BlurRadius = 6, ShadowDepth = 0, Opacity = 0.9
+            }
+        };
+        // 中央寄せのため Measure
+        tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double tw = tb.DesiredSize.Width;
+        double th = tb.DesiredSize.Height;
+        Canvas.SetLeft(tb, x - tw / 2);
+        Canvas.SetTop(tb,  y + size / 2 + 4);
+        PlanetCanvas.Children.Add(tb);
     }
 }

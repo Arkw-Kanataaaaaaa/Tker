@@ -30,6 +30,8 @@ public class AppSettings
     public List<AppShortcut> Shortcuts { get; set; } = new();
     /// <summary>メニューの表示順序。</summary>
     public List<string> MenuOrder { get; set; } = new() { "ホーム", "ライブラリ", "タスク管理", "ツール", "カスタマイズ", "ヘルプ" };
+    /// <summary>ホーム画面テンプレート ("Grid" | "Planet")。固定部品構成のテンプレートを選択する。</summary>
+    public string HomeTemplate { get; set; } = "Grid";
     /// <summary>ホーム画面のレイアウトスロット定義。</summary>
     public Dictionary<string, HomeLayoutSlot> HomeLayout { get; set; } = new();
     /// <summary>ホーム画面の列幅。要素の意味: &gt;0=px, 0=Auto, &lt;0=Star（-1なら1*, -2なら2*）</summary>

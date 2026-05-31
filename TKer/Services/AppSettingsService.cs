@@ -197,6 +197,15 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>ホーム画面テンプレート名 ("Grid" | "Planet")。</summary>
+    public string HomeTemplate => string.IsNullOrEmpty(_settings.HomeTemplate) ? "Grid" : _settings.HomeTemplate;
+    /// <summary>ホーム画面テンプレートを保存する。</summary>
+    public void SaveHomeTemplate(string template)
+    {
+        _settings.HomeTemplate = template;
+        Save();
+    }
+
     public ThemeColors Theme => _settings.Theme;
     /// <summary>テーマカラーを保存する。</summary>
     public void SaveTheme(ThemeColors theme)

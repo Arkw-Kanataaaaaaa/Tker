@@ -3,6 +3,38 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Background="Transparent">
 
+  <Grid x:Name="RootHost">
+
+    <!-- ══ 惑星スタイル（固定部品テンプレート、Visibility はコードで切替）══ -->
+    <Grid x:Name="PlanetView" Visibility="Collapsed" Background="Transparent" ClipToBounds="True">
+        <!-- 背景（深宇宙風グラデーション） -->
+        <Grid.Background>
+            <RadialGradientBrush GradientOrigin="0.7,0.5" Center="0.7,0.5"
+                                 RadiusX="1.2" RadiusY="1.2">
+                <GradientStop Color="#0A1430" Offset="0"/>
+                <GradientStop Color="#04060F" Offset="1"/>
+            </RadialGradientBrush>
+        </Grid.Background>
+
+        <!-- 左上 情報パネル -->
+        <StackPanel Margin="36,28,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <TextBlock x:Name="PlanetProjectText"
+                       FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="30"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock x:Name="PlanetDateText" Margin="0,8,0,0"
+                       FontFamily="Consolas" FontSize="13"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+            <TextBlock x:Name="PlanetClockText" Margin="0,2,0,0"
+                       FontFamily="Consolas" FontSize="13"
+                       Foreground="{StaticResource TextDimBrush}"/>
+        </StackPanel>
+
+        <!-- 惑星 + リング + 衛星 -->
+        <Canvas x:Name="PlanetCanvas" ClipToBounds="False"
+                SizeChanged="PlanetCanvas_SizeChanged"/>
+    </Grid>
+
+    <!-- ══ グリッドスタイル（既存）══ -->
     <ScrollViewer x:Name="HomeScroll"
                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid x:Name="HomeGrid" Margin="28,24,28,32">
@@ -589,4 +621,6 @@
 
         </Grid>
     </ScrollViewer>
+
+  </Grid>
 </Page>

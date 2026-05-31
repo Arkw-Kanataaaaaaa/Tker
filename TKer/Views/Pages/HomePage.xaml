@@ -137,21 +137,22 @@
                             </Style>
                         </Border.Resources>
 
-                        <Grid>
+                        <Grid x:Name="CardMediaGrid">
                             <!-- 背景：サムネイルをぼかしたもの。
-                                 高さをコンテンツに束縛し、画像の自然サイズでパネルが膨らまないようにする -->
-                            <Image x:Name="CardMediaBgImage" Stretch="UniformToFill"
-                                   HorizontalAlignment="Stretch" VerticalAlignment="Top"
-                                   Height="{Binding ActualHeight, ElementName=CardMediaContent}"
-                                   RenderOptions.BitmapScalingMode="HighQuality">
-                                <Image.Effect>
-                                    <BlurEffect Radius="45" KernelType="Gaussian"/>
-                                </Image.Effect>
-                            </Image>
-                            <!-- 可読性のための暗いスクリム（同じく高さをコンテンツに束縛）-->
-                            <Border Background="#A8000000"
-                                    Height="{Binding ActualHeight, ElementName=CardMediaContent}"
-                                    VerticalAlignment="Top"/>
+                                 Canvas の子はレイアウトサイズに影響しないため、画像の自然サイズで
+                                 パネルが膨らまない。サイズは Grid 全体に束縛して敷き詰める。 -->
+                            <Canvas>
+                                <Image x:Name="CardMediaBgImage" Stretch="UniformToFill"
+                                       Width="{Binding ActualWidth, ElementName=CardMediaGrid}"
+                                       Height="{Binding ActualHeight, ElementName=CardMediaGrid}"
+                                       RenderOptions.BitmapScalingMode="HighQuality">
+                                    <Image.Effect>
+                                        <BlurEffect Radius="45" KernelType="Gaussian"/>
+                                    </Image.Effect>
+                                </Image>
+                            </Canvas>
+                            <!-- 可読性のための暗いスクリム（Grid 全体にストレッチ）-->
+                            <Border Background="#A8000000"/>
 
                             <StackPanel x:Name="CardMediaContent" Margin="18,14,18,14">
                                 <!-- タイトル行：左上にアプリアイコン -->

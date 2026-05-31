@@ -80,18 +80,19 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- ══ 上段: 左=統合ウィジェット列 / 右=カードスタック ══ -->
+            <!-- ══ 左=カードスタック / 右=統合ウィジェット列 ══ -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="440"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="440"/>
                 </Grid.ColumnDefinitions>
 
-            <!-- ── 統合ウィジェット列（メディア/コレクション/予定/ToDo/タスク）── -->
-            <Grid Grid.Column="0">
+            <!-- ── 統合ウィジェット列（メディア/コレクション/予定/ToDo/タスク／ショートカット）── -->
+            <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- ヘッダー（スクロールしない固定領域） -->
@@ -297,10 +298,17 @@
                     </Button>
                 </StackPanel>
                 </ScrollViewer>
+
+                <!-- ショートカット ライン（右列の下部に配置／円形ノードにアプリアイコン＋名前）-->
+                <Border x:Name="CardToolsCard" Grid.Row="2" Tag="Card_Tools" Margin="0,4,0,0"
+                        VerticalAlignment="Stretch" Background="Transparent">
+                    <Canvas x:Name="CardShortcutCanvas" Height="104" Background="Transparent"
+                            SizeChanged="CardShortcutCanvas_SizeChanged"/>
+                </Border>
             </Grid>
 
                 <!-- カードスタック + 左上=年月 / 右下=簡易予定 オーバーレイ -->
-                <Grid Grid.Column="1">
+                <Grid Grid.Column="0">
                     <Canvas x:Name="CardCanvas" ClipToBounds="True" Background="Transparent"
                             SizeChanged="CardCanvas_SizeChanged"
                             MouseWheel="CardCanvas_MouseWheel"
@@ -349,16 +357,6 @@
                 </Grid>
             </Grid>
 
-            <!-- ══ 下段: ショートカット/ツール 帯（画面右端まで全幅）══ -->
-            <Grid Grid.Row="1">
-
-                <!-- ショートカット ライン（画面左端〜右端／円形ノードにアプリアイコン＋名前）-->
-                <Border x:Name="CardToolsCard" Tag="Card_Tools" Margin="0,0,0,0"
-                        VerticalAlignment="Stretch" Background="Transparent">
-                    <Canvas x:Name="CardShortcutCanvas" Height="104" Background="Transparent"
-                            SizeChanged="CardShortcutCanvas_SizeChanged"/>
-                </Border>
-            </Grid>
         </Grid>
     </Grid>
 

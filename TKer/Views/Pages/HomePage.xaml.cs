@@ -484,9 +484,9 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>リングに配置する衛星の数（=日数）。</summary>
     private const int PLANET_SAT_COUNT = 7;
     /// <summary>リング線の太さ（手前半周）。</summary>
-    private const double PLANET_RING_STROKE_FRONT = 12.0;
+    private const double PLANET_RING_STROKE_FRONT = 28.0;
     /// <summary>リング線の太さ（奥半周）。</summary>
-    private const double PLANET_RING_STROKE_BACK = 8.0;
+    private const double PLANET_RING_STROKE_BACK = 20.0;
     /// <summary>ドラッグで1スロット（=1日分）回転するのに必要な横移動量(px)。</summary>
     private const double PLANET_DRAG_PX_PER_SLOT = 60.0;
 

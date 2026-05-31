@@ -38,6 +38,37 @@
                 MouseLeftButtonUp="PlanetCanvas_MouseLeftButtonUp"/>
     </Grid>
 
+    <!-- ══ カードスタイル（固定部品テンプレート、Visibility はコードで切替）══ -->
+    <Grid x:Name="CardView" Visibility="Collapsed" ClipToBounds="True">
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#11151F" Offset="0"/>
+                <GradientStop Color="#05070C" Offset="1"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <!-- 左上 情報パネル -->
+        <StackPanel Margin="36,28,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <TextBlock x:Name="CardProjectText"
+                       FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="30"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock x:Name="CardDateText" Margin="0,8,0,0"
+                       FontFamily="Consolas" FontSize="13"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+            <TextBlock x:Name="CardClockText" Margin="0,2,0,0"
+                       FontFamily="Consolas" FontSize="13"
+                       Foreground="{StaticResource TextDimBrush}"/>
+        </StackPanel>
+
+        <!-- カードスタック -->
+        <Canvas x:Name="CardCanvas" ClipToBounds="True" Background="Transparent"
+                SizeChanged="CardCanvas_SizeChanged"
+                MouseWheel="CardCanvas_MouseWheel"
+                MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
+                MouseMove="CardCanvas_MouseMove"
+                MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
+    </Grid>
+
     <!-- ══ グリッドスタイル（既存）══ -->
     <ScrollViewer x:Name="HomeScroll"
                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

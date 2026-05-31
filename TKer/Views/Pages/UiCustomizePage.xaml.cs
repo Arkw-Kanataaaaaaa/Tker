@@ -240,32 +240,42 @@ public partial class UiCustomizePage : Page, IRefreshable
     /// <summary>保存済みテンプレート設定に合わせてラジオボタンとレーン操作の活性状態を反映する。</summary>
     private void ApplyTemplateRadios()
     {
-        if (RbTplGrid == null || RbTplPlanet == null) return;
+        if (RbTplGrid == null || RbTplPlanet == null || RbTplCard == null) return;
         var current = _svc.HomeTemplate;
-        // 値変更イベントの再入を避けるため両方を一旦 false に
         RbTplGrid.Checked   -= HomeTemplate_Changed;
         RbTplPlanet.Checked -= HomeTemplate_Changed;
-        RbTplGrid.IsChecked   = current != "Planet";
+        RbTplCard.Checked   -= HomeTemplate_Changed;
+        RbTplGrid.IsChecked   = current != "Planet" && current != "Card";
         RbTplPlanet.IsChecked = current == "Planet";
+        RbTplCard.IsChecked   = current == "Card";
         RbTplGrid.Checked   += HomeTemplate_Changed;
         RbTplPlanet.Checked += HomeTemplate_Changed;
-        if (TplHint != null)
-            TplHint.Text = current == "Planet"
-                ? "惑星スタイルは固定レイアウトのため、レーン編集は無効になります"
-                : "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます";
+        RbTplCard.Checked   += HomeTemplate_Changed;
+        UpdateTemplateHint(current);
     }
 
     /// <summary>テンプレートラジオボタンの選択変更時に設定を保存する。</summary>
     private void HomeTemplate_Changed(object sender, RoutedEventArgs e)
     {
-        if (RbTplGrid == null || RbTplPlanet == null) return;
-        var newTpl = RbTplPlanet.IsChecked == true ? "Planet" : "Grid";
+        if (RbTplGrid == null || RbTplPlanet == null || RbTplCard == null) return;
+        string newTpl = RbTplPlanet.IsChecked == true ? "Planet"
+                      : RbTplCard.IsChecked   == true ? "Card"
+                      : "Grid";
         if (newTpl == _svc.HomeTemplate) return;
         _svc.SaveHomeTemplate(newTpl);
-        if (TplHint != null)
-            TplHint.Text = newTpl == "Planet"
-                ? "惑星スタイルは固定レイアウトのため、レーン編集は無効になります"
-                : "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます";
+        UpdateTemplateHint(newTpl);
+    }
+
+    /// <summary>テンプレートに応じた補助テキストを表示する。</summary>
+    private void UpdateTemplateHint(string template)
+    {
+        if (TplHint == null) return;
+        TplHint.Text = template switch
+        {
+            "Planet" => "惑星スタイルは固定レイアウトのため、レーン編集は無効になります",
+            "Card"   => "カードスタイルは固定レイアウトのため、レーン編集は無効になります",
+            _        => "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます",
+        };
     }
 
     /// <summary>ホーム画面レイアウトのビジュアルプレビューを再構築する。</summary>

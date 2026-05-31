@@ -106,6 +106,10 @@
                                                  Checked="HomeTemplate_Changed"/>
                                     <RadioButton x:Name="RbTplPlanet" Content="🪐 惑星（テスト）" GroupName="HomeTpl"
                                                  Foreground="{StaticResource TextPrimaryBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,14,0"
+                                                 Checked="HomeTemplate_Changed"/>
+                                    <RadioButton x:Name="RbTplCard" Content="🗂 カード（テスト）" GroupName="HomeTpl"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
                                                  VerticalAlignment="Center"
                                                  Checked="HomeTemplate_Changed"/>
                                     <TextBlock x:Name="TplHint" Margin="16,0,0,0" FontSize="11"

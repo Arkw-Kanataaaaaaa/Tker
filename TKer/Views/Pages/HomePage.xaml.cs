@@ -32,6 +32,7 @@ public partial class HomePage : Page, IRefreshable
             var now = DateTime.Now.ToString("HH:mm:ss");
             if (ClockText != null) ClockText.Text = now;
             if (PlanetClockText != null) PlanetClockText.Text = now;
+            if (CardClockText != null) CardClockText.Text = now;
         };
         _clockTimer.Start();
 
@@ -42,16 +43,27 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>ホーム画面の全コンポーネントを最新データで更新する。</summary>
     public void Refresh()
     {
-        // ── テンプレート分岐：Planet スタイルなら専用ビューを表示して終了 ──
-        if (_vm.AppSettingsService.HomeTemplate == "Planet")
+        // ── テンプレート分岐：専用ビューを表示して終了 ──
+        var template = _vm.AppSettingsService.HomeTemplate;
+        if (template == "Planet")
         {
             HomeScroll.Visibility = Visibility.Collapsed;
+            CardView.Visibility   = Visibility.Collapsed;
             PlanetView.Visibility = Visibility.Visible;
             RefreshPlanetView();
             return;
         }
+        if (template == "Card")
+        {
+            HomeScroll.Visibility = Visibility.Collapsed;
+            PlanetView.Visibility = Visibility.Collapsed;
+            CardView.Visibility   = Visibility.Visible;
+            RefreshCardView();
+            return;
+        }
         HomeScroll.Visibility = Visibility.Visible;
         PlanetView.Visibility = Visibility.Collapsed;
+        CardView.Visibility   = Visibility.Collapsed;
 
         // ── プロジェクト名・日時 ──────────────────────────────
         ProjectTitleText.Text = _vm.IsProjectLoaded
@@ -838,5 +850,253 @@ public partial class HomePage : Page, IRefreshable
         PlanetCanvas.ReleaseMouseCapture();
         PlanetCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
         UpdatePlanetPhase(Math.Round(_planetPhase));
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  カードスタイルテンプレート
+    // ══════════════════════════════════════════════════════════
+
+    /// <summary>奥に向かって表示するカードの枚数。</summary>
+    private const int CARD_VISIBLE_COUNT = 6;
+    /// <summary>カード1段ごとの縮小率。</summary>
+    private const double CARD_DEPTH_SCALE = 0.84;
+    /// <summary>ドラッグで1枚分めくるのに必要な縦移動量(px)。</summary>
+    private const double CARD_DRAG_PX_PER_CARD = 90.0;
+
+    /// <summary>連続スクロール位相（1.0 = カード1枚分）。値が増えるほど未来日へ進む。</summary>
+    private double _cardPhase = 0.0;
+    /// <summary>カードドラッグ中フラグ。</summary>
+    private bool _cardDragging = false;
+    /// <summary>カードドラッグ直前のカーソル位置。</summary>
+    private Point _cardDragLastPos;
+
+    /// <summary>カードビューのテキスト情報を更新し、Canvas を再描画する。</summary>
+    private void RefreshCardView()
+    {
+        CardProjectText.Text = _vm.IsProjectLoaded ? _vm.ProjectTitle : "TKer";
+        CardDateText.Text    = DateTime.Now.ToString("yyyy年MM月dd日 (ddd)");
+        CardClockText.Text   = DateTime.Now.ToString("HH:mm:ss");
+        BuildCards();
+    }
+
+    /// <summary>Canvas サイズ変動時にカードを再構築する。</summary>
+    private void CardCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+        => BuildCards();
+
+    /// <summary>日付カードを奥行きパースのスタックとして Canvas に配置する。</summary>
+    private void BuildCards()
+    {
+        if (CardCanvas == null) return;
+        double w = CardCanvas.ActualWidth;
+        double h = CardCanvas.ActualHeight;
+        if (w < 80 || h < 80) return;
+
+        CardCanvas.Children.Clear();
+
+        // ── 配置パラメータ ─────────────────────────────
+        double cardW = Math.Min(w * 0.30, 300);
+        double cardH = cardW * 1.34;
+        // 前面カードの中心（左下寄り）。奥へ向かって右上にずらす。
+        double frontX = w * 0.40;
+        double frontY = h * 0.60;
+        double stepX  = cardW * 0.42;   // 1段ごとの右シフト
+        double stepY  = cardH * 0.20;   // 1段ごとの上シフト
+
+        double frac = _cardPhase - Math.Floor(_cardPhase); // 0..1
+        int    baseOffset = (int)Math.Floor(_cardPhase);
+
+        // 奥（depth 大）から順に描画し、前面（depth≈0）を最後に重ねる。
+        // depth = k - frac。frac が増えるとカードが手前(下)へ流れる。
+        for (int k = CARD_VISIBLE_COUNT; k >= -1; k--)
+        {
+            double depth = k - frac;
+            if (depth < -1.0 || depth > CARD_VISIBLE_COUNT + 0.5) continue;
+
+            int dateOffset = baseOffset + k;
+            AddCard(frontX, frontY, cardW, cardH, depth, stepX, stepY, dateOffset);
+        }
+    }
+
+    /// <summary>1枚の日付カードを奥行き depth に応じてスケール・位置・不透明度を変えて配置する。</summary>
+    private void AddCard(double frontX, double frontY, double cardW, double cardH,
+                         double depth, double stepX, double stepY, int dateOffset)
+    {
+        // depth<0（手前に飛び出して退場中）はフェードアウトしつつ拡大
+        double scale   = Math.Pow(CARD_DEPTH_SCALE, depth);
+        double cx = frontX + depth * stepX;
+        double cy = frontY - depth * stepY;
+        double opacity = depth >= 0
+            ? Math.Max(0.0, 1.0 - depth * 0.16)
+            : Math.Max(0.0, 1.0 + depth);          // depth -1→0 で 0→1
+
+        bool isFront = depth >= -0.001 && depth < 1.0;
+        var date = DateTime.Today.AddDays(dateOffset);
+        bool isActualToday = (dateOffset == 0);
+
+        double sw = cardW * scale;
+        double sh = cardH * scale;
+
+        // ── カード本体 ─────────────────────────────────
+        var accent = isFront
+            ? Color.FromRgb(0xA6, 0x6B, 0xFF)   // 紫
+            : Color.FromRgb(0x4A, 0x6B, 0xA8);  // 落ち着いた青
+
+        var border = new Border
+        {
+            Width = cardW, Height = cardH,
+            CornerRadius = new CornerRadius(16),
+            Background = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0), EndPoint = new Point(1, 1),
+                GradientStops = isFront
+                    ? new GradientStopCollection
+                    {
+                        new GradientStop(Color.FromArgb(0xF2, 0x3A, 0x2A, 0x66), 0.0),
+                        new GradientStop(Color.FromArgb(0xF2, 0x21, 0x17, 0x40), 1.0),
+                    }
+                    : new GradientStopCollection
+                    {
+                        new GradientStop(Color.FromArgb(0xCC, 0x1C, 0x24, 0x38), 0.0),
+                        new GradientStop(Color.FromArgb(0xCC, 0x12, 0x18, 0x28), 1.0),
+                    }
+            },
+            BorderBrush = new SolidColorBrush(accent),
+            BorderThickness = new Thickness(isFront ? 2.0 : 1.0),
+            Opacity = opacity,
+            Effect = isFront
+                ? (System.Windows.Media.Effects.Effect)new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = accent, BlurRadius = 36, ShadowDepth = 0, Opacity = 0.7
+                }
+                : new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black, BlurRadius = 18, ShadowDepth = 0, Opacity = 0.5
+                },
+        };
+
+        // 内容
+        var grid = new Grid { Margin = new Thickness(18, 16, 18, 16) };
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // 上段：曜日 + 今日バッジ
+        var top = new StackPanel { Orientation = Orientation.Horizontal };
+        top.Children.Add(new TextBlock
+        {
+            Text = date.ToString("ddd"),
+            FontFamily = new FontFamily("Yu Gothic UI"),
+            FontWeight = FontWeights.Bold, FontSize = 18,
+            Foreground = new SolidColorBrush(
+                isFront ? Color.FromRgb(0xE6, 0xD8, 0xFF) : Color.FromRgb(0xAE, 0xC2, 0xE0)),
+        });
+        if (isActualToday)
+        {
+            top.Children.Add(new Border
+            {
+                Margin = new Thickness(8, 1, 0, 0),
+                Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x4F)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 1, 6, 1),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "TODAY", FontSize = 10, FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x33, 0x28, 0x00)),
+                }
+            });
+        }
+        Grid.SetRow(top, 0);
+        grid.Children.Add(top);
+
+        // 中央：日番号
+        var dayNum = new TextBlock
+        {
+            Text = date.Day.ToString(),
+            FontFamily = new FontFamily("Segoe UI"),
+            FontWeight = FontWeights.Black,
+            FontSize = 72,
+            Foreground = new SolidColorBrush(
+                isFront ? Colors.White : Color.FromRgb(0xC8, 0xD4, 0xE8)),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetRow(dayNum, 1);
+        grid.Children.Add(dayNum);
+
+        // 下段：年月 + アクセントバー
+        var bottom = new StackPanel();
+        bottom.Children.Add(new Border
+        {
+            Height = 4, Width = 56, CornerRadius = new CornerRadius(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(0, 0, 0, 8),
+            Background = new LinearGradientBrush(
+                accent, Color.FromArgb(0x33, accent.R, accent.G, accent.B), 0),
+        });
+        bottom.Children.Add(new TextBlock
+        {
+            Text = date.ToString("yyyy / MM"),
+            FontFamily = new FontFamily("Consolas"), FontSize = 14,
+            Foreground = new SolidColorBrush(
+                isFront ? Color.FromRgb(0xCF, 0xBF, 0xF2) : Color.FromRgb(0x90, 0xA2, 0xBE)),
+        });
+        Grid.SetRow(bottom, 2);
+        grid.Children.Add(bottom);
+
+        border.Child = grid;
+
+        // スケール＋配置（原点基準スケールなので左上を中心から逆算）
+        border.RenderTransform = new ScaleTransform(scale, scale);
+        Canvas.SetLeft(border, cx - sw / 2);
+        Canvas.SetTop(border,  cy - sh / 2);
+        CardCanvas.Children.Add(border);
+    }
+
+    // ── 入力ハンドラ（ホイール/ドラッグでカードを上下に流す）──────────
+    /// <summary>マウスホイールでカードを1枚分めくる。</summary>
+    private void CardCanvas_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        UpdateCardPhase(_cardPhase + (e.Delta > 0 ? 1.0 : -1.0));
+        e.Handled = true;
+    }
+
+    /// <summary>左ボタン押下でドラッグ開始、マウスをキャプチャしてカーソルを変更する。</summary>
+    private void CardCanvas_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _cardDragging = true;
+        _cardDragLastPos = e.GetPosition(CardCanvas);
+        CardCanvas.CaptureMouse();
+        CardCanvas.Cursor = System.Windows.Input.Cursors.SizeNS;
+        e.Handled = true;
+    }
+
+    /// <summary>ドラッグ中は縦移動量に比例して位相を連続更新し、カードを上下に流す。</summary>
+    private void CardCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_cardDragging) return;
+        var pos = e.GetPosition(CardCanvas);
+        double dy = pos.Y - _cardDragLastPos.Y;
+        _cardDragLastPos = pos;
+        // 下へドラッグ(dy>0) = カードが下へ流れる = 未来日へ進む
+        if (dy != 0)
+            UpdateCardPhase(_cardPhase + dy / CARD_DRAG_PX_PER_CARD);
+    }
+
+    /// <summary>マウスアップでドラッグ終了し、位相を最寄りのカードへスナップする。</summary>
+    private void CardCanvas_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_cardDragging) return;
+        _cardDragging = false;
+        CardCanvas.ReleaseMouseCapture();
+        CardCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
+        UpdateCardPhase(Math.Round(_cardPhase));
+    }
+
+    /// <summary>カード位相を更新して再描画する。</summary>
+    private void UpdateCardPhase(double newPhase)
+    {
+        _cardPhase = newPhase;
+        BuildCards();
     }
 }

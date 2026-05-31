@@ -901,6 +901,7 @@ public partial class HomePage : Page, IRefreshable
         BuildCardShortcuts();
         BuildCardTodo();
         BuildCardTasks();
+        BuildCardNotifications();
         _cardScheduleShownOffset = int.MinValue;   // 強制再構築
         BuildCards();
         StartCardMedia();
@@ -1079,9 +1080,11 @@ public partial class HomePage : Page, IRefreshable
     private void ApplyCardSectionThemes()
     {
         var svc = _vm.AppSettingsService;
-        UiThemeHelper.ApplySectionTheme(CardMediaRoot,      svc.GetSectionTheme("Card_Media"));
+        UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
         UiThemeHelper.ApplySectionTheme(CardTodoCard,       svc.GetSectionTheme("Card_Todo"));
         UiThemeHelper.ApplySectionTheme(CardTasksCard,      svc.GetSectionTheme("Card_Tasks"));
+        UiThemeHelper.ApplySectionTheme(CardNotifyCard,     svc.GetSectionTheme("Card_Notify"));
+        UiThemeHelper.ApplySectionTheme(CardMediaRoot,      svc.GetSectionTheme("Card_Media"));
         UiThemeHelper.ApplySectionTheme(CardToolsCard,      svc.GetSectionTheme("Card_Tools"));
     }
 
@@ -1143,7 +1146,7 @@ public partial class HomePage : Page, IRefreshable
         CardYearText.FontSize  = yearFont;
         CardMonthText.Margin   = new Thickness(0, -monthFont * 0.25, 0, 0);
 
-        // 前面カードの選択日が変わったら、当日スケジュール・年月表示を更新する
+        // 前面カードの選択日が変わったら、当日スケジュール・年月・ミニカレンダーを更新する
         int selectedOffset = (int)Math.Round(_cardPhase);
         if (selectedOffset != _cardScheduleShownOffset)
         {
@@ -1151,6 +1154,8 @@ public partial class HomePage : Page, IRefreshable
             var selDate = DateTime.Today.AddDays(selectedOffset);
             CardYearText.Text  = selDate.ToString("yyyy");
             CardMonthText.Text = selDate.ToString("MM");
+            BuildHourlySchedule(selDate);
+            BuildMiniCalendar(selDate);
         }
     }
 
@@ -1247,11 +1252,7 @@ public partial class HomePage : Page, IRefreshable
         Grid.SetRow(top, 0);
         grid.Children.Add(top);
 
-        // 中央：日番号（左）＋ その日のイベント（右）
-        var midGrid = new Grid();
-        midGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        midGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
+        // 中央：日番号のみ（イベント表示は右列の予定部品に集約したため削除）
         var dayNum = new TextBlock
         {
             Text = date.Day.ToString(),
@@ -1263,53 +1264,8 @@ public partial class HomePage : Page, IRefreshable
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        Grid.SetColumn(dayNum, 0);
-        midGrid.Children.Add(dayNum);
-
-        // 前面カードのみ、日番号の右にその日のイベント（開始～終了 ＋ 名前）を表示
-        if (isFront)
-        {
-            var events = GetScheduleEntries(date);
-            var evStack = new StackPanel
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(14 * us, 0, 0, 0),
-            };
-            foreach (var (time, label, color) in events.Take(4))
-            {
-                // 1行に「バー＋時刻＋イベント名」を横並び表示
-                var item = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6 * us) };
-                item.Children.Add(new Border
-                {
-                    Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 7 * us, 1),
-                    Background = new SolidColorBrush(color),
-                });
-                item.Children.Add(new TextBlock
-                {
-                    Text = time, FontFamily = new FontFamily("Consolas"),
-                    FontSize = 11 * us, FontWeight = FontWeights.Bold,
-                    VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8 * us, 0),
-                    Foreground = new SolidColorBrush(Color.FromArgb(0xFF, color.R, color.G, color.B)),
-                });
-                item.Children.Add(new TextBlock
-                {
-                    Text = label, FontSize = 12 * us, VerticalAlignment = VerticalAlignment.Center,
-                    TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = cardW * 0.42,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
-                });
-                evStack.Children.Add(item);
-            }
-            if (events.Count > 4)
-                evStack.Children.Add(new TextBlock
-                {
-                    Text = $"ほか {events.Count - 4} 件", FontSize = 10.5 * us,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
-                });
-            Grid.SetColumn(evStack, 1);
-            midGrid.Children.Add(evStack);
-        }
-        Grid.SetRow(midGrid, 1);
-        grid.Children.Add(midGrid);
+        Grid.SetRow(dayNum, 1);
+        grid.Children.Add(dayNum);
 
         // 下段：アクセントバー
         var bottom = new Border
@@ -1613,6 +1569,194 @@ public partial class HomePage : Page, IRefreshable
             row.MouseLeftButtonUp += (_, _) => { _vm.TodoService.Toggle(id); BuildCardTodo(); };
             CardTodoPanel.Children.Add(row);
         }
+    }
+
+    // ── 時間単位の予定部品 ─────────────────────────────────
+    /// <summary>選択日のスケジュール部品を 0:00〜23:00 の時間単位リストとして再構築し、
+    /// 当日の場合は現在時刻の行を一番上にスクロールする。</summary>
+    private void BuildHourlySchedule(DateTime date)
+    {
+        if (CardSchedulePanel == null) return;
+        CardSchedulePanel.Children.Clear();
+        var events = GetScheduleEntries(date);
+
+        var hourRows = new System.Collections.Generic.List<FrameworkElement>();
+        for (int h = 0; h < 24; h++)
+        {
+            int hour = h;
+            var row = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 2), Padding = new Thickness(8, 6, 8, 6),
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(Color.FromArgb(
+                    hour == DateTime.Now.Hour && date.Date == DateTime.Today
+                        ? (byte)0x66 : (byte)0x22, 0x2A, 0x2A, 0x66)),
+            };
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var time = new TextBlock
+            {
+                Text = $"{hour:00}:00", FontFamily = new FontFamily("Consolas"),
+                FontSize = 11, FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Top,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xBE, 0xC8, 0xDC)),
+            };
+            Grid.SetColumn(time, 0);
+            g.Children.Add(time);
+
+            // この時間帯（h:00〜h+1:00）に該当するイベントを列挙
+            var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            foreach (var ev in _vm.ScheduleService.GetByDate(date))
+            {
+                if (ev.IsAllDay && hour == 0)
+                {
+                    sp.Children.Add(MakeScheduleEvLine("終日", ev.Title,
+                        ParseColorSafe(ev.Color, Color.FromRgb(0x3D, 0x7E, 0xFF))));
+                }
+                else if (!ev.IsAllDay && ev.StartTime.Date == date.Date && ev.StartTime.Hour == hour)
+                {
+                    sp.Children.Add(MakeScheduleEvLine(
+                        $"{ev.StartTime:HH:mm}～{ev.EndTime:HH:mm}", ev.Title,
+                        ParseColorSafe(ev.Color, Color.FromRgb(0x3D, 0x7E, 0xFF))));
+                }
+            }
+            Grid.SetColumn(sp, 1);
+            g.Children.Add(sp);
+            row.Child = g;
+
+            hourRows.Add(row);
+            CardSchedulePanel.Children.Add(row);
+        }
+
+        // 当日の場合は現在の時間帯を一番上に表示
+        if (date.Date == DateTime.Today && CardScheduleScroll != null)
+        {
+            int idx = Math.Clamp(DateTime.Now.Hour, 0, hourRows.Count - 1);
+            Dispatcher.BeginInvoke(new Action(() =>
+                hourRows[idx].BringIntoView()),
+                System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
+    /// <summary>予定行内のイベント表記（バー＋時刻＋名前）を生成する。</summary>
+    private static FrameworkElement MakeScheduleEvLine(string time, string title, Color color)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+        row.Children.Add(new Border
+        {
+            Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 7, 1),
+            Background = new SolidColorBrush(color),
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 11, FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0),
+            Foreground = new SolidColorBrush(color),
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = title, FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+        });
+        return row;
+    }
+
+    // ── 2か月分ミニカレンダー（枠なし背景なし）─────────────────
+    /// <summary>選択日の当月＋翌月のミニカレンダーをカード領域右下に表示する。</summary>
+    private void BuildMiniCalendar(DateTime date)
+    {
+        if (CardMiniCalendarHost == null) return;
+        CardMiniCalendarHost.Children.Clear();
+        var m1 = new DateTime(date.Year, date.Month, 1);
+        var m2 = m1.AddMonths(1);
+        CardMiniCalendarHost.Children.Add(BuildOneMonth(m1, date));
+        CardMiniCalendarHost.Children.Add(BuildOneMonth(m2, date));
+    }
+
+    /// <summary>指定月のミニカレンダー（タイトル＋曜日＋日付グリッド）を生成する。</summary>
+    private static FrameworkElement BuildOneMonth(DateTime month, DateTime selected)
+    {
+        var root = new StackPanel { Margin = new Thickness(0, 0, 24, 0) };
+        root.Children.Add(new TextBlock
+        {
+            Text = month.ToString("yyyy / MM"), FontFamily = new FontFamily("Yu Gothic UI"),
+            FontWeight = FontWeights.Bold, FontSize = 12, Margin = new Thickness(0, 0, 0, 4),
+            Foreground = new SolidColorBrush(Color.FromRgb(0xCF, 0xCF, 0xCF)),
+        });
+
+        var grid = new Grid();
+        for (int d = 0; d < 7; d++)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        for (int r = 0; r < 7; r++)
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(18) });
+
+        string[] dow = { "日", "月", "火", "水", "木", "金", "土" };
+        for (int d = 0; d < 7; d++)
+        {
+            var tb = new TextBlock
+            {
+                Text = dow[d], FontSize = 10, TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Foreground = new SolidColorBrush(d == 0 ? Color.FromRgb(0xE8, 0x70, 0x70)
+                                              : d == 6 ? Color.FromRgb(0x70, 0xA0, 0xE8)
+                                              : Color.FromRgb(0x9A, 0xA2, 0xB4)),
+            };
+            Grid.SetRow(tb, 0); Grid.SetColumn(tb, d);
+            grid.Children.Add(tb);
+        }
+
+        int firstDow = (int)new DateTime(month.Year, month.Month, 1).DayOfWeek;
+        int daysInMonth = DateTime.DaysInMonth(month.Year, month.Month);
+        var today = DateTime.Today;
+        for (int day = 1; day <= daysInMonth; day++)
+        {
+            int idx = firstDow + day - 1;
+            int row = idx / 7 + 1;
+            int col = idx % 7;
+            var date = new DateTime(month.Year, month.Month, day);
+
+            bool isToday    = date == today;
+            bool isSelected = date.Date == selected.Date;
+
+            var cellBorder = new Border
+            {
+                CornerRadius = new CornerRadius(9), Width = 18, Height = 16,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = isSelected
+                    ? new SolidColorBrush(Color.FromRgb(0xA6, 0x6B, 0xFF))
+                    : (isToday ? new SolidColorBrush(Color.FromArgb(0x55, 0xA6, 0x6B, 0xFF))
+                               : (Brush?)null!),
+                Child = new TextBlock
+                {
+                    Text = day.ToString(), FontSize = 10, TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = isSelected
+                        ? new SolidColorBrush(Colors.White)
+                        : new SolidColorBrush(col == 0 ? Color.FromRgb(0xE8, 0x90, 0x90)
+                                            : col == 6 ? Color.FromRgb(0x90, 0xB0, 0xE8)
+                                            : Color.FromRgb(0xCF, 0xCF, 0xCF)),
+                },
+            };
+            Grid.SetRow(cellBorder, row); Grid.SetColumn(cellBorder, col);
+            grid.Children.Add(cellBorder);
+        }
+        root.Children.Add(grid);
+        return root;
+    }
+
+    // ── システム通知（簡易プレースホルダー）─────────────────
+    /// <summary>システム通知の内容を表示する（現状は固定文言の簡易表示）。</summary>
+    private void BuildCardNotifications()
+    {
+        if (CardNotifyPanel == null) return;
+        CardNotifyPanel.Children.Clear();
+        // 実装メモ: Windows.UI.Notifications.Management.UserNotificationListener で実装予定
+        CardNoNotifyText.Visibility = Visibility.Visible;
     }
 
     /// <summary>アクティブプロジェクトのタスク一覧部品を再構築する（未完了を優先）。</summary>

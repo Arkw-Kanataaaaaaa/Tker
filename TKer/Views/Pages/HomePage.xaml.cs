@@ -914,11 +914,17 @@ public partial class HomePage : Page, IRefreshable
         // ── 配置パラメータ ─────────────────────────────
         double cardW = Math.Min(w * 0.30, 300);
         double cardH = cardW * 1.34;
-        // 前面カードの中心（左下寄り）。奥へ向かって右上にずらす。
-        double frontX = w * 0.40;
-        double frontY = h * 0.60;
         double stepX  = cardW * 0.42;   // 1段ごとの右シフト
         double stepY  = cardH * 0.20;   // 1段ごとの上シフト
+
+        // 最奥カードの右端をウィンドウ右端近くに合わせ、スタック全体を右へ寄せる。
+        const double rightMargin = 28;
+        double backScale = Math.Pow(CARD_DEPTH_SCALE, CARD_VISIBLE_COUNT);
+        double frontX = w - rightMargin - cardW * backScale / 2 - CARD_VISIBLE_COUNT * stepX;
+        // 前面カードが左にはみ出さないよう下限を設ける
+        double minFrontX = cardW * 0.5 + 16;
+        if (frontX < minFrontX) frontX = minFrontX;
+        double frontY = h * 0.60;
 
         double frac = _cardPhase - Math.Floor(_cardPhase); // 0..1
         int    baseOffset = (int)Math.Floor(_cardPhase);
@@ -1321,7 +1327,12 @@ public partial class HomePage : Page, IRefreshable
         }
     }
 
-    // ── メディア表示部品（SMTC ポーリング）─────────────────────
+    // ── メディア表示部品（SMTC ポーリング・ポップアップと同一外観）──────
+    /// <summary>直近に表示したメディアのタイトル（曲変更検出用）。</summary>
+    private string? _cardLastMediaTitle;
+    /// <summary>直近に表示したメディアのアプリ AUMID（アイコン更新検出用）。</summary>
+    private string? _cardLastMediaAumid;
+
     /// <summary>SMTC を初期化し、再生中メディアのポーリングを開始する。</summary>
     private async void StartCardMedia()
     {
@@ -1338,41 +1349,259 @@ public partial class HomePage : Page, IRefreshable
                 CardMediaTitle.Text = "メディア情報を取得できません";
                 return;
             }
-            _cardMediaTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _cardMediaTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _cardMediaTimer.Tick += async (_, _) => await RefreshCardMedia();
         }
         _cardMediaTimer.Start();
         await RefreshCardMedia();
     }
 
-    /// <summary>現在の SMTC セッションからタイトル・アーティストを取得して表示する。</summary>
+    /// <summary>現在の SMTC セッションからタイトル・サムネイル・タイムラインを取得して表示を更新する。</summary>
     private async Task RefreshCardMedia()
     {
         try
         {
             var session = _cardSmtc?.GetCurrentSession();
-            if (session == null)
-            {
-                CardMediaTitle.Text  = "再生中のメディアはありません";
-                CardMediaArtist.Text = "";
-                return;
-            }
+            if (session == null) { ClearCardMedia(); return; }
+
             var props = await session.TryGetMediaPropertiesAsync();
+            var info  = session.GetPlaybackInfo();
             var title = props?.Title ?? "";
-            if (string.IsNullOrWhiteSpace(title))
+            if (string.IsNullOrWhiteSpace(title)) { ClearCardMedia(); return; }
+
+            bool playing = info?.PlaybackStatus
+                == global::Windows.Media.Control
+                    .GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+
+            // 再生アプリが変わったらアイコンを更新
+            var aumid = session.SourceAppUserModelId ?? "";
+            if (aumid != _cardLastMediaAumid)
             {
-                CardMediaTitle.Text  = "再生中のメディアはありません";
-                CardMediaArtist.Text = "";
-                return;
+                _cardLastMediaAumid = aumid;
+                _ = UpdateCardAppIcon(aumid);
             }
-            CardMediaTitle.Text  = title;
-            CardMediaArtist.Text = props?.Artist ?? "";
+
+            // 曲が変わったらテキスト・背景を作り直す
+            if (title != _cardLastMediaTitle)
+            {
+                _cardLastMediaTitle  = title;
+                CardMediaTitle.Text  = title;
+                CardMediaArtist.Text = props?.Artist ?? "";
+                _ = UpdateCardMediaBackground(props);
+            }
+
+            UpdateCardMediaTimeline(session, playing);
         }
         catch
         {
-            CardMediaTitle.Text  = "再生中のメディアはありません";
-            CardMediaArtist.Text = "";
+            ClearCardMedia();
         }
+    }
+
+    /// <summary>メディア表示を初期状態（再生なし）に戻す。</summary>
+    private void ClearCardMedia()
+    {
+        CardMediaTitle.Text   = "再生中のメディアはありません";
+        CardMediaArtist.Text  = "";
+        CardMediaFill.Width    = 0;
+        CardMediaCurTime.Text  = "0:00";
+        CardMediaTotTime.Text  = "0:00";
+        CardMediaBgImage.Source = null;
+        CardMediaAppIcon.Source = null;
+        _cardLastMediaTitle = null;
+        _cardLastMediaAumid = null;
+    }
+
+    /// <summary>セッションのタイムラインから経過バー・時間表示・再生アイコンを更新する。</summary>
+    private void UpdateCardMediaTimeline(
+        global::Windows.Media.Control.GlobalSystemMediaTransportControlsSession session, bool playing)
+    {
+        CardMediaPlayIcon.Data = (Geometry)FindResource(playing ? "Bi.PauseFill" : "Bi.PlayFill");
+        try
+        {
+            var tl = session.GetTimelineProperties();
+            var duration = tl.EndTime - tl.StartTime;
+            var pos      = tl.Position - tl.StartTime;
+            if (playing)
+            {
+                var elapsed = DateTimeOffset.Now - tl.LastUpdatedTime;
+                if (elapsed > TimeSpan.Zero) pos += elapsed;
+            }
+            if (duration <= TimeSpan.Zero)
+            {
+                CardMediaFill.Width = 0;
+                CardMediaCurTime.Text = "0:00";
+                CardMediaTotTime.Text = "0:00";
+                return;
+            }
+            if (pos < TimeSpan.Zero) pos = TimeSpan.Zero;
+            if (pos > duration)      pos = duration;
+            double frac = pos.TotalSeconds / duration.TotalSeconds;
+            CardMediaFill.Width  = Math.Max(0, CardMediaTrack.ActualWidth * frac);
+            CardMediaCurTime.Text = FormatMediaTime(pos);
+            CardMediaTotTime.Text = FormatMediaTime(duration);
+        }
+        catch { CardMediaFill.Width = 0; }
+    }
+
+    /// <summary>TimeSpan を m:ss 形式に整形する。</summary>
+    private static string FormatMediaTime(TimeSpan t) => $"{(int)t.TotalMinutes}:{t.Seconds:D2}";
+
+    /// <summary>サムネイルをぼかし背景用画像として設定する。</summary>
+    private async Task UpdateCardMediaBackground(
+        global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties? props)
+    {
+        try
+        {
+            var thumbRef = props?.Thumbnail;
+            if (thumbRef == null) { CardMediaBgImage.Source = null; return; }
+            using var ras = await thumbRef.OpenReadAsync();
+            using var net = ras.AsStreamForRead();
+            var ms = new System.IO.MemoryStream();
+            await net.CopyToAsync(ms);
+            ms.Position = 0;
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            CardMediaBgImage.Source = bmp;
+        }
+        catch { CardMediaBgImage.Source = null; }
+    }
+
+    /// <summary>再生中アプリのアイコンを取得して表示する（パッケージ→Win32 の順で解決）。</summary>
+    private async Task UpdateCardAppIcon(string aumid)
+    {
+        var src = await TryGetPackagedAppLogo(aumid);
+        src ??= TryGetWin32AppIcon(aumid);
+        CardMediaAppIcon.Source = src;
+    }
+
+    /// <summary>パッケージアプリのロゴを AppInfo 経由で取得する（失敗時は null）。</summary>
+    private static async Task<System.Windows.Media.Imaging.BitmapSource?> TryGetPackagedAppLogo(string aumid)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(aumid)) return null;
+            var appInfo = global::Windows.ApplicationModel.AppInfo.GetFromAppUserModelId(aumid);
+            var logoRef = appInfo.DisplayInfo.GetLogo(new global::Windows.Foundation.Size(32, 32));
+            using var ras = await logoRef.OpenReadAsync();
+            using var net = ras.AsStreamForRead();
+            var ms = new System.IO.MemoryStream();
+            await net.CopyToAsync(ms);
+            ms.Position = 0;
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Win32 アプリの実行ファイルからアイコンを抽出する（失敗時は null）。</summary>
+    private static System.Windows.Media.Imaging.BitmapSource? TryGetWin32AppIcon(string aumid)
+    {
+        try
+        {
+            var exePath = ResolveExecutablePath(aumid);
+            if (exePath == null) return null;
+            var large = new IntPtr[1];
+            uint extracted = ExtractIconEx(exePath, 0, large, null, 1);
+            if (extracted == 0 || large[0] == IntPtr.Zero) return null;
+            try
+            {
+                var src = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                    large[0], System.Windows.Int32Rect.Empty,
+                    System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                src.Freeze();
+                return src;
+            }
+            finally { DestroyIcon(large[0]); }
+        }
+        catch { return null; }
+    }
+
+    /// <summary>AppUserModelId から実行ファイルのフルパスを解決する。</summary>
+    private static string? ResolveExecutablePath(string aumid)
+    {
+        if (string.IsNullOrEmpty(aumid)) return null;
+        if (aumid.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(aumid))
+            return aumid;
+        var name = System.IO.Path.GetFileNameWithoutExtension(aumid);
+        if (string.IsNullOrEmpty(name)) return null;
+        try
+        {
+            foreach (var p in System.Diagnostics.Process.GetProcessesByName(name))
+            {
+                try
+                {
+                    var path = p.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path)) return path;
+                }
+                catch { }
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern uint ExtractIconEx(string szFileName, int nIconIndex,
+        IntPtr[]? phiconLarge, IntPtr[]? phiconSmall, uint nIcons);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
+    /// <summary>経過バーのクリック位置に応じてシークする。</summary>
+    private async void CardMediaTrack_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        var session = _cardSmtc?.GetCurrentSession();
+        if (session == null) return;
+        try
+        {
+            var tl = session.GetTimelineProperties();
+            var duration = tl.EndTime - tl.StartTime;
+            if (duration <= TimeSpan.Zero) return;
+            double x    = e.GetPosition(CardMediaTrack).X;
+            double frac = Math.Clamp(x / CardMediaTrack.ActualWidth, 0, 1);
+            var target  = tl.StartTime + TimeSpan.FromTicks((long)(duration.Ticks * frac));
+            await session.TryChangePlaybackPositionAsync(target.Ticks);
+            UpdateCardMediaTimeline(session, true);
+        }
+        catch { }
+        e.Handled = true;
+    }
+
+    /// <summary>再生 / 一時停止を切り替える。</summary>
+    private async void CardMediaPlayPause_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _cardSmtc?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TryTogglePlayPauseAsync(); } catch { }
+        await RefreshCardMedia();
+    }
+
+    /// <summary>前のトラックへスキップする。</summary>
+    private async void CardMediaPrev_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _cardSmtc?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TrySkipPreviousAsync(); } catch { }
+        await RefreshCardMedia();
+    }
+
+    /// <summary>次のトラックへスキップする。</summary>
+    private async void CardMediaNext_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _cardSmtc?.GetCurrentSession();
+        if (session == null) return;
+        try { await session.TrySkipNextAsync(); } catch { }
+        await RefreshCardMedia();
     }
 
     /// <summary>カードメディアのポーリングを停止する。</summary>

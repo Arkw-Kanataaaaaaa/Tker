@@ -483,10 +483,10 @@ public partial class HomePage : Page, IRefreshable
     private const double PLANET_RING_TILT_DEG = 12.0;
     /// <summary>リングに配置する衛星の数（=日数）。</summary>
     private const int PLANET_SAT_COUNT = 7;
-    /// <summary>リング線の太さ（手前半周）。</summary>
-    private const double PLANET_RING_STROKE_FRONT = 28.0;
-    /// <summary>リング線の太さ（奥半周）。</summary>
-    private const double PLANET_RING_STROKE_BACK = 20.0;
+    /// <summary>リング帯の内側半径係数（惑星半径基準・中央線比）。</summary>
+    private const double PLANET_RING_INNER_RATIO = 0.72;
+    /// <summary>リング帯の外側半径係数（惑星半径基準・中央線比）。</summary>
+    private const double PLANET_RING_OUTER_RATIO = 1.28;
     /// <summary>ドラッグで1スロット（=1日分）回転するのに必要な横移動量(px)。</summary>
     private const double PLANET_DRAG_PX_PER_SLOT = 60.0;
 
@@ -637,39 +637,71 @@ public partial class HomePage : Page, IRefreshable
         PlanetCanvas.Children.Add(planet);
     }
 
-    /// <summary>傾いた楕円リングを Polyline で描画する。behindPlanet=true なら奥側半周のみ。</summary>
+    /// <summary>
+    /// 傾いた楕円リングを「帯（道）」状の Polygon として描画する。
+    /// rx/ry は中央線の半径、内外側半径はそこから ±係数 で生成する。
+    /// behindPlanet=true なら奥側半周のみを描画する。
+    /// </summary>
     private void AddRing(double cx, double cy, double rx, double ry, double tiltDeg, bool behindPlanet)
     {
-        const int segs = 64;
-        var pts = new System.Windows.Media.PointCollection();
+        const int segs = 96;
         double tilt = tiltDeg * Math.PI / 180.0;
         double cosT = Math.Cos(tilt), sinT = Math.Sin(tilt);
 
-        // 手前半周: φ ∈ [-π/2, π/2] (cos(φ) >= 0)
-        // 奥半周  : φ ∈ [ π/2, 3π/2] (cos(φ) <  0)
+        double rxIn = rx * PLANET_RING_INNER_RATIO;
+        double ryIn = ry * PLANET_RING_INNER_RATIO;
+        double rxOut = rx * PLANET_RING_OUTER_RATIO;
+        double ryOut = ry * PLANET_RING_OUTER_RATIO;
+
+        // 手前半周: φ ∈ [-π/2, π/2] / 奥半周: φ ∈ [π/2, 3π/2]
         double phiStart = behindPlanet ?  Math.PI / 2 : -Math.PI / 2;
         double phiEnd   = behindPlanet ? 3 * Math.PI / 2 :  Math.PI / 2;
 
+        var pts = new System.Windows.Media.PointCollection();
+        // 外側エッジ: phiStart → phiEnd
         for (int i = 0; i <= segs; i++)
         {
             double phi = phiStart + (phiEnd - phiStart) * i / segs;
-            double lx = rx * Math.Sin(phi);
-            double ly = ry * Math.Cos(phi);
+            double lx = rxOut * Math.Sin(phi);
+            double ly = ryOut * Math.Cos(phi);
             pts.Add(new Point(cx + lx * cosT - ly * sinT, cy + lx * sinT + ly * cosT));
         }
-        if (pts.Count < 2) return;
+        // 内側エッジ: phiEnd → phiStart（逆順で閉じる）
+        for (int i = segs; i >= 0; i--)
+        {
+            double phi = phiStart + (phiEnd - phiStart) * i / segs;
+            double lx = rxIn * Math.Sin(phi);
+            double ly = ryIn * Math.Cos(phi);
+            pts.Add(new Point(cx + lx * cosT - ly * sinT, cy + lx * sinT + ly * cosT));
+        }
+        if (pts.Count < 3) return;
 
-        var ring = new System.Windows.Shapes.Polyline
+        // 「土星リング」風の段グラデーション。手前は明るく、奥は暗く落とす。
+        byte a1 = behindPlanet ? (byte)0x55 : (byte)0xE6;
+        byte a2 = behindPlanet ? (byte)0x44 : (byte)0xCC;
+        byte a3 = behindPlanet ? (byte)0x33 : (byte)0x99;
+        var fill = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint   = new Point(0, 1),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(a1, 0xE6, 0xD4, 0xA8), 0.00),
+                new GradientStop(Color.FromArgb(a2, 0xCB, 0xB0, 0x82), 0.40),
+                new GradientStop(Color.FromArgb(a3, 0x9C, 0x82, 0x5A), 0.75),
+                new GradientStop(Color.FromArgb(a3, 0x6B, 0x54, 0x36), 1.00),
+            }
+        };
+
+        var ring = new System.Windows.Shapes.Polygon
         {
             Points = pts,
-            Stroke = new LinearGradientBrush(
-                Color.FromArgb(behindPlanet ? (byte)0x55 : (byte)0xCC, 0xCB, 0xB0, 0x82),
-                Color.FromArgb(behindPlanet ? (byte)0x33 : (byte)0xAA, 0x88, 0x76, 0x55),
-                0),
-            StrokeThickness = behindPlanet ? PLANET_RING_STROKE_BACK : PLANET_RING_STROKE_FRONT,
-            StrokeStartLineCap = PenLineCap.Round,
-            StrokeEndLineCap   = PenLineCap.Round,
-            Opacity = behindPlanet ? 0.6 : 1.0,
+            Fill   = fill,
+            Stroke = new SolidColorBrush(Color.FromArgb(
+                behindPlanet ? (byte)0x44 : (byte)0x88, 0x3A, 0x2C, 0x1A)),
+            StrokeThickness = 0.8,
+            StrokeLineJoin  = PenLineJoin.Round,
+            Opacity = behindPlanet ? 0.55 : 1.0,
         };
         PlanetCanvas.Children.Add(ring);
     }

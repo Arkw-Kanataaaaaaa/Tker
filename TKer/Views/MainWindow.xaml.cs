@@ -77,10 +77,28 @@ public partial class MainWindow : Window
     private static readonly string[] VIDEO_EXTENSIONS =
         { ".mp4", ".avi", ".wmv", ".mov", ".mkv", ".webm" };
 
-    /// <summary>設定に基づいて動画・画像・無地の背景をウィンドウに適用する。</summary>
+    /// <summary>設定に基づいて動画・画像・単色の背景をウィンドウに適用する。
+    /// WindowBackgroundMode が "Color" の場合は壁紙を無視して単色を使う。</summary>
     public void ApplyBackground()
     {
-        var path = _vm.AppSettingsService.BackgroundImagePath;
+        var svc = _vm.AppSettingsService;
+        if (svc.WindowBackgroundMode == "Color")
+        {
+            StopBgVideo();
+            try
+            {
+                var c = (System.Windows.Media.Color)
+                    System.Windows.Media.ColorConverter.ConvertFromString(svc.WindowBackgroundColor);
+                Background = new System.Windows.Media.SolidColorBrush(c);
+            }
+            catch
+            {
+                Background = (System.Windows.Media.Brush)FindResource("BgPrimaryBrush");
+            }
+            return;
+        }
+
+        var path = svc.BackgroundImagePath;
 
         if (!string.IsNullOrEmpty(path) && File.Exists(path))
         {

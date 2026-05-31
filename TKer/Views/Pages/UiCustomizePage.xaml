@@ -277,6 +277,36 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="24,20,24,28" MaxWidth="560">
 
+                        <!-- ══ ウィンドウ背景 ══ -->
+                        <TextBlock Text="ウィンドウ背景" Style="{StaticResource SectionHeading}"/>
+                        <TextBlock Text="背景を「壁紙（画像/動画）」と「背景色」のどちらにするか選択します。"
+                                   FontSize="11" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <RadioButton x:Name="RbBgWallpaper" Content="壁紙" GroupName="WindowBg"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         Margin="0,0,16,0" Checked="WindowBgMode_Changed"/>
+                            <RadioButton x:Name="RbBgColor" Content="背景色" GroupName="WindowBg"
+                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                         Checked="WindowBgMode_Changed"/>
+                        </StackPanel>
+                        <Grid x:Name="BgColorRow" Margin="0,0,0,16" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="32"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="背景色" FontSize="12" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBox Grid.Column="1" x:Name="TxtWindowBgColor"
+                                     Style="{StaticResource DarkTextBox}"
+                                     TextChanged="WindowBgColor_Changed"/>
+                            <Border Grid.Column="2" x:Name="WindowBgColorPreview"
+                                    Width="22" Height="22" CornerRadius="4"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Separator Margin="0,0,0,16" Background="{StaticResource BorderBrush}"/>
+
                         <!-- ══ プリセット ══ -->
                         <TextBlock Text="テーマプリセット" Style="{StaticResource SectionHeading}"/>
                         <TextBlock FontSize="11" Foreground="{StaticResource TextDimBrush}"

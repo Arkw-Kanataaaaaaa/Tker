@@ -224,6 +224,20 @@ public class AppSettingsService
         Save();
     }
 
+    /// <summary>ウィンドウ背景モード ("Wallpaper" | "Color")。</summary>
+    public string WindowBackgroundMode
+        => string.IsNullOrEmpty(_settings.WindowBackgroundMode) ? "Wallpaper" : _settings.WindowBackgroundMode;
+    /// <summary>ウィンドウ背景色（HEX）。</summary>
+    public string WindowBackgroundColor
+        => string.IsNullOrEmpty(_settings.WindowBackgroundColor) ? "#1A1F2E" : _settings.WindowBackgroundColor;
+    /// <summary>ウィンドウ背景モードと色を保存する。</summary>
+    public void SaveWindowBackground(string mode, string color)
+    {
+        _settings.WindowBackgroundMode  = mode;
+        _settings.WindowBackgroundColor = color;
+        Save();
+    }
+
     public ThemeColors Theme => _settings.Theme;
     /// <summary>テーマカラーを保存する。</summary>
     public void SaveTheme(ThemeColors theme)

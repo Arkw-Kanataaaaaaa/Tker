@@ -24,6 +24,10 @@ public class AppSettings
     public bool ShowCompletedInSchedule { get; set; } = false;
     /// <summary>背景画像のファイルパス。</summary>
     public string? BackgroundImagePath { get; set; }
+    /// <summary>ウィンドウ背景モード ("Wallpaper" = 画像/動画, "Color" = 単色)。</summary>
+    public string WindowBackgroundMode { get; set; } = "Wallpaper";
+    /// <summary>ウィンドウ背景色（モードが "Color" のとき使用、HEX）。</summary>
+    public string WindowBackgroundColor { get; set; } = "#1A1F2E";
     /// <summary>アプリの動作モード（"Multi" など）。</summary>
     public string AppMode { get; set; } = "Multi";
     /// <summary>登録済みアプリショートカットの一覧。</summary>

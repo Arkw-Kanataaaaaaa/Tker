@@ -240,6 +240,53 @@ public partial class UiCustomizePage : Page, IRefreshable
         RefreshMenuOrderList();
 
         BuildPresetPanel();
+        ApplyWindowBackgroundUi();
+    }
+
+    // ── ウィンドウ背景モード（壁紙/単色）─────────────────────
+    /// <summary>保存済みのウィンドウ背景モード・色を UI に反映する。</summary>
+    private void ApplyWindowBackgroundUi()
+    {
+        if (RbBgWallpaper == null || RbBgColor == null) return;
+        var mode = _svc.WindowBackgroundMode;
+        RbBgWallpaper.Checked -= WindowBgMode_Changed;
+        RbBgColor.Checked     -= WindowBgMode_Changed;
+        RbBgWallpaper.IsChecked = mode != "Color";
+        RbBgColor.IsChecked     = mode == "Color";
+        RbBgWallpaper.Checked += WindowBgMode_Changed;
+        RbBgColor.Checked     += WindowBgMode_Changed;
+        BgColorRow.Visibility = mode == "Color" ? Visibility.Visible : Visibility.Collapsed;
+        TxtWindowBgColor.Text = _svc.WindowBackgroundColor;
+        UpdateWindowBgColorPreview();
+    }
+
+    /// <summary>モード変更で保存・ウィンドウへ反映する。</summary>
+    private void WindowBgMode_Changed(object sender, RoutedEventArgs e)
+    {
+        var mode = RbBgColor.IsChecked == true ? "Color" : "Wallpaper";
+        _svc.SaveWindowBackground(mode, _svc.WindowBackgroundColor);
+        BgColorRow.Visibility = mode == "Color" ? Visibility.Visible : Visibility.Collapsed;
+        (Application.Current.MainWindow as TKer.Views.MainWindow)?.ApplyBackground();
+    }
+
+    /// <summary>背景色テキスト変更で保存・ウィンドウへ反映する。</summary>
+    private void WindowBgColor_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        _svc.SaveWindowBackground(_svc.WindowBackgroundMode, TxtWindowBgColor.Text);
+        UpdateWindowBgColorPreview();
+        if (_svc.WindowBackgroundMode == "Color")
+            (Application.Current.MainWindow as TKer.Views.MainWindow)?.ApplyBackground();
+    }
+
+    /// <summary>色入力欄の隣のプレビュー Border を現在値で塗る。</summary>
+    private void UpdateWindowBgColorPreview()
+    {
+        try
+        {
+            var c = (Color)ColorConverter.ConvertFromString(TxtWindowBgColor.Text);
+            WindowBgColorPreview.Background = new SolidColorBrush(c);
+        }
+        catch { WindowBgColorPreview.Background = Brushes.Transparent; }
     }
 
     // ══════════════════════════════════════════════

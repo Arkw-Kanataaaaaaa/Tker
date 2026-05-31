@@ -1082,8 +1082,7 @@ public partial class HomePage : Page, IRefreshable
     private void ApplyCardSectionThemes()
     {
         var svc = _vm.AppSettingsService;
-        UiThemeHelper.ApplySectionTheme(CardTodoCard,       svc.GetSectionTheme("Card_Todo"));
-        UiThemeHelper.ApplySectionTheme(CardTasksCard,      svc.GetSectionTheme("Card_Tasks"));
+        UiThemeHelper.ApplySectionTheme(CardTodoTasksCard,  svc.GetSectionTheme("Card_TodoTasks"));
         UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
         UiThemeHelper.ApplySectionTheme(CardCollectionCard, svc.GetSectionTheme("Card_Collection"));
         UiThemeHelper.ApplySectionTheme(CardProjectsCard,   svc.GetSectionTheme("Card_Projects"));

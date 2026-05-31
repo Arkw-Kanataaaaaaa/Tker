@@ -43,8 +43,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         ["Header"]     = "ヘッダーバー",
         ["Alert"]      = "アラートセクション",
         // カードテンプレートの部品
-        ["Card_Todo"]       = "ToDo",
-        ["Card_Tasks"]      = "タスク",
+        ["Card_TodoTasks"]  = "ToDo / タスク",
         ["Card_Schedule"]   = "予定",
         ["Card_Collection"] = "コレクション",
         ["Card_Projects"]   = "プロジェクト",

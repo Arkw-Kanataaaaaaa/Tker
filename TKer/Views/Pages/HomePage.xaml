@@ -331,9 +331,11 @@
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
-                            <Border x:Name="CardTodoCard" Tag="Card_Todo"
+                            <!-- ToDo と タスクを1つのカード部品にまとめて表示 -->
+                            <Border x:Name="CardTodoTasksCard" Tag="Card_TodoTasks"
                                     Style="{StaticResource CardPanel}">
                                 <StackPanel>
+                                    <!-- ToDo セクション -->
                                     <DockPanel Margin="0,0,0,10">
                                         <TextBlock Text="ToDo" DockPanel.Dock="Left"
                                                    FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
@@ -348,12 +350,12 @@
                                     <TextBlock x:Name="CardNoTodoText" Text="未完了の ToDo はありません"
                                                FontSize="11" Foreground="#9AA2B4"
                                                Visibility="Collapsed"/>
-                                </StackPanel>
-                            </Border>
 
-                            <Border x:Name="CardTasksCard" Tag="Card_Tasks"
-                                    Style="{StaticResource CardPanel}">
-                                <StackPanel>
+                                    <!-- セクション間の仕切り線 -->
+                                    <Border Height="1" Margin="0,14,0,14"
+                                            Background="#44A66BFF"/>
+
+                                    <!-- タスク セクション -->
                                     <DockPanel Margin="0,0,0,10">
                                         <TextBlock Text="タスク" DockPanel.Dock="Left"
                                                    FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"

@@ -43,13 +43,10 @@ public partial class UiCustomizePage : Page, IRefreshable
         ["Header"]     = "ヘッダーバー",
         ["Alert"]      = "アラートセクション",
         // カードテンプレートの部品
-        ["Card_Media"]        = "メディア",
-        ["Card_Collection"]   = "コレクション",
-        ["Card_Schedule"]     = "予定",
-        ["Card_Todo"]         = "ToDo",
-        ["Card_Tasks"]        = "タスク一覧",
-        ["Card_Tools"]        = "ショートカット",
-        ["Card_MiniSchedule"] = "ToDo",
+        ["Card_Media"]  = "メディア",
+        ["Card_Todo"]   = "ToDo",
+        ["Card_Tasks"]  = "タスク",
+        ["Card_Tools"]  = "ショートカット",
     };
 
     private static readonly string[] FIXED_HOME_COMPONENTS = { };

@@ -47,26 +47,168 @@
             </LinearGradientBrush>
         </Grid.Background>
 
-        <!-- 左上 情報パネル -->
-        <StackPanel Margin="36,28,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-            <TextBlock x:Name="CardProjectText"
-                       FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="30"
-                       Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock x:Name="CardDateText" Margin="0,8,0,0"
-                       FontFamily="Consolas" FontSize="13"
-                       Foreground="{StaticResource TextSecondaryBrush}"/>
-            <TextBlock x:Name="CardClockText" Margin="0,2,0,0"
-                       FontFamily="Consolas" FontSize="13"
-                       Foreground="{StaticResource TextDimBrush}"/>
-        </StackPanel>
+        <Grid Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="460"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- カードスタック -->
-        <Canvas x:Name="CardCanvas" ClipToBounds="True" Background="Transparent"
-                SizeChanged="CardCanvas_SizeChanged"
-                MouseWheel="CardCanvas_MouseWheel"
-                MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
-                MouseMove="CardCanvas_MouseMove"
-                MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
+            <!-- ── 左ペイン: ウィジェット列 ── -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Padding="24,24,12,24">
+                <StackPanel>
+                    <!-- ヘッダー -->
+                    <TextBlock x:Name="CardProjectText"
+                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="26"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,16">
+                        <TextBlock x:Name="CardDateText"
+                                   FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock x:Name="CardClockText" Margin="12,0,0,0"
+                                   FontFamily="Consolas" FontSize="13"
+                                   Foreground="{StaticResource TextDimBrush}"/>
+                    </StackPanel>
+
+                    <!-- メディア表示部品 -->
+                    <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Path Data="{StaticResource Bi.MusicNoteBeamed}" Style="{StaticResource BiIconSm}"
+                                      Fill="{StaticResource AccentCyanBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="再生中のメディア"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="44"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6"
+                                        Background="{StaticResource BgCardBrush}">
+                                    <TextBlock x:Name="CardMediaIcon" Text="♪" FontSize="20"
+                                               Foreground="{StaticResource AccentCyanBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock x:Name="CardMediaTitle" Text="再生中のメディアはありません"
+                                               FontSize="13" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="CardMediaArtist" Text=""
+                                               FontSize="11" Margin="0,2,0,0"
+                                               Foreground="{StaticResource TextDimBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ショートカット部品 -->
+                    <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Path Data="{StaticResource Bi.LightningFill}" Style="{StaticResource BiIconSm}"
+                                      Fill="{StaticResource AccentYellowBrush}" Margin="0,0,6,0"/>
+                                <TextBlock Text="ショートカット"
+                                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <WrapPanel x:Name="CardShortcutPanel" Orientation="Horizontal"/>
+                            <TextBlock x:Name="CardNoShortcutText"
+                                       Text="ツール → ショートカット管理 から登録できます"
+                                       FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- TODO リスト部品 -->
+                    <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource Bi.CheckCircleFill}" Style="{StaticResource BiIconSm}"
+                                          Fill="{StaticResource AccentGreenBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="ToDo"
+                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button DockPanel.Dock="Right" Content="一覧 ▶"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                        Click="CardGoToTodo_Click"/>
+                            </DockPanel>
+                            <StackPanel x:Name="CardTodoPanel"/>
+                            <TextBlock x:Name="CardNoTodoText" Text="未完了の ToDo はありません"
+                                       FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- アクティブプロジェクトのタスク一覧部品 -->
+                    <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource Bi.ClipboardFill}" Style="{StaticResource BiIconSm}"
+                                          Fill="{StaticResource TextPrimaryBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="タスク一覧"
+                                               FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button DockPanel.Dock="Right" Content="管理 ▶"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                        Click="CardGoToTaskList_Click"/>
+                            </DockPanel>
+                            <StackPanel x:Name="CardTaskPanel"/>
+                            <TextBlock x:Name="CardNoTaskText" Text="プロジェクトを開くとタスクが表示されます"
+                                       FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ── 右ペイン: カードスタック + 当日スケジュール ── -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="210"/>
+                </Grid.RowDefinitions>
+
+                <!-- カードスタック -->
+                <Canvas x:Name="CardCanvas" Grid.Row="0" ClipToBounds="True" Background="Transparent"
+                        SizeChanged="CardCanvas_SizeChanged"
+                        MouseWheel="CardCanvas_MouseWheel"
+                        MouseLeftButtonDown="CardCanvas_MouseLeftButtonDown"
+                        MouseMove="CardCanvas_MouseMove"
+                        MouseLeftButtonUp="CardCanvas_MouseLeftButtonUp"/>
+
+                <!-- 選択日の時間単位スケジュール -->
+                <Border Grid.Row="1" Margin="12,0,24,24" CornerRadius="12"
+                        Background="#1A1F2E" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <DockPanel Margin="14,10,14,12">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                            <Path Data="{StaticResource Bi.Calendar3}" Style="{StaticResource BiIconSm}"
+                                  Fill="{StaticResource AccentBlueBrush}" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="CardScheduleTitle" Text="予定"
+                                       FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="CardSchedulePanel"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 
     <!-- ══ グリッドスタイル（既存）══ -->

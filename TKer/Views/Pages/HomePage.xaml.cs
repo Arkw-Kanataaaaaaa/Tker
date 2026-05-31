@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -36,7 +38,7 @@ public partial class HomePage : Page, IRefreshable
         };
         _clockTimer.Start();
 
-        Unloaded += (_, _) => { _clockTimer.Stop(); StopCardAnimation(); };
+        Unloaded += (_, _) => { _clockTimer.Stop(); StopCardAnimation(); StopCardMedia(); };
         Loaded   += (_, _) => _clockTimer.Start();
     }
 
@@ -873,14 +875,26 @@ public partial class HomePage : Page, IRefreshable
     private bool _cardDragging = false;
     /// <summary>カードドラッグ直前のカーソル位置。</summary>
     private Point _cardDragLastPos;
+    /// <summary>スケジュール部品が現在表示している選択日オフセット。変化時のみ再構築する。</summary>
+    private int _cardScheduleShownOffset = int.MinValue;
+    /// <summary>メディア表示更新用タイマー。</summary>
+    private DispatcherTimer? _cardMediaTimer;
+    /// <summary>SMTC セッションマネージャー（再生中メディア取得用）。</summary>
+    private global::Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager? _cardSmtc;
 
-    /// <summary>カードビューのテキスト情報を更新し、Canvas を再描画する。</summary>
+    /// <summary>カードビューのテキスト情報・各ウィジェット部品を更新し、Canvas を再描画する。</summary>
     private void RefreshCardView()
     {
         CardProjectText.Text = _vm.IsProjectLoaded ? _vm.ProjectTitle : "TKer";
         CardDateText.Text    = DateTime.Now.ToString("yyyy年MM月dd日 (ddd)");
         CardClockText.Text   = DateTime.Now.ToString("HH:mm:ss");
+
+        BuildCardShortcuts();
+        BuildCardTodo();
+        BuildCardTasks();
+        _cardScheduleShownOffset = int.MinValue;   // 強制再構築
         BuildCards();
+        StartCardMedia();
     }
 
     /// <summary>Canvas サイズ変動時にカードを再構築する。</summary>
@@ -918,6 +932,14 @@ public partial class HomePage : Page, IRefreshable
 
             int dateOffset = baseOffset + k;
             AddCard(frontX, frontY, cardW, cardH, depth, stepX, stepY, dateOffset);
+        }
+
+        // 前面カードの選択日が変わったら、当日スケジュール部品を更新する
+        int selectedOffset = (int)Math.Round(_cardPhase);
+        if (selectedOffset != _cardScheduleShownOffset)
+        {
+            _cardScheduleShownOffset = selectedOffset;
+            BuildCardSchedule(DateTime.Today.AddDays(selectedOffset));
         }
     }
 
@@ -1056,6 +1078,322 @@ public partial class HomePage : Page, IRefreshable
         Canvas.SetTop(border,  cy - sh / 2);
         CardCanvas.Children.Add(border);
     }
+
+    // ── ウィジェット部品ビルダー ─────────────────────────────
+    /// <summary>共通カラー: 二次テキスト。</summary>
+    private static Brush CardDimBrush => new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4));
+
+    /// <summary>ショートカット部品を再構築する。</summary>
+    private void BuildCardShortcuts()
+    {
+        CardShortcutPanel.Children.Clear();
+        var shortcuts = _vm.AppSettingsService.Shortcuts;
+        CardNoShortcutText.Visibility = shortcuts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var sc in shortcuts)
+        {
+            var path = sc.Path;
+            var btn = new Button
+            {
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(9, 5, 9, 5),
+                Cursor  = System.Windows.Input.Cursors.Hand,
+                Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x30, 0x40)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0x44, 0x5A)),
+                BorderThickness = new Thickness(1),
+                ToolTip = path,
+            };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+            sp.Children.Add(new TextBlock { Text = sc.Icon, FontSize = 16,
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 5, 0) });
+            sp.Children.Add(new TextBlock { Text = sc.Name, FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xCF, 0xCF, 0xCF)),
+                VerticalAlignment = VerticalAlignment.Center });
+            btn.Content = sp;
+            btn.Click += (_, _) => OpenShortcut(path);
+            CardShortcutPanel.Children.Add(btn);
+        }
+    }
+
+    /// <summary>ToDo 部品を再構築する（未完了を優先表示）。</summary>
+    private void BuildCardTodo()
+    {
+        CardTodoPanel.Children.Clear();
+        var todos = _vm.TodoService.GetAll().Where(t => !t.IsCompleted).Take(6).ToList();
+        CardNoTodoText.Visibility = todos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var todo in todos)
+        {
+            var row = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 5), CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6, 10, 6),
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x2A, 0x30, 0x40)),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var dot = new System.Windows.Shapes.Ellipse
+            {
+                Width = 9, Height = 9, VerticalAlignment = VerticalAlignment.Center,
+                Fill = ParseBrushSafe(todo.Color, Color.FromRgb(0x3D, 0x7E, 0xFF)),
+            };
+            Grid.SetColumn(dot, 0);
+            g.Children.Add(dot);
+
+            var title = new TextBlock
+            {
+                Text = todo.Title, FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            };
+            Grid.SetColumn(title, 1);
+            g.Children.Add(title);
+
+            if (!string.IsNullOrEmpty(todo.DueDateLabel))
+            {
+                var due = new TextBlock
+                {
+                    Text = todo.DueDateLabel, FontSize = 11, FontFamily = new FontFamily("Consolas"),
+                    VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0),
+                    Foreground = todo.IsOverdue
+                        ? new SolidColorBrush(Color.FromRgb(0xEF, 0x53, 0x50))
+                        : CardDimBrush,
+                };
+                Grid.SetColumn(due, 2);
+                g.Children.Add(due);
+            }
+            row.Child = g;
+            var id = todo.Id;
+            row.MouseLeftButtonUp += (_, _) => { _vm.TodoService.Toggle(id); BuildCardTodo(); };
+            CardTodoPanel.Children.Add(row);
+        }
+    }
+
+    /// <summary>アクティブプロジェクトのタスク一覧部品を再構築する（未完了を優先）。</summary>
+    private void BuildCardTasks()
+    {
+        CardTaskPanel.Children.Clear();
+        var project = _vm.ProjectService.CurrentProject;
+        if (project == null || project.Tasks.Count == 0)
+        {
+            CardNoTaskText.Visibility = Visibility.Visible;
+            return;
+        }
+        CardNoTaskText.Visibility = Visibility.Collapsed;
+        var tasks = project.Tasks
+            .Where(t => t.Status != "完了")
+            .OrderByDescending(t => t.UpdatedAt)
+            .Take(6)
+            .ToList();
+        if (tasks.Count == 0) tasks = project.Tasks.OrderByDescending(t => t.UpdatedAt).Take(6).ToList();
+
+        foreach (var task in tasks)
+        {
+            var row = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 5), CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6, 10, 6),
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x2A, 0x30, 0x40)),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock
+            {
+                Text = task.Name, FontSize = 12, FontWeight = FontWeights.Bold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            });
+            var sub = task.PlannedEndDate.HasValue
+                ? $"期限 {task.PlannedEndDate.Value:MM/dd}  ·  {task.Assignee}"
+                : task.Assignee;
+            sp.Children.Add(new TextBlock
+            {
+                Text = sub, FontSize = 10, Margin = new Thickness(0, 2, 0, 0),
+                Foreground = CardDimBrush, TextTrimming = TextTrimming.CharacterEllipsis,
+            });
+            Grid.SetColumn(sp, 0);
+            g.Children.Add(sp);
+
+            var statusColor = task.Status switch
+            {
+                "対応中"     => Color.FromRgb(0x2E, 0x9B, 0xFF),
+                "レビュー中" => Color.FromRgb(0xB0, 0x6B, 0xFF),
+                _            => Color.FromRgb(0x88, 0x92, 0xA6),
+            };
+            var badge = new Border
+            {
+                CornerRadius = new CornerRadius(9), Padding = new Thickness(8, 2, 8, 2),
+                Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(Color.FromArgb(0x33, statusColor.R, statusColor.G, statusColor.B)),
+                Child = new TextBlock
+                {
+                    Text = task.Status, FontSize = 10, FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(statusColor),
+                },
+            };
+            Grid.SetColumn(badge, 1);
+            g.Children.Add(badge);
+
+            row.Child = g;
+            row.MouseLeftButtonUp += (_, _) => _vm.NavigateToCommand.Execute("TaskList");
+            CardTaskPanel.Children.Add(row);
+        }
+    }
+
+    /// <summary>選択日の時間単位スケジュール部品を再構築する。</summary>
+    private void BuildCardSchedule(DateTime date)
+    {
+        if (CardSchedulePanel == null) return;
+        CardSchedulePanel.Children.Clear();
+        CardScheduleTitle.Text = $"{date:M月d日 (ddd)} の予定";
+
+        // イベント（時間付き）とタスク（予定期間に該当）を時間順にまとめる
+        var rows = new List<(string time, string label, Color color)>();
+
+        foreach (var ev in _vm.ScheduleService.GetByDate(date))
+        {
+            string time = ev.IsAllDay ? "終日" : ev.StartTime.ToString("HH:mm");
+            rows.Add((time, ev.Title, ParseColorSafe(ev.Color, Color.FromRgb(0x3D, 0x7E, 0xFF))));
+        }
+
+        var project = _vm.ProjectService.CurrentProject;
+        if (project != null)
+        {
+            foreach (var t in project.Tasks.Where(t =>
+                t.PlannedStartDate.HasValue && t.PlannedEndDate.HasValue &&
+                t.PlannedStartDate.Value.Date <= date.Date && t.PlannedEndDate.Value.Date >= date.Date))
+            {
+                rows.Add(("予定", t.Name, Color.FromRgb(0x52, 0x9E, 0x72)));
+            }
+        }
+
+        if (rows.Count == 0)
+        {
+            CardSchedulePanel.Children.Add(new TextBlock
+            {
+                Text = "この日の予定はありません", FontSize = 12, Margin = new Thickness(0, 6, 0, 0),
+                Foreground = CardDimBrush,
+            });
+            return;
+        }
+
+        foreach (var (time, label, color) in rows.OrderBy(r => r.time))
+        {
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 5) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var timeTb = new TextBlock
+            {
+                Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xBE, 0xC8, 0xDC)),
+            };
+            Grid.SetColumn(timeTb, 0);
+            g.Children.Add(timeTb);
+
+            var bar = new Border
+            {
+                Width = 4, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 0, 1),
+                Background = new SolidColorBrush(color),
+            };
+            Grid.SetColumn(bar, 1);
+            g.Children.Add(bar);
+
+            var labelTb = new TextBlock
+            {
+                Text = label, FontSize = 12, Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            };
+            Grid.SetColumn(labelTb, 2);
+            g.Children.Add(labelTb);
+
+            CardSchedulePanel.Children.Add(g);
+        }
+    }
+
+    // ── メディア表示部品（SMTC ポーリング）─────────────────────
+    /// <summary>SMTC を初期化し、再生中メディアのポーリングを開始する。</summary>
+    private async void StartCardMedia()
+    {
+        if (_cardMediaTimer == null)
+        {
+            try
+            {
+                _cardSmtc ??= await global::Windows.Media.Control
+                    .GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+            }
+            catch
+            {
+                // WinRT 非対応環境では機能を無効化
+                CardMediaTitle.Text = "メディア情報を取得できません";
+                return;
+            }
+            _cardMediaTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _cardMediaTimer.Tick += async (_, _) => await RefreshCardMedia();
+        }
+        _cardMediaTimer.Start();
+        await RefreshCardMedia();
+    }
+
+    /// <summary>現在の SMTC セッションからタイトル・アーティストを取得して表示する。</summary>
+    private async Task RefreshCardMedia()
+    {
+        try
+        {
+            var session = _cardSmtc?.GetCurrentSession();
+            if (session == null)
+            {
+                CardMediaTitle.Text  = "再生中のメディアはありません";
+                CardMediaArtist.Text = "";
+                return;
+            }
+            var props = await session.TryGetMediaPropertiesAsync();
+            var title = props?.Title ?? "";
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                CardMediaTitle.Text  = "再生中のメディアはありません";
+                CardMediaArtist.Text = "";
+                return;
+            }
+            CardMediaTitle.Text  = title;
+            CardMediaArtist.Text = props?.Artist ?? "";
+        }
+        catch
+        {
+            CardMediaTitle.Text  = "再生中のメディアはありません";
+            CardMediaArtist.Text = "";
+        }
+    }
+
+    /// <summary>カードメディアのポーリングを停止する。</summary>
+    private void StopCardMedia() => _cardMediaTimer?.Stop();
+
+    /// <summary>HEX文字列を Color に変換する。失敗時は fallback を返す。</summary>
+    private static Color ParseColorSafe(string hex, Color fallback)
+    {
+        try { return (Color)ColorConverter.ConvertFromString(hex); }
+        catch { return fallback; }
+    }
+
+    /// <summary>HEX文字列を SolidColorBrush に変換する。失敗時は fallback 色で返す。</summary>
+    private static Brush ParseBrushSafe(string hex, Color fallback)
+        => new SolidColorBrush(ParseColorSafe(hex, fallback));
+
+    private void CardGoToTodo_Click(object sender, RoutedEventArgs e)
+        => _vm.NavigateToCommand.Execute("Todo");
+
+    private void CardGoToTaskList_Click(object sender, RoutedEventArgs e)
+        => _vm.NavigateToCommand.Execute("TaskList");
 
     // ── 入力ハンドラ（ホイール/ドラッグでカードを上下に流す）──────────
     /// <summary>マウスホイールでカードを1枚分、滑らかにめくる。</summary>

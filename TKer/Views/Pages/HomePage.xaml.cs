@@ -484,20 +484,24 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>リングに配置する衛星の数（=日数）。</summary>
     private const int PLANET_SAT_COUNT = 7;
     /// <summary>リング線の太さ（手前半周）。</summary>
-    private const double PLANET_RING_STROKE_FRONT = 6.5;
+    private const double PLANET_RING_STROKE_FRONT = 12.0;
     /// <summary>リング線の太さ（奥半周）。</summary>
-    private const double PLANET_RING_STROKE_BACK = 4.0;
-    /// <summary>ドラッグで1日進むのに必要な横移動量(px)。</summary>
-    private const double PLANET_DRAG_PX_PER_DAY = 50.0;
+    private const double PLANET_RING_STROKE_BACK = 8.0;
+    /// <summary>ドラッグで1スロット（=1日分）回転するのに必要な横移動量(px)。</summary>
+    private const double PLANET_DRAG_PX_PER_SLOT = 60.0;
 
-    /// <summary>前面に表示する日付の today からのオフセット（0=今日）。</summary>
-    private int _planetDayOffset = 0;
+    /// <summary>連続回転量（スロット単位、1.0 = 衛星1つ分の回転）。ドラッグ/ホイールで更新。</summary>
+    private double _planetPhase = 0.0;
+    /// <summary>各物理衛星が現在表す日付オフセット。衛星が惑星裏を通るたびに ±N されて無限スクロールを実現する。</summary>
+    private int[]? _planetSatDateOffsets;
     /// <summary>ドラッグ中フラグ。</summary>
     private bool _planetDragging = false;
     /// <summary>ドラッグ直前のカーソル位置。</summary>
     private Point _planetDragLastPos;
-    /// <summary>ドラッグ中の横移動累積量（px）。</summary>
-    private double _planetDragAccumX = 0;
+
+    /// <summary>衛星日付配列を初回アクセスで遅延初期化する。</summary>
+    private int[] PlanetSatDateOffsets
+        => _planetSatDateOffsets ??= System.Linq.Enumerable.Range(0, PLANET_SAT_COUNT).ToArray();
 
     /// <summary>惑星ビューのテキスト情報を更新し、Canvas を再描画する。</summary>
     private void RefreshPlanetView()
@@ -532,23 +536,38 @@ public partial class HomePage : Page, IRefreshable
         double cosT  = Math.Cos(tilt);
         double sinT  = Math.Sin(tilt);
 
-        // ── 衛星座標と深度（z）を先に計算 ──────────────
-        // φ=0 を「手前下部」とし、cos(φ) が +1 で最前、-1 で最奥。
-        // i=0 を前面位置に固定し、表示する日付は (_planetDayOffset + i) で算出する。
-        var sats = new System.Collections.Generic.List<(double x, double y, double depth, int dateOffset, bool isFront)>();
-        for (int i = 0; i < PLANET_SAT_COUNT; i++)
+        // ── 衛星座標と深度を計算 ─────────────────────────
+        // 各物理衛星 s は固有の日付オフセット D を持つ。
+        // 連続位相 phase に対して、s の角度は (D - phase) * 2π/N。
+        // よって phase を増やすと全衛星が CCW 方向に滑らかに回転する。
+        // 衛星が惑星裏（angle≈±π）を通過した瞬間に UpdatePlanetPhase で D を ±N して
+        // 視覚的に途切れない無限スクロールを実現する。
+        var sats = new System.Collections.Generic.List<(double x, double y, double depth, int dateOffset, double normAngle)>();
+        for (int s = 0; s < PLANET_SAT_COUNT; s++)
         {
-            double phi = i * 2 * Math.PI / PLANET_SAT_COUNT;
+            int D = PlanetSatDateOffsets[s];
+            double phi = (D - _planetPhase) * 2 * Math.PI / PLANET_SAT_COUNT;
             double lx = ringRx * Math.Sin(phi);
             double ly = ringRy * Math.Cos(phi);
             double rx = lx * cosT - ly * sinT;
             double ry = lx * sinT + ly * cosT;
-            sats.Add((cx + rx, cy + ry, Math.Cos(phi), _planetDayOffset + i, i == 0));
+            double normAngle = Math.IEEERemainder(phi, 2 * Math.PI);  // (-π, π]
+            sats.Add((cx + rx, cy + ry, Math.Cos(phi), D, normAngle));
         }
 
+        // 最前面（angle が 0 に最も近い）衛星を 1 つだけ選んで isFront 扱いとする
+        int frontIdx = 0;
+        for (int s = 1; s < PLANET_SAT_COUNT; s++)
+            if (Math.Abs(sats[s].normAngle) < Math.Abs(sats[frontIdx].normAngle))
+                frontIdx = s;
+
         // ── 1. 後方の衛星（depth<0）を惑星より先に描画 ───
-        foreach (var s in sats.Where(s => s.depth < 0).OrderBy(s => s.depth))
-            AddSatellite(s.x, s.y, s.depth, s.dateOffset, s.isFront);
+        for (int idx = 0; idx < sats.Count; idx++)
+        {
+            var s = sats[idx];
+            if (s.depth < 0)
+                AddSatellite(s.x, s.y, s.depth, s.dateOffset, idx == frontIdx);
+        }
 
         // ── 2. リング後ろ半分 ─────────────────────────
         AddRing(cx, cy, ringRx, ringRy, PLANET_RING_TILT_DEG, behindPlanet: true);
@@ -560,8 +579,30 @@ public partial class HomePage : Page, IRefreshable
         AddRing(cx, cy, ringRx, ringRy, PLANET_RING_TILT_DEG, behindPlanet: false);
 
         // ── 5. 前方衛星（depth>=0）─────────────────────
-        foreach (var s in sats.Where(s => s.depth >= 0).OrderBy(s => s.depth))
-            AddSatellite(s.x, s.y, s.depth, s.dateOffset, s.isFront);
+        for (int idx = 0; idx < sats.Count; idx++)
+        {
+            var s = sats[idx];
+            if (s.depth >= 0)
+                AddSatellite(s.x, s.y, s.depth, s.dateOffset, idx == frontIdx);
+        }
+    }
+
+    /// <summary>位相を更新して、各衛星が惑星裏を通過した分だけ日付オフセットを ±N する。</summary>
+    private void UpdatePlanetPhase(double newPhase)
+    {
+        _planetPhase = newPhase;
+        var arr = PlanetSatDateOffsets;
+        double halfN = PLANET_SAT_COUNT / 2.0;
+        for (int s = 0; s < PLANET_SAT_COUNT; s++)
+        {
+            int D = arr[s];
+            // 前進: phase が D + N/2 を超えたら、衛星 s は惑星裏を CCW 方向に抜けた → D += N
+            while (_planetPhase > D + halfN) D += PLANET_SAT_COUNT;
+            // 後退: phase が D - N/2 を下回ったら、衛星 s は惑星裏を CW 方向に抜けた → D -= N
+            while (_planetPhase < D - halfN) D -= PLANET_SAT_COUNT;
+            arr[s] = D;
+        }
+        BuildPlanet();
     }
 
     /// <summary>地球風グラデーションの円を惑星として配置する。</summary>
@@ -728,12 +769,11 @@ public partial class HomePage : Page, IRefreshable
         PlanetCanvas.Children.Add(tb);
     }
 
-    // ── 入力ハンドラ（ホイール/ドラッグで日付スクロール）───────────────
-    /// <summary>マウスホイールで前面の日付を 1 日ずつ進める/戻す。</summary>
+    // ── 入力ハンドラ（ホイール/ドラッグで衛星を回転させて日付スクロール）─────
+    /// <summary>マウスホイールで位相を 1 スロット分（=1日）進める/戻す。</summary>
     private void PlanetCanvas_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
-        _planetDayOffset += e.Delta > 0 ? 1 : -1;
-        BuildPlanet();
+        UpdatePlanetPhase(_planetPhase + (e.Delta > 0 ? 1.0 : -1.0));
         e.Handled = true;
     }
 
@@ -742,41 +782,29 @@ public partial class HomePage : Page, IRefreshable
     {
         _planetDragging = true;
         _planetDragLastPos = e.GetPosition(PlanetCanvas);
-        _planetDragAccumX = 0;
         PlanetCanvas.CaptureMouse();
         PlanetCanvas.Cursor = System.Windows.Input.Cursors.SizeWE;
         e.Handled = true;
     }
 
-    /// <summary>横方向の累積移動量が閾値を越えるごとに 1 日進める。</summary>
+    /// <summary>ドラッグ中は横移動量に比例して位相を連続的に更新し、衛星を滑らかに回転させる。</summary>
     private void PlanetCanvas_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (!_planetDragging) return;
         var pos = e.GetPosition(PlanetCanvas);
-        _planetDragAccumX += pos.X - _planetDragLastPos.X;
+        double dx = pos.X - _planetDragLastPos.X;
         _planetDragLastPos = pos;
-        while (Math.Abs(_planetDragAccumX) >= PLANET_DRAG_PX_PER_DAY)
-        {
-            if (_planetDragAccumX > 0)
-            {
-                _planetDayOffset += 1;
-                _planetDragAccumX -= PLANET_DRAG_PX_PER_DAY;
-            }
-            else
-            {
-                _planetDayOffset -= 1;
-                _planetDragAccumX += PLANET_DRAG_PX_PER_DAY;
-            }
-            BuildPlanet();
-        }
+        if (dx != 0)
+            UpdatePlanetPhase(_planetPhase + dx / PLANET_DRAG_PX_PER_SLOT);
     }
 
-    /// <summary>マウスアップでドラッグ終了、キャプチャを解放する。</summary>
+    /// <summary>マウスアップでドラッグ終了、キャプチャを解放し、位相を最寄りスロットにスナップする。</summary>
     private void PlanetCanvas_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (!_planetDragging) return;
         _planetDragging = false;
         PlanetCanvas.ReleaseMouseCapture();
         PlanetCanvas.Cursor = System.Windows.Input.Cursors.Arrow;
+        UpdatePlanetPhase(Math.Round(_planetPhase));
     }
 }

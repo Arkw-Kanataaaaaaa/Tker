@@ -1135,7 +1135,7 @@ public partial class HomePage : Page, IRefreshable
         var line = new System.Windows.Shapes.Line
         {
             X1 = 0, Y1 = cy, X2 = w, Y2 = cy,
-            StrokeThickness = 10,
+            StrokeThickness = 40,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap   = PenLineCap.Round,
             Stroke = new LinearGradientBrush(

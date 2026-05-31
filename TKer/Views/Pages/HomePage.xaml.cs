@@ -901,6 +901,8 @@ public partial class HomePage : Page, IRefreshable
         BuildCardShortcuts();
         BuildCardTodo();
         BuildCardTasks();
+        BuildCardCollections();
+        BuildCardProjects();
         BuildCardNotifications();
         _cardScheduleShownOffset = int.MinValue;   // 強制再構築
         BuildCards();
@@ -1080,9 +1082,11 @@ public partial class HomePage : Page, IRefreshable
     private void ApplyCardSectionThemes()
     {
         var svc = _vm.AppSettingsService;
-        UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
         UiThemeHelper.ApplySectionTheme(CardTodoCard,       svc.GetSectionTheme("Card_Todo"));
         UiThemeHelper.ApplySectionTheme(CardTasksCard,      svc.GetSectionTheme("Card_Tasks"));
+        UiThemeHelper.ApplySectionTheme(CardScheduleCard,   svc.GetSectionTheme("Card_Schedule"));
+        UiThemeHelper.ApplySectionTheme(CardCollectionCard, svc.GetSectionTheme("Card_Collection"));
+        UiThemeHelper.ApplySectionTheme(CardProjectsCard,   svc.GetSectionTheme("Card_Projects"));
         UiThemeHelper.ApplySectionTheme(CardNotifyCard,     svc.GetSectionTheme("Card_Notify"));
         UiThemeHelper.ApplySectionTheme(CardMediaRoot,      svc.GetSectionTheme("Card_Media"));
         UiThemeHelper.ApplySectionTheme(CardToolsCard,      svc.GetSectionTheme("Card_Tools"));
@@ -1679,27 +1683,28 @@ public partial class HomePage : Page, IRefreshable
     /// <summary>指定月のミニカレンダー（タイトル＋曜日＋日付グリッド）を生成する。</summary>
     private static FrameworkElement BuildOneMonth(DateTime month, DateTime selected)
     {
-        var root = new StackPanel { Margin = new Thickness(0, 0, 24, 0) };
+        var root = new StackPanel { Margin = new Thickness(0, 0, 28, 0) };
         root.Children.Add(new TextBlock
         {
             Text = month.ToString("yyyy / MM"), FontFamily = new FontFamily("Yu Gothic UI"),
-            FontWeight = FontWeights.Bold, FontSize = 12, Margin = new Thickness(0, 0, 0, 4),
+            FontWeight = FontWeights.Bold, FontSize = 14, Margin = new Thickness(0, 0, 0, 6),
             Foreground = new SolidColorBrush(Color.FromRgb(0xCF, 0xCF, 0xCF)),
         });
 
         var grid = new Grid();
         for (int d = 0; d < 7; d++)
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
         for (int r = 0; r < 7; r++)
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(18) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
 
         string[] dow = { "日", "月", "火", "水", "木", "金", "土" };
         for (int d = 0; d < 7; d++)
         {
             var tb = new TextBlock
             {
-                Text = dow[d], FontSize = 10, TextAlignment = TextAlignment.Center,
+                Text = dow[d], FontSize = 12, TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
                 Foreground = new SolidColorBrush(d == 0 ? Color.FromRgb(0xE8, 0x70, 0x70)
                                               : d == 6 ? Color.FromRgb(0x70, 0xA0, 0xE8)
                                               : Color.FromRgb(0x9A, 0xA2, 0xB4)),
@@ -1723,7 +1728,7 @@ public partial class HomePage : Page, IRefreshable
 
             var cellBorder = new Border
             {
-                CornerRadius = new CornerRadius(9), Width = 18, Height = 16,
+                CornerRadius = new CornerRadius(13), Width = 26, Height = 24,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Background = isSelected
@@ -1732,7 +1737,7 @@ public partial class HomePage : Page, IRefreshable
                                : (Brush?)null!),
                 Child = new TextBlock
                 {
-                    Text = day.ToString(), FontSize = 10, TextAlignment = TextAlignment.Center,
+                    Text = day.ToString(), FontSize = 12, TextAlignment = TextAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = isSelected
@@ -1758,6 +1763,114 @@ public partial class HomePage : Page, IRefreshable
         // 実装メモ: Windows.UI.Notifications.Management.UserNotificationListener で実装予定
         CardNoNotifyText.Visibility = Visibility.Visible;
     }
+
+    // ── コレクション部品 ─────────────────────────────────────
+    /// <summary>コレクション一覧をカバー画像 or アイコンのカードで表示する。</summary>
+    private void BuildCardCollections()
+    {
+        if (CardCollectionPanel == null) return;
+        CardCollectionPanel.Children.Clear();
+        var cols = _vm.CollectionService.Collections;
+        CardNoCollectionText.Visibility = cols.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var col in cols)
+        {
+            var card = new Border
+            {
+                Width = 84, Height = 100, Margin = new Thickness(0, 0, 8, 8),
+                CornerRadius = new CornerRadius(8),
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x12, 0x18, 0x28)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0xA6, 0x6B, 0xFF)),
+                BorderThickness = new Thickness(1),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ClipToBounds = true, ToolTip = col.Name,
+            };
+            var g = new Grid();
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var cover = new Border
+            {
+                CornerRadius = new CornerRadius(6), Margin = new Thickness(5, 5, 5, 2),
+                Background = new SolidColorBrush(Color.FromArgb(0x55, 0x2A, 0x2A, 0x66)),
+            };
+            var img = DecodeBase64Image(col.CoverImageData);
+            if (img != null)
+                cover.Background = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
+            else
+                cover.Child = new TextBlock
+                {
+                    Text = string.IsNullOrEmpty(col.Icon) ? "📁" : col.Icon, FontSize = 26,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+            Grid.SetRow(cover, 0); g.Children.Add(cover);
+            var name = new TextBlock
+            {
+                Text = col.Name, FontSize = 10, FontWeight = FontWeights.Bold,
+                Margin = new Thickness(6, 0, 6, 5), TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            };
+            Grid.SetRow(name, 1); g.Children.Add(name);
+            card.Child = g;
+            card.MouseLeftButtonUp += (_, _) => _vm.NavigateToCommand.Execute("Collection");
+            CardCollectionPanel.Children.Add(card);
+        }
+    }
+
+    // ── プロジェクト部品 ─────────────────────────────────────
+    /// <summary>最近のプロジェクト一覧（サマリー）を行で表示する。</summary>
+    private void BuildCardProjects()
+    {
+        if (CardProjectsPanel == null) return;
+        CardProjectsPanel.Children.Clear();
+        var summaries = _vm.AppSettingsService.CollectSummaries();
+        CardNoProjectsText.Visibility = summaries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var s in summaries.Take(5))
+        {
+            var row = new Border
+            {
+                Margin = new Thickness(0, 0, 0, 5), CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10, 6, 10, 6),
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x2A, 0x30, 0x40)),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock
+            {
+                Text = s.Entry.ProjectName, FontSize = 12, FontWeight = FontWeights.Bold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
+            });
+            sp.Children.Add(new TextBlock
+            {
+                Text = $"タスク {s.TotalTasks} / 完了 {s.DoneTasks}", FontSize = 10,
+                Margin = new Thickness(0, 2, 0, 0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
+            });
+            Grid.SetColumn(sp, 0); g.Children.Add(sp);
+            var prog = new TextBlock
+            {
+                Text = s.ProgressLabel, FontFamily = new FontFamily("Consolas"),
+                FontSize = 12, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 0, 0),
+                Foreground = new SolidColorBrush(s.HasAlert
+                    ? Color.FromRgb(0xEF, 0x53, 0x50)
+                    : Color.FromRgb(0x52, 0x9E, 0x72)),
+            };
+            Grid.SetColumn(prog, 1); g.Children.Add(prog);
+            row.Child = g;
+            var path = s.Entry.DataFilePath;
+            row.MouseLeftButtonUp += (_, _) => _vm.SwitchProjectCommand.Execute(path);
+            CardProjectsPanel.Children.Add(row);
+        }
+    }
+
+    private void CardGoToCollection_Click(object sender, RoutedEventArgs e)
+        => _vm.NavigateToCommand.Execute("Collection");
+    private void CardGoToProjects_Click(object sender, RoutedEventArgs e)
+        => _vm.NavigateToCommand.Execute("ProjectList");
 
     /// <summary>アクティブプロジェクトのタスク一覧部品を再構築する（未完了を優先）。</summary>
     private void BuildCardTasks()

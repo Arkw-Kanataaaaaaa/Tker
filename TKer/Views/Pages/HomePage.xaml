@@ -80,11 +80,11 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- ══ 左=カードスタック / 右=ウィジェット列 ══ -->
+            <!-- ══ 左=カードスタック / 右=ウィジェット列（左を若干広く） ══ -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="1.2*"/>
+                    <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
 
             <!-- ── 右列: 上=予定|ToDo+タスク+通知+メディア / 下=ショートカット ── -->
@@ -95,32 +95,11 @@
                 </Grid.RowDefinitions>
 
                 <!-- Row 0: 左半=予定 / 右半=ToDo→タスク→通知→メディア -->
-                <Grid Grid.Row="0" Margin="16,20,16,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- 左半: 予定（時間単位、スクロール可能） -->
-                    <Border x:Name="CardScheduleCard" Grid.Column="0" Tag="Card_Schedule"
-                            Style="{StaticResource CardPanel}" Margin="0,0,8,0">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="予定"
-                                       FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
-                                       Foreground="White" Margin="0,0,0,10"/>
-                            <ScrollViewer x:Name="CardScheduleScroll"
-                                          VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled">
-                                <StackPanel x:Name="CardSchedulePanel"/>
-                            </ScrollViewer>
-                        </DockPanel>
-                    </Border>
-
-                    <!-- 右半: ToDo → タスク → システム通知 → メディア（スクロール可） -->
-                    <ScrollViewer Grid.Column="1" Margin="8,0,0,0"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel>
+                <!-- Row 0: 単一スクロール列 ToDo → タスク → 予定 → カレンダー → コレクション → プロジェクト → 通知 → メディア -->
+                <ScrollViewer Grid.Row="0" Margin="16,20,8,4"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
 
                             <Border x:Name="CardTodoCard" Tag="Card_Todo"
                                     Style="{StaticResource CardPanel}">
@@ -157,6 +136,70 @@
                                     </DockPanel>
                                     <StackPanel x:Name="CardTaskPanel"/>
                                     <TextBlock x:Name="CardNoTaskText" Text="プロジェクトを開くとタスクが表示されます"
+                                               FontSize="11" Foreground="#9AA2B4"
+                                               Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 予定（時間単位、内部スクロール） -->
+                            <Border x:Name="CardScheduleCard" Tag="Card_Schedule"
+                                    Style="{StaticResource CardPanel}" MaxHeight="320">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Top" Text="予定"
+                                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                               Foreground="White" Margin="0,0,0,10"/>
+                                    <ScrollViewer x:Name="CardScheduleScroll"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel x:Name="CardSchedulePanel"/>
+                                    </ScrollViewer>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- 2か月分ミニカレンダー（枠なし背景なし） -->
+                            <StackPanel x:Name="CardMiniCalendarHost"
+                                        Orientation="Horizontal"
+                                        Margin="6,8,0,14"/>
+
+                            <!-- コレクション部品 -->
+                            <Border x:Name="CardCollectionCard" Tag="Card_Collection"
+                                    Style="{StaticResource CardPanel}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock Text="コレクション" DockPanel.Dock="Left"
+                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                                   Foreground="White"/>
+                                        <Button DockPanel.Dock="Right" Content="一覧 ▶"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Click="CardGoToCollection_Click"/>
+                                    </DockPanel>
+                                    <WrapPanel x:Name="CardCollectionPanel" Orientation="Horizontal"/>
+                                    <TextBlock x:Name="CardNoCollectionText"
+                                               Text="コレクションがありません"
+                                               FontSize="11" Foreground="#9AA2B4"
+                                               Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- プロジェクト部品 -->
+                            <Border x:Name="CardProjectsCard" Tag="Card_Projects"
+                                    Style="{StaticResource CardPanel}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock Text="プロジェクト" DockPanel.Dock="Left"
+                                                   FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="16"
+                                                   Foreground="White"/>
+                                        <Button DockPanel.Dock="Right" Content="一覧 ▶"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,3" FontSize="10" HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Click="CardGoToProjects_Click"/>
+                                    </DockPanel>
+                                    <StackPanel x:Name="CardProjectsPanel"/>
+                                    <TextBlock x:Name="CardNoProjectsText"
+                                               Text="登録されたプロジェクトがありません"
                                                FontSize="11" Foreground="#9AA2B4"
                                                Visibility="Collapsed"/>
                                 </StackPanel>
@@ -295,7 +338,6 @@
                     </Border>
                         </StackPanel>
                     </ScrollViewer>
-                </Grid>
 
                 <!-- Row 1: ショートカット ライン（右列の最下部、円形ノードにアプリアイコン＋名前）-->
                 <Border x:Name="CardToolsCard" Grid.Row="1" Tag="Card_Tools" Margin="0,4,0,0"
@@ -340,12 +382,6 @@
                                    Foreground="#CCFFFFFF" HorizontalAlignment="Left"
                                    TextAlignment="Left" Margin="0,-18,0,0"/>
                     </StackPanel>
-
-                    <!-- 左領域の右下: 2か月分の簡易カレンダー（枠なし背景なし） -->
-                    <StackPanel x:Name="CardMiniCalendarHost"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                Margin="0,0,32,28" IsHitTestVisible="False"/>
                 </Grid>
             </Grid>
 

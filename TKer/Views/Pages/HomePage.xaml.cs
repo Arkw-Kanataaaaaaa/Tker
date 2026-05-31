@@ -63,7 +63,10 @@ public partial class HomePage : Page, IRefreshable
             RefreshPlanetView();
             return;
         }
-        if (template == "Card")
+        // Card と「未実装テンプレート（Magazine/Dock/Tri/Timeline/CalendarFull/Journal/Glass）」は
+        // とりあえずカードビューを表示しておく。実装時に分岐を追加する。
+        if (template is "Card" or "Magazine" or "Dock" or "Tri"
+                     or "Timeline" or "CalendarFull" or "Journal" or "Glass")
         {
             HomeScroll.Visibility = Visibility.Collapsed;
             PlanetView.Visibility = Visibility.Collapsed;

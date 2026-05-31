@@ -246,30 +246,43 @@ public partial class UiCustomizePage : Page, IRefreshable
     //  Tab 1 — ホーム画面ビジュアルプレビュー
     // ══════════════════════════════════════════════
 
-    /// <summary>保存済みテンプレート設定に合わせてラジオボタンとレーン操作の活性状態を反映する。</summary>
+    /// <summary>テンプレート ID とラジオの対応（表示順）。</summary>
+    private (string Key, RadioButton? Rb)[] TemplateRadios() => new (string, RadioButton?)[]
+    {
+        ("Grid",         RbTplGrid),
+        ("Planet",       RbTplPlanet),
+        ("Card",         RbTplCard),
+        ("Magazine",     RbTplMagazine),
+        ("Dock",         RbTplDock),
+        ("Tri",          RbTplTri),
+        ("Timeline",     RbTplTimeline),
+        ("CalendarFull", RbTplCalendar),
+        ("Journal",      RbTplJournal),
+        ("Glass",        RbTplGlass),
+    };
+
+    /// <summary>保存済みテンプレート設定に合わせてラジオボタンの選択状態を反映する。</summary>
     private void ApplyTemplateRadios()
     {
-        if (RbTplGrid == null || RbTplPlanet == null || RbTplCard == null) return;
+        if (RbTplGrid == null) return;
         var current = _svc.HomeTemplate;
-        RbTplGrid.Checked   -= HomeTemplate_Changed;
-        RbTplPlanet.Checked -= HomeTemplate_Changed;
-        RbTplCard.Checked   -= HomeTemplate_Changed;
-        RbTplGrid.IsChecked   = current != "Planet" && current != "Card";
-        RbTplPlanet.IsChecked = current == "Planet";
-        RbTplCard.IsChecked   = current == "Card";
-        RbTplGrid.Checked   += HomeTemplate_Changed;
-        RbTplPlanet.Checked += HomeTemplate_Changed;
-        RbTplCard.Checked   += HomeTemplate_Changed;
+        var radios  = TemplateRadios();
+        foreach (var (_, rb) in radios)
+            if (rb != null) rb.Checked -= HomeTemplate_Changed;
+        bool matched = false;
+        foreach (var (key, rb) in radios)
+            if (rb != null) { rb.IsChecked = key == current; if (rb.IsChecked == true) matched = true; }
+        if (!matched) RbTplGrid.IsChecked = true;
+        foreach (var (_, rb) in radios)
+            if (rb != null) rb.Checked += HomeTemplate_Changed;
         UpdateTemplateHint(current);
     }
 
     /// <summary>テンプレートラジオボタンの選択変更時に設定を保存する。</summary>
     private void HomeTemplate_Changed(object sender, RoutedEventArgs e)
     {
-        if (RbTplGrid == null || RbTplPlanet == null || RbTplCard == null) return;
-        string newTpl = RbTplPlanet.IsChecked == true ? "Planet"
-                      : RbTplCard.IsChecked   == true ? "Card"
-                      : "Grid";
+        var radios = TemplateRadios();
+        string newTpl = radios.FirstOrDefault(r => r.Rb?.IsChecked == true).Key ?? "Grid";
         if (newTpl == _svc.HomeTemplate) return;
         _svc.SaveHomeTemplate(newTpl);
         UpdateTemplateHint(newTpl);
@@ -332,9 +345,16 @@ public partial class UiCustomizePage : Page, IRefreshable
         if (TplHint == null) return;
         TplHint.Text = template switch
         {
-            "Planet" => "惑星スタイルは固定レイアウトです。プレビューの部品をクリックでスタイル編集できます",
-            "Card"   => "カードスタイルは固定レイアウトです。プレビューの部品をクリックでスタイル編集できます",
-            _        => "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます",
+            "Planet"       => "惑星スタイル: プレビューの部品をクリックでスタイル編集できます",
+            "Card"         => "カードスタイル: プレビューの部品をクリックでスタイル編集できます",
+            "Magazine"     => "（未実装）マガジン: 中央カード＋年月の透かし＋下部ウィジェット帯",
+            "Dock"         => "（未実装）ドック: フル幅カード＋右の縦アイコンドック",
+            "Tri"          => "（未実装）3分割: ヘッダー / カード中央 / 下ショートカット",
+            "Timeline"     => "（未実装）タイムライン: 縦時間軸＋イベント帯",
+            "CalendarFull" => "（未実装）カレンダー全面: 月カレンダーが背景・選択日が拡大",
+            "Journal"      => "（未実装）手帳: 見開き2ページで予定と ToDo",
+            "Glass"        => "（未実装）グラス: ぼかし背景＋浮遊するガラスパネル",
+            _              => "グリッドスタイル: 下記のレーン編集で自由にレイアウトできます",
         };
     }
 

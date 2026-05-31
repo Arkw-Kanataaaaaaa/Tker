@@ -191,6 +191,29 @@
                                 <RadioButton x:Name="RbTplCard" Content="🗂 カード（テスト）" GroupName="HomeTpl"
                                              Foreground="{StaticResource TextPrimaryBrush}"
                                              Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <Separator Margin="0,6,0,6" Background="{StaticResource BorderBrush}"/>
+                                <TextBlock Text="代替案" FontSize="10" Foreground="{StaticResource TextDimBrush}" Margin="0,0,0,4"/>
+                                <RadioButton x:Name="RbTplMagazine" Content="📰 マガジン" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplDock" Content="🧰 ドック" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplTri" Content="▦ 3分割" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplTimeline" Content="⏱ タイムライン" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplCalendar" Content="🗓 カレンダー全面" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplJournal" Content="📔 手帳" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
+                                <RadioButton x:Name="RbTplGlass" Content="🪟 グラス" GroupName="HomeTpl"
+                                             Foreground="{StaticResource TextPrimaryBrush}"
+                                             Margin="0,4,0,4" Checked="HomeTemplate_Changed"/>
                                 <TextBlock x:Name="TplHint" Margin="0,6,0,0" FontSize="11"
                                            Foreground="{StaticResource TextDimBrush}" TextWrapping="Wrap"/>
 

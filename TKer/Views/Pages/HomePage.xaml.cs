@@ -1075,7 +1075,11 @@ public partial class HomePage : Page, IRefreshable
         Grid.SetRow(top, 0);
         grid.Children.Add(top);
 
-        // 中央：日番号
+        // 中央：日番号（左）＋ その日のイベント（右）
+        var midGrid = new Grid();
+        midGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        midGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
         var dayNum = new TextBlock
         {
             Text = date.Day.ToString(),
@@ -1087,52 +1091,63 @@ public partial class HomePage : Page, IRefreshable
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        Grid.SetRow(dayNum, 1);
-        grid.Children.Add(dayNum);
+        Grid.SetColumn(dayNum, 0);
+        midGrid.Children.Add(dayNum);
 
-        // 下段：アクセントバー ＋ その日のイベント（日時・イベント名）
-        var bottom = new StackPanel();
-        bottom.Children.Add(new Border
-        {
-            Height = 4 * us, Width = 56 * us, CornerRadius = new CornerRadius(2),
-            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 8 * us),
-            Background = new LinearGradientBrush(
-                accent, Color.FromArgb(0x33, accent.R, accent.G, accent.B), 0),
-        });
-
-        // 前面カードのみ、その日のイベントを最大3件表示（時刻＋イベント名）
+        // 前面カードのみ、日番号の右にその日のイベント（開始～終了 ＋ 名前）を表示
         if (isFront)
         {
             var events = GetScheduleEntries(date);
-            foreach (var (time, label, color) in events.Take(3))
+            var evStack = new StackPanel
             {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3 * us) };
-                row.Children.Add(new Border
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(14 * us, 0, 0, 0),
+            };
+            foreach (var (time, label, color) in events.Take(4))
+            {
+                var item = new StackPanel { Margin = new Thickness(0, 0, 0, 6 * us) };
+                var head = new StackPanel { Orientation = Orientation.Horizontal };
+                head.Children.Add(new Border
                 {
-                    Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 8 * us, 1),
+                    Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 7 * us, 1),
                     Background = new SolidColorBrush(color),
                 });
-                row.Children.Add(new TextBlock
+                head.Children.Add(new TextBlock
                 {
-                    Text = time, FontFamily = new FontFamily("Consolas"), FontSize = 11 * us, FontWeight = FontWeights.Bold,
-                    VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6 * us, 0),
+                    Text = time, FontFamily = new FontFamily("Consolas"),
+                    FontSize = 11 * us, FontWeight = FontWeights.Bold,
+                    VerticalAlignment = VerticalAlignment.Center,
                     Foreground = new SolidColorBrush(Color.FromArgb(0xFF, color.R, color.G, color.B)),
                 });
-                row.Children.Add(new TextBlock
+                item.Children.Add(head);
+                item.Children.Add(new TextBlock
                 {
-                    Text = label, FontSize = 12 * us, VerticalAlignment = VerticalAlignment.Center,
-                    TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = cardW * 0.62,
+                    Text = label, FontSize = 12 * us, Margin = new Thickness(10 * us, 1, 0, 0),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
                     Foreground = new SolidColorBrush(Color.FromRgb(0xE6, 0xEA, 0xF2)),
                 });
-                bottom.Children.Add(row);
+                evStack.Children.Add(item);
             }
-            if (events.Count > 3)
-                bottom.Children.Add(new TextBlock
+            if (events.Count > 4)
+                evStack.Children.Add(new TextBlock
                 {
-                    Text = $"ほか {events.Count - 3} 件", FontSize = 10.5 * us,
+                    Text = $"ほか {events.Count - 4} 件", FontSize = 10.5 * us,
                     Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA2, 0xB4)),
                 });
+            Grid.SetColumn(evStack, 1);
+            midGrid.Children.Add(evStack);
         }
+        Grid.SetRow(midGrid, 1);
+        grid.Children.Add(midGrid);
+
+        // 下段：アクセントバー
+        var bottom = new Border
+        {
+            Height = 4 * us, Width = 56 * us, CornerRadius = new CornerRadius(2),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background = new LinearGradientBrush(
+                accent, Color.FromArgb(0x33, accent.R, accent.G, accent.B), 0),
+        };
         Grid.SetRow(bottom, 2);
         grid.Children.Add(bottom);
 
@@ -1580,7 +1595,7 @@ public partial class HomePage : Page, IRefreshable
         var rows = new List<(string time, string label, Color color)>();
         foreach (var ev in _vm.ScheduleService.GetByDate(date))
         {
-            string time = ev.IsAllDay ? "終日" : ev.StartTime.ToString("HH:mm");
+            string time = ev.IsAllDay ? "終日" : $"{ev.StartTime:HH:mm}～{ev.EndTime:HH:mm}";
             rows.Add((time, ev.Title, ParseColorSafe(ev.Color, Color.FromRgb(0x3D, 0x7E, 0xFF))));
         }
         var project = _vm.ProjectService.CurrentProject;
@@ -1608,7 +1623,7 @@ public partial class HomePage : Page, IRefreshable
 
         foreach (var ev in _vm.ScheduleService.GetByDate(date))
         {
-            string time = ev.IsAllDay ? "終日" : ev.StartTime.ToString("HH:mm");
+            string time = ev.IsAllDay ? "終日" : $"{ev.StartTime:HH:mm}～{ev.EndTime:HH:mm}";
             rows.Add((time, ev.Title, ParseColorSafe(ev.Color, Color.FromRgb(0x3D, 0x7E, 0xFF))));
         }
 

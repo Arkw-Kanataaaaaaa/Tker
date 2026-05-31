@@ -297,7 +297,7 @@ public partial class UiCustomizePage : Page, IRefreshable
         // 実際の適用イメージ：HomePage を生成（再利用）して最新状態を描画
         if (_previewHome == null)
         {
-            _previewHome = new HomePage(_vm);
+            _previewHome = new HomePage(_vm) { IsEditPreview = true };
             HomePreviewFrame.Navigate(_previewHome);
             // レイアウト確定後に描画（Frame の Navigate は非同期反映のため）
             Dispatcher.BeginInvoke(new Action(() => _previewHome?.Refresh()),

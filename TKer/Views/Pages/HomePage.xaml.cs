@@ -22,6 +22,10 @@ public partial class HomePage : Page, IRefreshable
     private readonly DispatcherTimer _clockTimer;
     private DateTime _calMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
 
+    /// <summary>編集プレビュー（カスタマイズ画面の仮想ウィンドウ）として表示中か。
+    /// true のときショートカットラインに「＋（追加）」ノードを表示する。</summary>
+    public bool IsEditPreview { get; set; } = false;
+
     /// <summary>ホームページを初期化し、時計タイマーを起動する。</summary>
     public HomePage(MainViewModel vm)
     {
@@ -1154,18 +1158,21 @@ public partial class HomePage : Page, IRefreshable
         CardShortcutCanvas.Children.Add(line);
 
         var shortcuts = _vm.AppSettingsService.Shortcuts;
-        if (shortcuts.Count == 0) return;
+        // 編集プレビュー時は末尾に「＋（追加）」ノードを置くため、0件でも描画する
+        if (shortcuts.Count == 0 && !IsEditPreview) return;
 
         const double diameter = 48;
         double left  = 60;
         double right = w - 60;
         if (right < left) { left = 30; right = w - 30; }
         int n = shortcuts.Count;
+        int total = n + (IsEditPreview ? 1 : 0);   // ＋ノード分
 
-        for (int i = 0; i < n; i++)
+        for (int slot = 0; slot < total; slot++)
         {
-            var sc = shortcuts[i];
-            double x = n == 1 ? (left + right) / 2 : left + (right - left) * i / (n - 1);
+            double x = total == 1 ? (left + right) / 2
+                                  : left + (right - left) * slot / (total - 1);
+            bool isAddNode = IsEditPreview && slot == n;
 
             // 円形ノード
             var circle = new Border
@@ -1173,16 +1180,45 @@ public partial class HomePage : Page, IRefreshable
                 Width = diameter, Height = diameter,
                 CornerRadius = new CornerRadius(diameter / 2),
                 Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x1F, 0x2E)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0xA6, 0x6B, 0xFF)),
+                BorderBrush = new SolidColorBrush(isAddNode
+                    ? Color.FromRgb(0x52, 0x9E, 0x72) : Color.FromRgb(0xA6, 0x6B, 0xFF)),
                 BorderThickness = new Thickness(2),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                ToolTip = sc.Path,
                 ClipToBounds = true,
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
                 {
-                    Color = Color.FromRgb(0xA6, 0x6B, 0xFF), BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6
+                    Color = isAddNode ? Color.FromRgb(0x52, 0x9E, 0x72) : Color.FromRgb(0xA6, 0x6B, 0xFF),
+                    BlurRadius = 14, ShadowDepth = 0, Opacity = 0.6
                 },
             };
+
+            if (isAddNode)
+            {
+                circle.ToolTip = "ショートカットアプリを追加";
+                circle.Child = new TextBlock
+                {
+                    Text = "＋", FontSize = 26, FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x6E, 0xD0, 0x9A)),
+                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                };
+                circle.MouseLeftButtonUp += (_, e) => { e.Handled = true; AddShortcutViaDialog(); };
+                Canvas.SetLeft(circle, x - diameter / 2);
+                Canvas.SetTop(circle,  cy - diameter / 2);
+                CardShortcutCanvas.Children.Add(circle);
+
+                var addLabel = new TextBlock
+                {
+                    Text = "追加", FontSize = 11, TextAlignment = TextAlignment.Center,
+                    Width = 96, Foreground = new SolidColorBrush(Color.FromRgb(0x6E, 0xD0, 0x9A)),
+                };
+                Canvas.SetLeft(addLabel, x - 48);
+                Canvas.SetTop(addLabel,  cy + diameter / 2 + 5);
+                CardShortcutCanvas.Children.Add(addLabel);
+                continue;
+            }
+
+            var sc = shortcuts[slot];
+            circle.ToolTip = sc.Path;
             // 実アプリアイコン（取得できなければ絵文字アイコンにフォールバック）
             var iconSrc = GetShellIcon(sc.Path);
             if (iconSrc != null)
@@ -1220,6 +1256,27 @@ public partial class HomePage : Page, IRefreshable
             Canvas.SetTop(name,  cy + diameter / 2 + 5);
             CardShortcutCanvas.Children.Add(name);
         }
+    }
+
+    /// <summary>ファイル選択ダイアログでアプリ/ファイルを選び、ショートカットとして追加する。</summary>
+    private void AddShortcutViaDialog()
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "ショートカットに割り当てるアプリ／ファイルを選択",
+            Filter = "アプリ・ファイル (*.exe;*.lnk;*.*)|*.exe;*.lnk;*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var list = _vm.AppSettingsService.Shortcuts.ToList();
+        list.Add(new TKer.Models.AppShortcut
+        {
+            Name = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName),
+            Path = dlg.FileName,
+            Icon = "🔗",
+        });
+        _vm.AppSettingsService.SaveShortcuts(list);
+        BuildCardShortcuts();
     }
 
     // ── シェルアイコン取得（SHGetFileInfo）─────────────────────────

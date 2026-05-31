@@ -88,14 +88,20 @@
                 </Grid.ColumnDefinitions>
 
             <!-- ── 統合ウィジェット列（メディア/コレクション/予定/ToDo/タスク）── -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled" Padding="24,24,8,12">
-                <StackPanel>
-                    <!-- ヘッダー -->
-                    <TextBlock x:Name="CardProjectText" Margin="0,0,0,16"
-                               FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="26"
-                               Foreground="{StaticResource TextPrimaryBrush}"/>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
+                <!-- ヘッダー（スクロールしない固定領域） -->
+                <TextBlock x:Name="CardProjectText" Grid.Row="0" Margin="24,24,8,12"
+                           FontFamily="Yu Gothic UI" FontWeight="Black" FontSize="26"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled" Padding="24,0,8,12">
+                <StackPanel>
                     <!-- メディア表示部品（ツールバーのメディアポップアップと同一外観）-->
                     <Border x:Name="CardMediaRoot" CornerRadius="14" Margin="0,0,0,14" Tag="Card_Media"
                             ClipToBounds="True" SizeChanged="CardMediaRoot_SizeChanged">
@@ -296,7 +302,8 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
-            </ScrollViewer>
+                </ScrollViewer>
+            </Grid>
 
                 <!-- カードスタック + 左上=年月 / 右下=簡易予定 オーバーレイ -->
                 <Grid Grid.Column="1">

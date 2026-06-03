@@ -2587,11 +2587,14 @@ public partial class HomePage : Page, IRefreshable
         CardMediaTotTime.Text  = "0:00";
         CardMediaBgImage.Source = null;
         CardMediaAppIcon.Source = null;
-        // 左カード領域のコンパクトメディア欄もクリア
-        if (CardLeftMediaTitle != null)   CardLeftMediaTitle.Text   = "再生中のメディアはありません";
-        if (CardLeftMediaArtist != null)  CardLeftMediaArtist.Text  = "";
+        // 左カード領域のメディア欄（右列と同外観）もクリア
+        if (CardLeftMediaTitle   != null) CardLeftMediaTitle.Text     = "再生中のメディアはありません";
+        if (CardLeftMediaArtist  != null) CardLeftMediaArtist.Text    = "";
         if (CardLeftMediaBgImage != null) CardLeftMediaBgImage.Source = null;
-        if (CardLeftMediaIcon != null)    CardLeftMediaIcon.Source    = null;
+        if (CardLeftMediaIcon    != null) CardLeftMediaIcon.Source    = null;
+        if (CardLeftMediaFill    != null) CardLeftMediaFill.Width     = 0;
+        if (CardLeftMediaCurTime != null) CardLeftMediaCurTime.Text   = "0:00";
+        if (CardLeftMediaTotTime != null) CardLeftMediaTotTime.Text   = "0:00";
         _cardLastMediaTitle = null;
         _cardLastMediaAumid = null;
     }
@@ -2600,7 +2603,9 @@ public partial class HomePage : Page, IRefreshable
     private void UpdateCardMediaTimeline(
         global::Windows.Media.Control.GlobalSystemMediaTransportControlsSession session, bool playing)
     {
-        CardMediaPlayIcon.Data = (Geometry)FindResource(playing ? "Bi.PauseFill" : "Bi.PlayFill");
+        var playGeom = (Geometry)FindResource(playing ? "Bi.PauseFill" : "Bi.PlayFill");
+        CardMediaPlayIcon.Data = playGeom;
+        if (CardLeftMediaPlayIcon != null) CardLeftMediaPlayIcon.Data = playGeom;
         try
         {
             var tl = session.GetTimelineProperties();
@@ -2616,6 +2621,9 @@ public partial class HomePage : Page, IRefreshable
                 CardMediaFill.Width = 0;
                 CardMediaCurTime.Text = "0:00";
                 CardMediaTotTime.Text = "0:00";
+                if (CardLeftMediaFill    != null) CardLeftMediaFill.Width   = 0;
+                if (CardLeftMediaCurTime != null) CardLeftMediaCurTime.Text = "0:00";
+                if (CardLeftMediaTotTime != null) CardLeftMediaTotTime.Text = "0:00";
                 return;
             }
             if (pos < TimeSpan.Zero) pos = TimeSpan.Zero;
@@ -2624,8 +2632,16 @@ public partial class HomePage : Page, IRefreshable
             CardMediaFill.Width  = Math.Max(0, CardMediaTrack.ActualWidth * frac);
             CardMediaCurTime.Text = FormatMediaTime(pos);
             CardMediaTotTime.Text = FormatMediaTime(duration);
+            if (CardLeftMediaFill != null && CardLeftMediaTrack != null)
+                CardLeftMediaFill.Width = Math.Max(0, CardLeftMediaTrack.ActualWidth * frac);
+            if (CardLeftMediaCurTime != null) CardLeftMediaCurTime.Text = FormatMediaTime(pos);
+            if (CardLeftMediaTotTime != null) CardLeftMediaTotTime.Text = FormatMediaTime(duration);
         }
-        catch { CardMediaFill.Width = 0; }
+        catch
+        {
+            CardMediaFill.Width = 0;
+            if (CardLeftMediaFill != null) CardLeftMediaFill.Width = 0;
+        }
     }
 
     /// <summary>TimeSpan を m:ss 形式に整形する。</summary>
@@ -2757,8 +2773,10 @@ public partial class HomePage : Page, IRefreshable
             var tl = session.GetTimelineProperties();
             var duration = tl.EndTime - tl.StartTime;
             if (duration <= TimeSpan.Zero) return;
-            double x    = e.GetPosition(CardMediaTrack).X;
-            double frac = Math.Clamp(x / CardMediaTrack.ActualWidth, 0, 1);
+            var track   = (sender as System.Windows.FrameworkElement) ?? CardMediaTrack;
+            double x    = e.GetPosition(track).X;
+            double w    = track.ActualWidth > 0 ? track.ActualWidth : CardMediaTrack.ActualWidth;
+            double frac = Math.Clamp(x / w, 0, 1);
             var target  = tl.StartTime + TimeSpan.FromTicks((long)(duration.Ticks * frac));
             await session.TryChangePlaybackPositionAsync(target.Ticks);
             UpdateCardMediaTimeline(session, true);

@@ -405,11 +405,52 @@
                                    TextAlignment="Left" Margin="0,-18,0,0"/>
                     </StackPanel>
 
-                    <!-- 右下: 2か月分ミニカレンダー（枠なし背景なし） -->
-                    <StackPanel x:Name="CardMiniCalendarHost"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                Margin="0,0,32,28"/>
+                    <!-- 右下: メディア(コンパクト) + 2か月ミニカレンダー を縦に積む -->
+                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Margin="0,0,32,28">
+                        <!-- メディア欄（コンパクト、右列のメディアと SMTC を共有）-->
+                        <Border x:Name="CardLeftMediaCard" Tag="Card_LeftMedia"
+                                CornerRadius="14" Margin="0,0,0,12" Height="74"
+                                ClipToBounds="True" MinWidth="360">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="14"
+                                                  ShadowDepth="2" Opacity="0.5"/>
+                            </Border.Effect>
+                            <Grid x:Name="CardLeftMediaGrid">
+                                <Canvas>
+                                    <Image x:Name="CardLeftMediaBgImage" Stretch="UniformToFill"
+                                           Width="{Binding ActualWidth, ElementName=CardLeftMediaGrid}"
+                                           Height="{Binding ActualHeight, ElementName=CardLeftMediaGrid}"
+                                           RenderOptions.BitmapScalingMode="HighQuality">
+                                        <Image.Effect>
+                                            <BlurEffect Radius="38" KernelType="Gaussian"/>
+                                        </Image.Effect>
+                                    </Image>
+                                </Canvas>
+                                <Border Background="#AA000000"/>
+                                <DockPanel Margin="12,8,12,8">
+                                    <Image x:Name="CardLeftMediaIcon" DockPanel.Dock="Left"
+                                           Width="28" Height="28" Stretch="Uniform"
+                                           VerticalAlignment="Center" Margin="0,0,10,0"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock x:Name="CardLeftMediaTitle"
+                                                   Text="再生中のメディアはありません"
+                                                   Foreground="White" FontFamily="Yu Gothic UI"
+                                                   FontSize="13" FontWeight="Bold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="CardLeftMediaArtist" Text=""
+                                                   Foreground="#CCFFFFFF" FontFamily="Yu Gothic UI"
+                                                   FontSize="11" Margin="0,2,0,0"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 2か月分ミニカレンダー（枠なし背景なし） -->
+                        <StackPanel x:Name="CardMiniCalendarHost" Orientation="Horizontal"/>
+                    </StackPanel>
                 </Grid>
             </Grid>
 

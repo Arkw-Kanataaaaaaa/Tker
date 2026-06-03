@@ -2563,6 +2563,9 @@ public partial class HomePage : Page, IRefreshable
                 _cardLastMediaTitle  = title;
                 CardMediaTitle.Text  = title;
                 CardMediaArtist.Text = props?.Artist ?? "";
+                // 左カード領域のコンパクトメディア欄にも反映
+                if (CardLeftMediaTitle != null)  CardLeftMediaTitle.Text  = title;
+                if (CardLeftMediaArtist != null) CardLeftMediaArtist.Text = props?.Artist ?? "";
                 _ = UpdateCardMediaBackground(props);
             }
 
@@ -2584,6 +2587,11 @@ public partial class HomePage : Page, IRefreshable
         CardMediaTotTime.Text  = "0:00";
         CardMediaBgImage.Source = null;
         CardMediaAppIcon.Source = null;
+        // 左カード領域のコンパクトメディア欄もクリア
+        if (CardLeftMediaTitle != null)   CardLeftMediaTitle.Text   = "再生中のメディアはありません";
+        if (CardLeftMediaArtist != null)  CardLeftMediaArtist.Text  = "";
+        if (CardLeftMediaBgImage != null) CardLeftMediaBgImage.Source = null;
+        if (CardLeftMediaIcon != null)    CardLeftMediaIcon.Source    = null;
         _cardLastMediaTitle = null;
         _cardLastMediaAumid = null;
     }
@@ -2643,8 +2651,13 @@ public partial class HomePage : Page, IRefreshable
             bmp.EndInit();
             bmp.Freeze();
             CardMediaBgImage.Source = bmp;
+            if (CardLeftMediaBgImage != null) CardLeftMediaBgImage.Source = bmp;
         }
-        catch { CardMediaBgImage.Source = null; }
+        catch
+        {
+            CardMediaBgImage.Source = null;
+            if (CardLeftMediaBgImage != null) CardLeftMediaBgImage.Source = null;
+        }
     }
 
     /// <summary>再生中アプリのアイコンを取得して表示する（パッケージ→Win32 の順で解決）。</summary>
@@ -2653,6 +2666,7 @@ public partial class HomePage : Page, IRefreshable
         var src = await TryGetPackagedAppLogo(aumid);
         src ??= TryGetWin32AppIcon(aumid);
         CardMediaAppIcon.Source = src;
+        if (CardLeftMediaIcon != null) CardLeftMediaIcon.Source = src;
     }
 
     /// <summary>パッケージアプリのロゴを AppInfo 経由で取得する（失敗時は null）。</summary>

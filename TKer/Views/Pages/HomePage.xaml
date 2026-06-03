@@ -412,7 +412,8 @@
                         <Border x:Name="CardLeftMediaCard" Tag="Card_LeftMedia"
                                 CornerRadius="14" Margin="0,0,0,12"
                                 ClipToBounds="True"
-                                Width="{Binding ActualWidth, ElementName=CardMediaRoot}">
+                                Width="{Binding ActualWidth, ElementName=CardMediaRoot}"
+                                SizeChanged="CardMediaRoot_SizeChanged">
                             <Border.Effect>
                                 <DropShadowEffect Color="#000000" BlurRadius="18"
                                                   ShadowDepth="3" Opacity="0.55"/>

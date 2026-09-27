@@ -1,0 +1,25 @@
+<Window x:Class="TKer.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TKer Collections" Height="720" Width="1180"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgPrimaryBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- タイトルバー -->
+        <Border Grid.Row="0" Padding="16,10" Background="{DynamicResource BgSecondaryBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+            <TextBlock Text="TKer Collections" FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="15"
+                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+        </Border>
+
+        <!-- ページコンテンツ -->
+        <Frame Grid.Row="1" x:Name="MainFrame"
+               NavigationUIVisibility="Hidden" />
+    </Grid>
+</Window>

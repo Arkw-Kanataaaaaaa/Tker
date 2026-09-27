@@ -451,8 +451,6 @@
                     </ScrollViewer>
                 </DockPanel>
 
-            </Grid>
-
                 <!-- ─── 画像プレビュー オーバーレイ ─── -->
                 <Grid x:Name="PreviewOverlay" Panel.ZIndex="1000"
                       Visibility="Collapsed" Background="#DC000000"
@@ -495,6 +493,7 @@
                     </StackPanel>
                 </Grid>
 
+            </Grid>
         </Border>
 
         </Grid>

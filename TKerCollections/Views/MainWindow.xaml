@@ -1,21 +1,60 @@
 <Window x:Class="TKer.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="TKer Collections" Height="720" Width="1180"
+        MinHeight="480" MinWidth="720"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BgPrimaryBrush}">
+        WindowStyle="SingleBorderWindow"
+        Background="{DynamicResource BgPrimaryBrush}"
+        StateChanged="Window_StateChanged">
 
-    <Grid>
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="5"
+                            GlassFrameThickness="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- タイトルバー -->
-        <Border Grid.Row="0" Padding="16,10" Background="{DynamicResource BgSecondaryBrush}"
+        <Border Grid.Row="0" Background="{DynamicResource BgSecondaryBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-            <TextBlock Text="TKer Collections" FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="15"
-                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+            <DockPanel Margin="14,0,0,0">
+                <TextBlock DockPanel.Dock="Left" Text="TKer Collections"
+                           FontFamily="Yu Gothic UI" FontWeight="Bold" FontSize="13"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           VerticalAlignment="Center"
+                           shell:WindowChrome.IsHitTestVisibleInChrome="False"/>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <Button x:Name="BtnMinimize" Width="40" Height="40"
+                            Style="{StaticResource WinCtrlBtn}"
+                            Click="WinMinimize_Click" ToolTip="最小化"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path Data="{StaticResource Bi.Dash}" Style="{StaticResource BiIcon}"
+                              Fill="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
+                    <Button x:Name="BtnMaximize" Width="40" Height="40"
+                            Style="{StaticResource WinCtrlBtn}"
+                            Click="WinMaximize_Click" ToolTip="最大化/元のサイズ"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path x:Name="MaximizeIcon"
+                              Data="{StaticResource Bi.Square}" Style="{StaticResource BiIcon}"
+                              Fill="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
+                    <Button x:Name="BtnClose" Width="40" Height="40"
+                            Style="{StaticResource WinCloseBtn}"
+                            Click="WinClose_Click" ToolTip="閉じる"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path Data="{StaticResource Bi.XLg}" Style="{StaticResource BiIcon}"
+                              Fill="{StaticResource TextSecondaryBrush}"/>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- ページコンテンツ -->
